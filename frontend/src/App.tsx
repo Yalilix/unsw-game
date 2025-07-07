@@ -1,9 +1,12 @@
-import "./App.css";
+import './App.css';
+import { GameLanding } from './components/GameLanding';
 
 function App() {
-	return <>
-  <div className="bg-amber-300">HIII</div>
-  </>;
+  return (
+    <>
+      <GameLanding />
+    </>
+  );
 }
 
 export default App;

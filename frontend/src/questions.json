@@ -1,0 +1,1524 @@
+{
+	"weeks": {
+		"Week 1": {
+			"Lecture 1": [
+				{
+					"question": "What is the primary purpose of COMP1511?",
+					"options": [
+						"To introduce advanced data structures.",
+						"To teach the fundamentals of programming.",
+						"To focus on web development.",
+						"To explore artificial intelligence concepts."
+					],
+					"answer": "To teach the fundamentals of programming."
+				},
+				{
+					"question": "Which operating system is primarily used in COMP1511 labs?",
+					"options": ["Windows", "macOS", "Linux", "Unix"],
+					"answer": "Linux"
+				},
+				{
+					"question": "What is the function of '#include <stdio.h>' in a C program?",
+					"options": [
+						"It defines the main function.",
+						"It includes the standard input/output library.",
+						"It declares a variable.",
+						"It prints 'Hello World!' to the console."
+					],
+					"answer": "It includes the standard input/output library."
+				},
+				{
+					"question": "What does 'int main(void)' signify in a C program?",
+					"options": [
+						"The function returns a floating-point number and takes no input.",
+						"The function returns an integer and takes no input.",
+						"The function returns a character and takes a string as input.",
+						"The function returns nothing and takes any input."
+					],
+					"answer": "The function returns an integer and takes no input."
+				},
+				{
+					"question": "What is the purpose of comments in C code?",
+					"options": [
+						"They are executed by the compiler to perform specific tasks.",
+						"They are used to define variables.",
+						"They are ignored by the compiler and are for human readability.",
+						"They indicate the end of a function."
+					],
+					"answer": "They are ignored by the compiler and are for human readability."
+				},
+				{
+					"question": "Which term describes the smallest possible unit of computer memory?",
+					"options": ["Byte", "Kilobyte", "Bit", "Word"],
+					"answer": "Bit"
+				},
+				{
+					"question": "What is the purpose of 'printf()' in C?",
+					"options": [
+						"To read input from the user.",
+						"To perform mathematical calculations.",
+						"To display output on the console.",
+						"To declare variables."
+					],
+					"answer": "To display output on the console."
+				},
+				{
+					"question": "Which of the following is a valid integer variable declaration in C?",
+					"options": [
+						"int my number;",
+						"int my_number;",
+						"my_number int;",
+						"integer my_number;"
+					],
+					"answer": "int my_number;"
+				},
+				{
+					"question": "What is the format specifier for a double-precision floating-point number in 'printf()'?",
+					"options": ["%d", "%c", "%s", "%lf"],
+					"answer": "%lf"
+				},
+				{
+					"question": "What does the '\\n' character do in a 'printf()' statement?",
+					"options": [
+						"Inserts a tab.",
+						"Deletes the previous character.",
+						"Moves the cursor to the next line.",
+						"Prints a backslash character."
+					],
+					"answer": "Moves the cursor to the next line."
+				}
+			],
+			"Lecture 2": [
+				{
+					"question": "Which of the following is NOT a fundamental data type in C mentioned in Lecture 2?",
+					"options": ["int", "float", "char", "double"],
+					"answer": "float"
+				},
+				{
+					"question": "What is the purpose of a 'char' data type in C?",
+					"options": [
+						"To store whole numbers.",
+						"To store decimal numbers.",
+						"To store a single character.",
+						"To store a sequence of characters (string)."
+					],
+					"answer": "To store a single character."
+				},
+				{
+					"question": "What is the correct format specifier to print an 'int' variable using 'printf'?",
+					"options": ["%lf", "%c", "%d", "%s"],
+					"answer": "%d"
+				},
+				{
+					"question": "What does the '&' symbol before a variable name signify in a 'scanf' function call?",
+					"options": [
+						"It indicates the variable's value.",
+						"It indicates the variable's data type.",
+						"It indicates the memory address of the variable.",
+						"It converts the variable to a string."
+					],
+					"answer": "It indicates the memory address of the variable."
+				},
+				{
+					"question": "What is the result of the expression '5 % 3' in C?",
+					"options": ["1", "2", "1.66", "0"],
+					"answer": "2"
+				},
+				{
+					"question": "What happens if you divide two integers in C, e.g., 3 / 2?",
+					"options": [
+						"It returns 1.5.",
+						"It returns 1, dropping the fraction.",
+						"It causes a compilation error.",
+						"It rounds up to 2."
+					],
+					"answer": "It returns 1, dropping the fraction."
+				},
+				{
+					"question": "What is the primary use of '#define' in C?",
+					"options": [
+						"To declare functions.",
+						"To create constants that are replaced by the preprocessor.",
+						"To define new data types.",
+						"To allocate memory dynamically."
+					],
+					"answer": "To create constants that are replaced by the preprocessor."
+				},
+				{
+					"question": "Which of the following is an example of a valid arithmetic operator in C?",
+					"options": ["&&", "||", "+", "=="],
+					"answer": "+"
+				},
+				{
+					"question": "What is the purpose of type casting in C?",
+					"options": [
+						"To change the value of a variable permanently.",
+						"To convert a variable from one data type to another temporarily.",
+						"To declare a new variable.",
+						"To define a function."
+					],
+					"answer": "To convert a variable from one data type to another temporarily."
+				},
+				{
+					"question": "What is the output of `printf(\"%.1lf\", 10.0 / 3.0);`?",
+					"options": ["3", "3.3", "3.33", "10"],
+					"answer": "3.3"
+				}
+			]
+		},
+		"Week 2": {
+			"Lecture 1": [
+				{
+					"question": "What value is considered 'true' in C conditional statements?",
+					"options": [
+						"Only 1",
+						"Only 0",
+						"Any non-zero value",
+						"Only positive values"
+					],
+					"answer": "Any non-zero value"
+				},
+				{
+					"question": "Which operator is used for 'is equal to' comparison in C?",
+					"options": ["=", "==", "!=", ">="],
+					"answer": "=="
+				},
+				{
+					"question": "What is the purpose of an 'else if' statement?",
+					"options": [
+						"To execute code if the initial 'if' condition is true.",
+						"To execute code if all preceding 'if' and 'else if' conditions are false.",
+						"To check an additional condition if the previous 'if' or 'else if' was false.",
+						"To create an infinite loop."
+					],
+					"answer": "To check an additional condition if the previous 'if' or 'else if' was false."
+				},
+				{
+					"question": "What is a 'sentinel loop'?",
+					"options": [
+						"A loop that runs a fixed number of times.",
+						"A loop that continues until a specific value is encountered.",
+						"A loop that never ends.",
+						"A loop that depends on a mathematical calculation."
+					],
+					"answer": "A loop that continues until a specific value is encountered."
+				},
+				{
+					"question": "What does 'scanf' return upon successful input?",
+					"options": [
+						"The value scanned.",
+						"The memory address of the variable.",
+						"The number of input values successfully scanned.",
+						"EOF (end-of-file)."
+					],
+					"answer": "The number of input values successfully scanned."
+				},
+				{
+					"question": "Which logical operator represents 'AND' in C?",
+					"options": ["||", "!", "&&", "=="],
+					"answer": "&&"
+				},
+				{
+					"question": "What is an 'infinite loop'?",
+					"options": [
+						"A loop that executes only once.",
+						"A loop that has a fixed number of iterations.",
+						"A loop that continues to execute indefinitely because its termination condition is never met.",
+						"A loop that uses a sentinel value."
+					],
+					"answer": "A loop that continues to execute indefinitely because its termination condition is never met."
+				},
+				{
+					"question": "What is a 'counting loop'?",
+					"options": [
+						"A loop whose number of iterations is unknown.",
+						"A loop that terminates based on user input.",
+						"A loop that uses a variable as a counter to control how many times it runs.",
+						"A loop that only runs if a specific condition is met."
+					],
+					"answer": "A loop that uses a variable as a counter to control how many times it runs."
+				},
+				{
+					"question": "What is the purpose of the 'break' statement in a loop?",
+					"options": [
+						"To skip the current iteration and continue with the next.",
+						"To terminate the loop immediately.",
+						"To restart the loop from the beginning.",
+						"To pause the loop for a specified time."
+					],
+					"answer": "To terminate the loop immediately."
+				},
+				{
+					"question": "Which of the following is a relational operator?",
+					"options": ["+", "%", "<=", "="],
+					"answer": "<="
+				}
+			],
+			"Lecture 2": [
+				{
+					"question": "What is a 'struct' in C?",
+					"options": [
+						"A variable that stores a single integer.",
+						"A way to define a custom data type that groups related data of different types.",
+						"A function that performs a specific task.",
+						"A type of loop for iteration."
+					],
+					"answer": "A way to define a custom data type that groups related data of different types."
+				},
+				{
+					"question": "How do you access members of a 'struct' variable?",
+					"options": [
+						"Using the '#' symbol.",
+						"Using the '->' operator.",
+						"Using the '.' (dot) operator.",
+						"Using square brackets '[]'."
+					],
+					"answer": "Using the '.' (dot) operator."
+				},
+				{
+					"question": "What is an 'enum' in C?",
+					"options": [
+						"A variable that can store any type of data.",
+						"A data type that allows assigning names to integer constants.",
+						"A function for input/output operations.",
+						"A structure for creating linked lists."
+					],
+					"answer": "A data type that allows assigning names to integer constants."
+				},
+				{
+					"question": "By default, what integer value is assigned to the first constant in an 'enum'?",
+					"options": ["-1", "0", "1", "Any random integer"],
+					"answer": "0"
+				},
+				{
+					"question": "What is a 'nested while loop'?",
+					"options": [
+						"A while loop that never terminates.",
+						"A while loop that is placed inside another while loop.",
+						"A while loop that uses a sentinel value.",
+						"A while loop that counts iterations."
+					],
+					"answer": "A while loop that is placed inside another while loop."
+				},
+				{
+					"question": "Which keyword is used to define a new struct?",
+					"options": ["class", "type", "struct", "define"],
+					"answer": "struct"
+				},
+				{
+					"question": "What is the main advantage of using structs?",
+					"options": [
+						"They allow for faster program execution.",
+						"They simplify mathematical operations.",
+						"They help organize related data into a single unit.",
+						"They automatically manage memory allocation."
+					],
+					"answer": "They help organize related data into a single unit."
+				},
+				{
+					"question": "Can an enum constant be assigned a specific integer value?",
+					"options": [
+						"No, values are always assigned automatically.",
+						"Yes, by explicitly assigning a value during declaration.",
+						"Only if it's the first constant.",
+						"Only if it's a negative value."
+					],
+					"answer": "Yes, by explicitly assigning a value during declaration."
+				},
+				{
+					"question": "What is the purpose of a 'typedef' with structs?",
+					"options": [
+						"To make struct members public.",
+						"To create an alias for a struct type, making declarations shorter.",
+						"To convert a struct to an array.",
+						"To define a new function within a struct."
+					],
+					"answer": "To create an alias for a struct type, making declarations shorter."
+				},
+				{
+					"question": "Which of the following describes a 'while' loop?",
+					"options": [
+						"Executes code a fixed number of times.",
+						"Executes code at least once, then checks a condition.",
+						"Repeatedly executes a block of code as long as a specified condition is true.",
+						"Executes code only if a condition is false."
+					],
+					"answer": "Repeatedly executes a block of code as long as a specified condition is true."
+				}
+			]
+		},
+		"Week 3": {
+			"Lecture 1": [
+				{
+					"question": "What is the primary benefit of using functions in C programming?",
+					"options": [
+						"To make the code run faster.",
+						"To improve code readability and reusability.",
+						"To allocate memory dynamically.",
+						"To define global variables."
+					],
+					"answer": "To improve code readability and reusability."
+				},
+				{
+					"question": "What does a 'void' return type in a function prototype signify?",
+					"options": [
+						"The function returns an integer.",
+						"The function returns a character.",
+						"The function does not return any value.",
+						"The function returns a pointer."
+					],
+					"answer": "The function does not return any value."
+				},
+				{
+					"question": "What is the scope of a local variable declared inside a function?",
+					"options": [
+						"It is accessible throughout the entire program.",
+						"It is accessible only within the function it was declared in.",
+						"It is accessible only in the main function.",
+						"It is accessible only if passed by reference."
+					],
+					"answer": "It is accessible only within the function it was declared in."
+				},
+				{
+					"question": "When are local variables created and destroyed?",
+					"options": [
+						"Created at program start, destroyed at program end.",
+						"Created when the function is called, destroyed when the function returns.",
+						"Created when declared, destroyed manually by the programmer.",
+						"Created only in the main function."
+					],
+					"answer": "Created when the function is called, destroyed when the function returns."
+				},
+				{
+					"question": "Why is it generally considered bad style to use global variables in COMP1511?",
+					"options": [
+						"They make the code run slower.",
+						"They are difficult to declare.",
+						"They can lead to unintended side effects and make debugging harder.",
+						"They consume too much memory."
+					],
+					"answer": "They can lead to unintended side effects and make debugging harder."
+				},
+				{
+					"question": "What is a 'function prototype'?",
+					"options": [
+						"The actual implementation of a function.",
+						"A declaration of a function that tells the compiler about its name, return type, and parameters.",
+						"A call to a function.",
+						"A variable that stores a function's address."
+					],
+					"answer": "A declaration of a function that tells the compiler about its name, return type, and parameters."
+				},
+				{
+					"question": "What is 'pass by value' when calling a function?",
+					"options": [
+						"The memory address of the variable is passed.",
+						"A copy of the variable's value is passed to the function.",
+						"The original variable itself is passed.",
+						"Only pointers can be passed by value."
+					],
+					"answer": "A copy of the variable's value is passed to the function."
+				},
+				{
+					"question": "What is the main goal of good coding style?",
+					"options": [
+						"To make the code as short as possible.",
+						"To confuse other programmers.",
+						"To make code readable, maintainable, and understandable.",
+						"To avoid using comments."
+					],
+					"answer": "To make code readable, maintainable, and understandable."
+				},
+				{
+					"question": "Which of the following is a common style guideline for variable names?",
+					"options": [
+						"Use single letters.",
+						"Use all uppercase.",
+						"Use descriptive names (e.g., camelCase or snake_case).",
+						"Use numbers only."
+					],
+					"answer": "Use descriptive names (e.g., camelCase or snake_case)."
+				},
+				{
+					"question": "What is 'modularity' in programming, related to functions?",
+					"options": [
+						"Writing all code in one large function.",
+						"Breaking down a program into smaller, independent, and reusable functions.",
+						"Using only global variables.",
+						"Avoiding the use of loops."
+					],
+					"answer": "Breaking down a program into smaller, independent, and reusable functions."
+				}
+			],
+			"Lecture 2": [
+				{
+					"question": "What is an 'array' in C?",
+					"options": [
+						"A collection of variables of different types.",
+						"A dynamically sized data structure.",
+						"A contiguous collection of variables all of the same type.",
+						"A data structure that can only be accessed sequentially."
+					],
+					"answer": "A contiguous collection of variables all of the same type."
+				},
+				{
+					"question": "What is the index of the first element in a C array?",
+					"options": [
+						"1",
+						"0",
+						"The size of the array",
+						"Any positive integer"
+					],
+					"answer": "0"
+				},
+				{
+					"question": "Can you assign a whole array to another array variable directly in C (e.g., `int b[7] = a;`)?",
+					"options": [
+						"Yes, always.",
+						"No, this is illegal and will not compile.",
+						"Only if the arrays are of the same size.",
+						"Only if the arrays are declared globally."
+					],
+					"answer": "No, this is illegal and will not compile."
+				},
+				{
+					"question": "When passing an array to a function in C, what is typically also passed to the function?",
+					"options": [
+						"A copy of all array values.",
+						"The size of the array.",
+						"A pointer to a new array.",
+						"Nothing else is needed."
+					],
+					"answer": "The size of the array."
+				},
+				{
+					"question": "What is a common shorthand for `count = count + 1;`?",
+					"options": [
+						"count += 1;",
+						"count++;",
+						"increment(count);",
+						"Both count += 1; and count++;"
+					],
+					"answer": "Both count += 1; and count++;"
+				},
+				{
+					"question": "What does `array[i]` refer to in an array context?",
+					"options": [
+						"The memory address of the array.",
+						"The size of the array.",
+						"The element at index `i` of the array.",
+						"The first element of the array."
+					],
+					"answer": "The element at index `i` of the array."
+				},
+				{
+					"question": "What happens if you try to access an array element outside its bounds (e.g., `array[10]` for an array of size 5)?",
+					"options": [
+						"The compiler will automatically resize the array.",
+						"It will always cause a runtime error and crash the program.",
+						"It leads to undefined behavior, which might be a crash or unexpected results.",
+						"The value will wrap around to the beginning of the array."
+					],
+					"answer": "It leads to undefined behavior, which might be a crash or unexpected results."
+				},
+				{
+					"question": "Which loop structure is commonly used to iterate through all elements of an array?",
+					"options": [
+						"if-else statement",
+						"switch statement",
+						"while loop or for loop",
+						"enum"
+					],
+					"answer": "while loop or for loop"
+				},
+				{
+					"question": "What is the purpose of `scanf(\"%d\", &array[i]);` when reading into an array?",
+					"options": [
+						"To print the value of `array[i]`.",
+						"To declare the array.",
+						"To read an integer from input and store it at the `i`-th position of the array.",
+						"To calculate the sum of array elements."
+					],
+					"answer": "To read an integer from input and store it at the `i`-th position of the array."
+				},
+				{
+					"question": "Can a function return an array in C directly?",
+					"options": [
+						"Yes, always.",
+						"No, you cannot directly return an array from a function.",
+						"Only if the array is small.",
+						"Only if the array is declared globally."
+					],
+					"answer": "No, you cannot directly return an array from a function."
+				}
+			]
+		},
+		"Week 4": {
+			"Lecture 1": [
+				{
+					"question": "What is an array of structs?",
+					"options": [
+						"A single struct containing multiple arrays.",
+						"An array where each element is a struct.",
+						"A struct that can only hold arrays.",
+						"A 2D array of integers."
+					],
+					"answer": "An array where each element is a struct."
+				},
+				{
+					"question": "How many dimensions does a 2D array have?",
+					"options": ["One", "Two", "Three", "Zero"],
+					"answer": "Two"
+				},
+				{
+					"question": "In a 2D array declared as `int grid[ROWS][COLS];`, which index typically refers to the rows?",
+					"options": [
+						"The first index (ROWS)",
+						"The second index (COLS)",
+						"Either index, depending on usage",
+						"Neither, they are interchangeable"
+					],
+					"answer": "The first index (ROWS)"
+				},
+				{
+					"question": "What is the purpose of nested loops when traversing a 2D array?",
+					"options": [
+						"To access only the first row.",
+						"To access elements randomly.",
+						"To iterate through both rows and columns.",
+						"To sort the array elements."
+					],
+					"answer": "To iterate through both rows and columns."
+				},
+				{
+					"question": "What is a key difference between arrays and structs?",
+					"options": [
+						"Arrays store homogenous data, structs store heterogeneous data.",
+						"Arrays are dynamically sized, structs are fixed size.",
+						"Arrays are random access, structs are sequential access.",
+						"Arrays can be passed to functions, structs cannot."
+					],
+					"answer": "Arrays store homogenous data, structs store heterogeneous data."
+				},
+				{
+					"question": "If you declare `int matrix[3][5];`, how many elements can it store?",
+					"options": ["3", "5", "8", "15"],
+					"answer": "15"
+				},
+				{
+					"question": "How do you access an element in the second row and third column of a 2D array `int grid[ROWS][COLS];` (assuming 0-based indexing)?",
+					"options": ["grid[2][3]", "grid[1][2]", "grid[3][2]", "grid[2][1]"],
+					"answer": "grid[1][2]"
+				},
+				{
+					"question": "What is the purpose of passing `ROWS` and `COLS` as arguments to a function that processes a 2D array?",
+					"options": [
+						"To make the function faster.",
+						"To ensure the function knows the dimensions of the array for correct traversal.",
+						"To change the size of the array within the function.",
+						"They are not necessary."
+					],
+					"answer": "To ensure the function knows the dimensions of the array for correct traversal."
+				},
+				{
+					"question": "Which of the following is true about 2D arrays in C?",
+					"options": [
+						"They can store elements of different data types.",
+						"They are always dynamically allocated.",
+						"They are stored in contiguous memory locations.",
+						"They can only have 2 rows and 2 columns."
+					],
+					"answer": "They are stored in contiguous memory locations."
+				},
+				{
+					"question": "What is a common application for 2D arrays?",
+					"options": [
+						"Storing a list of names.",
+						"Representing a grid or a matrix.",
+						"Implementing a linked list.",
+						"Storing a single character."
+					],
+					"answer": "Representing a grid or a matrix."
+				}
+			],
+			"Lecture 2": [
+				{
+					"question": "What is a 'string' in C?",
+					"options": [
+						"A single character.",
+						"An array of integers.",
+						"An array of characters that ends with a null terminator ('\\0').",
+						"A floating-point number."
+					],
+					"answer": "An array of characters that ends with a null terminator ('\\0')."
+				},
+				{
+					"question": "Why is it forbidden to use `scanf(\"%s\", ...)` for reading strings in COMP1511?",
+					"options": [
+						"It is too slow.",
+						"It cannot read strings with spaces.",
+						"It can lead to buffer overflows and security vulnerabilities.",
+						"It only works for numbers."
+					],
+					"answer": "It can lead to buffer overflows and security vulnerabilities."
+				},
+				{
+					"question": "Which function is recommended for reading strings safely in C?",
+					"options": ["printf()", "gets()", "fgets()", "atoi()"],
+					"answer": "fgets()"
+				},
+				{
+					"question": "What is `argc` in `int main(int argc, char *argv[])`?",
+					"options": [
+						"The number of characters in the program name.",
+						"The total number of command line arguments, including the program name.",
+						"The number of arguments excluding the program name.",
+						"A pointer to the first argument."
+					],
+					"answer": "The total number of command line arguments, including the program name."
+				},
+				{
+					"question": "Which function converts a string to an integer?",
+					"options": ["strcpy()", "strlen()", "atoi()", "strcmp()"],
+					"answer": "atoi()"
+				},
+				{
+					"question": "What is `argv` in `int main(int argc, char *argv[])`?",
+					"options": [
+						"An array of integers.",
+						"A pointer to a single string.",
+						"An array of strings (character pointers), where each string is a command-line argument.",
+						"A single character."
+					],
+					"answer": "An array of strings (character pointers), where each string is a command-line argument."
+				},
+				{
+					"question": "What is the null terminator character for strings in C?",
+					"options": ["'\\n'", "'\\t'", "'\\0'", "'\\r'"],
+					"answer": "'\\0'"
+				},
+				{
+					"question": "Which standard library function is used to copy one string to another?",
+					"options": ["strlen()", "strcmp()", "strcpy()", "strcat()"],
+					"answer": "strcpy()"
+				},
+				{
+					"question": "What is the purpose of command line arguments?",
+					"options": [
+						"To provide input to a program after it has started running.",
+						"To define global variables.",
+						"To give inputs to a program at the time it starts running.",
+						"To change the program's source code."
+					],
+					"answer": "To give inputs to a program at the time it starts running."
+				},
+				{
+					"question": "If a program is run as `./myprogram hello world`, what will `argv[1]` contain?",
+					"options": ["`./myprogram`", "`hello`", "`world`", "NULL"],
+					"answer": "`hello`"
+				}
+			]
+		},
+		"Week 5": {
+			"Lecture 1": [
+				{
+					"question": "What is a 'pointer' in C?",
+					"options": [
+						"A variable that stores a character.",
+						"A variable that stores a memory address of another variable.",
+						"A function that returns a value.",
+						"A special type of array."
+					],
+					"answer": "A variable that stores a memory address of another variable."
+				},
+				{
+					"question": "What operator is used to 'dereference' a pointer (i.e., access the value at the memory address it stores)?",
+					"options": ["&", "*", ".", "->"],
+					"answer": "*"
+				},
+				{
+					"question": "What is 'stack memory' primarily used for?",
+					"options": [
+						"Long-term data storage.",
+						"Storing global variables.",
+						"Storing function calls and local variables, which are deallocated when the function finishes.",
+						"Dynamically allocated memory."
+					],
+					"answer": "Storing function calls and local variables, which are deallocated when the function finishes."
+				},
+				{
+					"question": "What is 'heap memory' primarily used for?",
+					"options": [
+						"Storing function parameters.",
+						"Memory allocated automatically by the compiler.",
+						"Dynamically allocated memory that persists until explicitly freed by the programmer.",
+						"Storing code instructions."
+					],
+					"answer": "Dynamically allocated memory that persists until explicitly freed by the programmer."
+				},
+				{
+					"question": "What is the purpose of 'malloc()'?",
+					"options": [
+						"To free allocated memory.",
+						"To return the size of a data type.",
+						"To allocate a specified number of bytes of memory on the heap.",
+						"To copy data from one memory location to another."
+					],
+					"answer": "To allocate a specified number of bytes of memory on the heap."
+				},
+				{
+					"question": "What does the '&' operator do when used with a variable (e.g., `&number`)?",
+					"options": [
+						"It gives the value of the variable.",
+						"It gives the memory address of the variable.",
+						"It declares a pointer.",
+						"It dereferences a pointer."
+					],
+					"answer": "It gives the memory address of the variable."
+				},
+				{
+					"question": "If `int *ptr;` is declared, what type of variable can `ptr` store the address of?",
+					"options": ["char", "double", "int", "any type"],
+					"answer": "int"
+				},
+				{
+					"question": "What is the difference between `*ptr` and `ptr` when `ptr` is an `int *`?",
+					"options": [
+						"`*ptr` is the address, `ptr` is the value.",
+						"`*ptr` is the value at the address, `ptr` is the address itself.",
+						"They are interchangeable.",
+						"`*ptr` is for declaration, `ptr` is for assignment."
+					],
+					"answer": "`*ptr` is the value at the address, `ptr` is the address itself."
+				},
+				{
+					"question": "When is memory on the stack typically deallocated?",
+					"options": [
+						"Manually by the programmer.",
+						"When the program ends.",
+						"When the function in which it was declared returns.",
+						"When the operating system reboots."
+					],
+					"answer": "When the function in which it was declared returns."
+				},
+				{
+					"question": "What is the primary advantage of dynamic memory allocation (using `malloc`)?",
+					"options": [
+						"It is faster than stack allocation.",
+						"It allows programs to allocate memory of variable size at runtime.",
+						"It automatically frees memory when no longer needed.",
+						"It prevents memory leaks."
+					],
+					"answer": "It allows programs to allocate memory of variable size at runtime."
+				}
+			],
+			"Lecture 2": [
+				{
+					"question": "What is a 'memory leak'?",
+					"options": [
+						"When a program runs out of stack memory.",
+						"When dynamically allocated memory is not freed, leading to lost memory.",
+						"When a program accesses memory it shouldn't.",
+						"When a variable's value changes unexpectedly."
+					],
+					"answer": "When dynamically allocated memory is not freed, leading to lost memory."
+				},
+				{
+					"question": "Which function is used to free dynamically allocated memory?",
+					"options": ["malloc()", "sizeof()", "free()", "realloc()"],
+					"answer": "free()"
+				},
+				{
+					"question": "What does 'sizeof()' return?",
+					"options": [
+						"The number of elements in an array.",
+						"The memory address of a variable.",
+						"The size of a particular data type in bytes.",
+						"The value stored in a variable."
+					],
+					"answer": "The size of a particular data type in bytes."
+				},
+				{
+					"question": "When accessing a member of a struct through a pointer to that struct, which operator is typically used as a shorthand?",
+					"options": [".", "&", "*", "->"],
+					"answer": "->"
+				},
+				{
+					"question": "What is a 'linked list'?",
+					"options": [
+						"A data structure where elements are stored contiguously in memory like an array.",
+						"A random access data structure.",
+						"A dynamically sized collection of the same data type, where elements (nodes) do not need to be stored contiguously.",
+						"A fixed-size data structure."
+					],
+					"answer": "A dynamically sized collection of the same data type, where elements (nodes) do not need to be stored contiguously."
+				},
+				{
+					"question": "What is the primary benefit of using multi-file projects in C?",
+					"options": [
+						"It makes the program run faster.",
+						"It improves readability and modularity by separating code.",
+						"It allows direct manipulation of hardware.",
+						"It reduces the need for comments."
+					],
+					"answer": "It improves readability and modularity by separating code."
+				},
+				{
+					"question": "What is the typical content of a `.h` (header) file in a multi-file project?",
+					"options": [
+						"The full implementation of functions.",
+						"Only the `main` function.",
+						"Function prototypes, #defines, and comments describing function usage.",
+						"Binary executable code."
+					],
+					"answer": "Function prototypes, #defines, and comments describing function usage."
+				},
+				{
+					"question": "What is the purpose of an 'implementation file' (`.c` file) in a multi-file project?",
+					"options": [
+						"To declare global variables.",
+						"To contain the `main` function only.",
+						"To implement the functions declared in the corresponding header file.",
+						"To store user input."
+					],
+					"answer": "To implement the functions declared in the corresponding header file."
+				},
+				{
+					"question": "When compiling a multi-file C project, what command is typically used (e.g., for `maths.c` and `main.c`)?",
+					"options": [
+						"`gcc main.c`",
+						"`dcc maths.c`",
+						"`dcc maths.c main.c -o myprogram`",
+						"`compile all.c`"
+					],
+					"answer": "`dcc maths.c main.c -o myprogram`"
+				},
+				{
+					"question": "What does a `struct node *next;` member in a linked list node represent?",
+					"options": [
+						"The data of the next node.",
+						"A pointer to the next node in the list.",
+						"The size of the next node.",
+						"A copy of the next node."
+					],
+					"answer": "A pointer to the next node in the list."
+				}
+			]
+		},
+		"Week 7": {
+			"Lecture 1": [
+				{
+					"question": "What is one of the main benefits of using multi-file projects?",
+					"options": [
+						"They reduce compilation time significantly.",
+						"They improve readability and modularity by separating code.",
+						"They eliminate the need for pointers.",
+						"They allow C programs to run on web browsers directly."
+					],
+					"answer": "They improve readability and modularity by separating code."
+				},
+				{
+					"question": "What does `#include \"maths.h\"` typically do in a C file within a multi-file project?",
+					"options": [
+						"It executes the code in `maths.h`.",
+						"It links the `maths.h` header file, allowing access to its declarations.",
+						"It creates a new file named `maths.h`.",
+						"It defines a macro named `maths.h`."
+					],
+					"answer": "It links the `maths.h` header file, allowing access to its declarations."
+				},
+				{
+					"question": "What is the purpose of `malloc()` in dynamic memory allocation?",
+					"options": [
+						"To deallocate memory.",
+						"To return the size of a variable.",
+						"To allocate a specified number of bytes on the heap and return a pointer to it.",
+						"To copy data between memory locations."
+					],
+					"answer": "To allocate a specified number of bytes on the heap and return a pointer to it."
+				},
+				{
+					"question": "What is a 'memory leak' in the context of `malloc()` and `free()`?",
+					"options": [
+						"When a program accesses memory it shouldn't.",
+						"When memory allocated with `malloc()` is not `free()`d, becoming unusable.",
+						"When the stack overflows.",
+						"When a program runs too fast."
+					],
+					"answer": "When memory allocated with `malloc()` is not `free()`d, becoming unusable."
+				},
+				{
+					"question": "What is a 'node' in a linked list composed of?",
+					"options": [
+						"Only data.",
+						"Only a pointer to the next node.",
+						"Some data and a pointer to the next node.",
+						"An array of integers."
+					],
+					"answer": "Some data and a pointer to the next node."
+				},
+				{
+					"question": "How do you know when you've reached the end of a linked list?",
+					"options": [
+						"When the data value is 0.",
+						"When the 'next' pointer of a node is NULL.",
+						"When the list size equals 10.",
+						"When you encounter a negative number."
+					],
+					"answer": "When the 'next' pointer of a node is NULL."
+				},
+				{
+					"question": "When inserting a node at the head of a linked list, what should the new node's `next` pointer point to?",
+					"options": [
+						"NULL",
+						"Itself",
+						"The old head of the list",
+						"The tail of the list"
+					],
+					"answer": "The old head of the list"
+				},
+				{
+					"question": "What is the first step in traversing a linked list?",
+					"options": [
+						"Start from the middle node.",
+						"Start from the tail node.",
+						"Start from the head of the list.",
+						"Randomly pick a node to start."
+					],
+					"answer": "Start from the head of the list."
+				},
+				{
+					"question": "What is the purpose of `sizeof(struct node)` when allocating memory for a new node?",
+					"options": [
+						"To get the number of nodes in the list.",
+						"To determine the memory address of the node.",
+						"To get the exact number of bytes required for a `struct node`.",
+						"To convert the node to an integer."
+					],
+					"answer": "To get the exact number of bytes required for a `struct node`."
+				},
+				{
+					"question": "If `head` is a pointer to the first node of a linked list, how would you move to the next node?",
+					"options": [
+						"`head = head + 1;`",
+						"`head = head->next;`",
+						"`head++;`",
+						"`head = *head;`"
+					],
+					"answer": "`head = head->next;`"
+				}
+			],
+			"Lecture 2": [
+				{
+					"question": "What is a common edge case to consider when inserting a node into a linked list?",
+					"options": [
+						"Inserting into a list with 100 items.",
+						"Inserting into an empty list.",
+						"Inserting a negative number.",
+						"Inserting at a specific memory address."
+					],
+					"answer": "Inserting into an empty list."
+				},
+				{
+					"question": "When inserting a node in the middle of a linked list, what is a crucial step to ensure the list remains connected?",
+					"options": [
+						"Change the head pointer to the new node.",
+						"Connect the new node's `next` pointer to the current node's `next`, then the current node's `next` to the new node.",
+						"Set the new node's `next` to NULL.",
+						"Free the current node."
+					],
+					"answer": "Connect the new node's `next` pointer to the current node's `next`, then the current node's `next` to the new node."
+				},
+				{
+					"question": "When deleting the head of a linked list (with other items present), what is the first step?",
+					"options": [
+						"Free the current head immediately.",
+						"Point the head to NULL.",
+						"Point the head to the next node in the list.",
+						"Loop to the tail of the list."
+					],
+					"answer": "Point the head to the next node in the list."
+				},
+				{
+					"question": "If you are deleting a node in the middle of a linked list, why is it important to stop at the *previous* node?",
+					"options": [
+						"To avoid a memory leak.",
+						"Because once you are on the node to be deleted, you lose the reference to the node before it.",
+						"To make the deletion faster.",
+						"It's not important, you can stop at any node."
+					],
+					"answer": "Because once you are on the node to be deleted, you lose the reference to the node before it."
+				},
+				{
+					"question": "What must you always do after deleting a node from a dynamically allocated linked list?",
+					"options": [
+						"Set the head to NULL.",
+						"Print the entire list.",
+						"Call `free()` on the deleted node to release its memory.",
+						"Reallocate the entire list."
+					],
+					"answer": "Call `free()` on the deleted node to release its memory."
+				},
+				{
+					"question": "What is an 'edge case' in linked list operations?",
+					"options": [
+						"The most common scenario for an operation.",
+						"A situation that occurs at the boundaries or unusual conditions, like an empty list or a list with one item.",
+						"A case that always causes an error.",
+						"A case that involves only even numbers."
+					],
+					"answer": "A situation that occurs at the boundaries or unusual conditions, like an empty list or a list with one item."
+				},
+				{
+					"question": "When deleting the tail node of a linked list, what should the `next` pointer of the *second-to-last* node point to?",
+					"options": [
+						"The head node.",
+						"Itself.",
+						"NULL.",
+						"The deleted tail node."
+					],
+					"answer": "NULL."
+				},
+				{
+					"question": "What is the general approach to debugging linked list operations?",
+					"options": [
+						"Guessing and checking code randomly.",
+						"Drawing diagrams to visualize changes to pointers and nodes.",
+						"Ignoring error messages.",
+						"Only testing with very large lists."
+					],
+					"answer": "Drawing diagrams to visualize changes to pointers and nodes."
+				},
+				{
+					"question": "If a linked list has only one item and you delete it, what should the `head` pointer become?",
+					"options": [
+						"A pointer to itself.",
+						"A pointer to a new empty node.",
+						"NULL.",
+						"The original memory address of the deleted node."
+					],
+					"answer": "NULL."
+				},
+				{
+					"question": "What is the main challenge when inserting or deleting nodes in the middle of a linked list?",
+					"options": [
+						"Finding the exact memory address.",
+						"Ensuring all connections (pointers) are correctly updated to maintain list integrity.",
+						"Running out of memory.",
+						"Sorting the list after each operation."
+					],
+					"answer": "Ensuring all connections (pointers) are correctly updated to maintain list integrity."
+				}
+			]
+		},
+		"Week 8": {
+			"Lecture 1": [
+				{
+					"question": "What is the primary topic of Lecture 13?",
+					"options": [
+						"Advanced sorting algorithms.",
+						"Time to delete from a linked list.",
+						"Introduction to recursion.",
+						"Multi-threading in C."
+					],
+					"answer": "Time to delete from a linked list."
+				},
+				{
+					"question": "What is an 'empty list' considered when performing deletion operations?",
+					"options": [
+						"A normal case.",
+						"An edge case where deletion is not possible.",
+						"A list with one node.",
+						"A list that is full."
+					],
+					"answer": "An edge case where deletion is not possible."
+				},
+				{
+					"question": "When deleting the head of a linked list, what is the crucial step after updating the `head` pointer?",
+					"options": [
+						"Re-traverse the list.",
+						"Print the new head's data.",
+						"Free the memory of the old head node.",
+						"Insert a new node at the tail."
+					],
+					"answer": "Free the memory of the old head node."
+				},
+				{
+					"question": "To delete a node in the middle of a linked list, you typically need to find which node?",
+					"options": [
+						"The node to be deleted.",
+						"The node after the one to be deleted.",
+						"The node *previous* to the one being deleted.",
+						"The head node only."
+					],
+					"answer": "The node *previous* to the one being deleted."
+				},
+				{
+					"question": "What happens if you try to `free(NULL)`?",
+					"options": [
+						"It will cause a segmentation fault.",
+						"It will free an arbitrary memory location.",
+						"It is a safe operation and does nothing.",
+						"It will cause a memory leak."
+					],
+					"answer": "It is a safe operation and does nothing."
+				},
+				{
+					"question": "What is a common pitfall when deleting nodes in a linked list?",
+					"options": [
+						"Forgetting to update the data in other nodes.",
+						"Not handling edge cases like empty lists or single-node lists correctly.",
+						"Using too many `printf` statements.",
+						"Making the list too long."
+					],
+					"answer": "Not handling edge cases like empty lists or single-node lists correctly."
+				},
+				{
+					"question": "If you have a pointer `current` to a node and you want to delete `current->next`, what should `current->next` then point to?",
+					"options": [
+						"NULL",
+						"The head of the list",
+						"`current->next->next` (the node after the one being deleted)",
+						"Itself"
+					],
+					"answer": "`current->next->next` (the node after the one being deleted)"
+				},
+				{
+					"question": "What is the purpose of `linked_list.c` and `linked_list.h` in the context of multi-file projects?",
+					"options": [
+						"They are separate, unrelated programs.",
+						"They define and implement linked list functions, making them reusable modules.",
+						"They are only for debugging purposes.",
+						"They are required for every C program."
+					],
+					"answer": "They define and implement linked list functions, making them reusable modules."
+				},
+				{
+					"question": "When deleting the tail of a linked list, how do you typically find the second-to-last node?",
+					"options": [
+						"By checking if `current->next` is NULL.",
+						"By checking if `current->next->next` is NULL.",
+						"By using a counter.",
+						"By starting from the head and moving one step at a time."
+					],
+					"answer": "By checking if `current->next->next` is NULL."
+				},
+				{
+					"question": "What is the general advice for understanding linked list operations, especially deletion?",
+					"options": [
+						"Memorize the code snippets.",
+						"Avoid using diagrams.",
+						"Draw diagrams to visualize the pointer changes and logic.",
+						"Only test with pre-written test cases."
+					],
+					"answer": "Draw diagrams to visualize the pointer changes and logic."
+				}
+			]
+		},
+		"Week 9": {
+			"Lecture 1": [
+				{
+					"question": "What is a major focus area for the COMP1511 exam?",
+					"options": [
+						"Advanced Python programming.",
+						"Simple IF statements and WHILE loops.",
+						"Database management.",
+						"Operating system design."
+					],
+					"answer": "Simple IF statements and WHILE loops."
+				},
+				{
+					"question": "Which data types are explicitly mentioned as important for the exam?",
+					"options": [
+						"Only `int` and `char`.",
+						"`int`, `double`, `char`, `structs`.",
+						"Boolean and String.",
+						"Arrays of arrays only."
+					],
+					"answer": "`int`, `double`, `char`, `structs`."
+				},
+				{
+					"question": "What are the two 'hurdles' in the COMP1511 exam?",
+					"options": [
+						"Debugging and style.",
+						"Pointers and memory allocation.",
+						"Array and Linked List questions.",
+						"Functions and loops."
+					],
+					"answer": "Array and Linked List questions."
+				},
+				{
+					"question": "What is the minimum mark required for each hurdle question to pass it?",
+					"options": ["25%", "50%", "75%", "100%"],
+					"answer": "50%"
+				},
+				{
+					"question": "Are students allowed to refer to lecture material and code during the exam?",
+					"options": [
+						"No, it's a closed-book exam with no external resources.",
+						"Yes, the course website with lecture/tutorial/lab material will be open.",
+						"Only personal notes are allowed.",
+						"Only a pre-approved cheat sheet is allowed."
+					],
+					"answer": "Yes, the course website with lecture/tutorial/lab material will be open."
+				},
+				{
+					"question": "What is considered plagiarism during the exam period?",
+					"options": [
+						"Discussing the exam with anyone within 24 hours of the start time.",
+						"Referring to the course website.",
+						"Using a compiler.",
+						"Submitting multiple times."
+					],
+					"answer": "Discussing the exam with anyone within 24 hours of the start time."
+				},
+				{
+					"question": "What is the 'Fit to Sit' policy?",
+					"options": [
+						"It allows students to start the exam late.",
+						"By sitting the exam, you declare you are fit to do so and cannot later apply for Special Consideration due to illness during the exam.",
+						"It allows students to use external resources during the exam.",
+						"It requires students to complete all questions."
+					],
+					"answer": "By sitting the exam, you declare you are fit to do so and cannot later apply for Special Consideration due to illness during the exam."
+				},
+				{
+					"question": "What is the advice for struggling with a question, particularly linked lists?",
+					"options": [
+						"Skip it and move on.",
+						"Spend more time compiling the code.",
+						"Draw diagrams to clarify the problem and logic.",
+						"Ask another student for the answer."
+					],
+					"answer": "Draw diagrams to clarify the problem and logic."
+				},
+				{
+					"question": "What is the general marking approach for the exam?",
+					"options": [
+						"Mostly manual marking with strict style requirements.",
+						"Mainly automated marking, with minor errors resulting in small mark losses.",
+						"Only passing autotests earns marks.",
+						"Marks are only given for perfect solutions."
+					],
+					"answer": "Mainly automated marking, with minor errors resulting in small mark losses."
+				},
+				{
+					"question": "What is the advice regarding answering questions in the exam?",
+					"options": [
+						"Answer as many questions as possible, even if partially complete.",
+						"Less questions answered completely is better than more questions partially answered.",
+						"Focus only on the hardest questions.",
+						"Only answer questions you are 100% sure about."
+					],
+					"answer": "Less questions answered completely is better than more questions partially answered."
+				}
+			],
+			"Lecture 2": [
+				{
+					"question": "What type of questions are typically found in Lecture 16?",
+					"options": [
+						"Theoretical questions about computer architecture.",
+						"Exam-style questions, particularly on linked lists and arrays.",
+						"Questions about C++ programming.",
+						"Questions on web development."
+					],
+					"answer": "Exam-style questions, particularly on linked lists and arrays."
+				},
+				{
+					"question": "Problem 1 in Lecture 16 asks to find the 'range' of a linked list. What does 'range' refer to?",
+					"options": [
+						"The number of elements in the list.",
+						"The difference between the biggest and smallest term in the list.",
+						"The average value of elements.",
+						"The sum of all elements."
+					],
+					"answer": "The difference between the biggest and smallest term in the list."
+				},
+				{
+					"question": "Problem 2 in Lecture 16 involves 'concatenating two linked lists'. What does this mean?",
+					"options": [
+						"Finding common elements in both lists.",
+						"Joining one linked list to another.",
+						"Comparing the sizes of two lists.",
+						"Sorting two linked lists together."
+					],
+					"answer": "Joining one linked list to another."
+				},
+				{
+					"question": "Problem 3 in Lecture 16 asks for the 'difference in the number of items' between two linked lists. What is the expected output?",
+					"options": [
+						"A new linked list.",
+						"A boolean value (true/false).",
+						"An integer representing the absolute difference in counts.",
+						"The sum of items in both lists."
+					],
+					"answer": "An integer representing the absolute difference in counts."
+				},
+				{
+					"question": "What is an 'isogram' as defined in Problem 14?",
+					"options": [
+						"A word with repeating letters.",
+						"A word in which no letter of the alphabet occurs more than once.",
+						"A word that reads the same forwards and backward.",
+						"A word that contains only vowels."
+					],
+					"answer": "A word in which no letter of the alphabet occurs more than once."
+				},
+				{
+					"question": "Problem 11 involves finding the sum of two numbers in an array closest to a target. What concept does this primarily test?",
+					"options": [
+						"Linked list traversal.",
+						"Array manipulation and searching/comparison.",
+						"String processing.",
+						"Dynamic memory allocation."
+					],
+					"answer": "Array manipulation and searching/comparison."
+				},
+				{
+					"question": "Problem 12 focuses on reading integers until a negative number and then printing odd and even integers separately. What control flow structures are most relevant here?",
+					"options": [
+						"Functions and structs.",
+						"Pointers and malloc.",
+						"While loops and if statements.",
+						"Multi-file projects."
+					],
+					"answer": "While loops and if statements."
+				},
+				{
+					"question": "What kind of problem is 'sum_cont_subarray' (Problem 13, second instance)?",
+					"options": [
+						"Finding the smallest element in an array.",
+						"Finding the largest contiguous sum of a subarray in a given array.",
+						"Counting elements divisible by a number.",
+						"Concatenating arrays."
+					],
+					"answer": "Finding the largest contiguous sum of a subarray in a given array."
+				},
+				{
+					"question": "What is the general advice for approaching exam-style problems?",
+					"options": [
+						"Start coding immediately without planning.",
+						"Read all questions before starting and draw diagrams.",
+						"Only attempt problems you've seen before.",
+						"Ignore the problem sets and revision exercises."
+					],
+					"answer": "Read all questions before starting and draw diagrams."
+				},
+				{
+					"question": "What is the purpose of `main.c` in a multi-file linked list project?",
+					"options": [
+						"It defines the `struct node`.",
+						"It contains the full implementation of linked list functions.",
+						"It is the entry point of the program and calls functions from other modules.",
+						"It stores the memory addresses of all nodes."
+					],
+					"answer": "It is the entry point of the program and calls functions from other modules."
+				}
+			]
+		},
+		"Week 10": {
+			"Lecture 1": [
+				{
+					"question": "What is the primary focus of Lecture 17?",
+					"options": [
+						"Introduction to new data structures.",
+						"Exam-style questions and Q&A with tutors.",
+						"Advanced C++ concepts.",
+						"Web security."
+					],
+					"answer": "Exam-style questions and Q&A with tutors."
+				},
+				{
+					"question": "Problem 6 in the exam-style questions asks to insert a number into an ordered linked list while retaining order. What does this test?",
+					"options": [
+						"Deletion from linked lists.",
+						"Linked list insertion logic, particularly for ordered lists.",
+						"Array sorting.",
+						"Memory deallocation."
+					],
+					"answer": "Linked list insertion logic, particularly for ordered lists."
+				},
+				{
+					"question": "Problem 7 involves deleting the first node divisible by 6 from a linked list. What concept is primarily tested?",
+					"options": [
+						"Linked list traversal and conditional deletion.",
+						"Array indexing.",
+						"String searching.",
+						"Pointer arithmetic."
+					],
+					"answer": "Linked list traversal and conditional deletion."
+				},
+				{
+					"question": "Problem 8 suggests duplicating every node in a linked list. What does this require?",
+					"options": [
+						"Only pointer manipulation.",
+						"Creating new nodes (using `malloc`) and careful insertion.",
+						"Sorting the linked list.",
+						"Converting the linked list to an array."
+					],
+					"answer": "Creating new nodes (using `malloc`) and careful insertion."
+				},
+				{
+					"question": "Problem 9 asks to find the smallest element in a linked list and return its position. What does 'position' typically refer to in this context?",
+					"options": [
+						"The memory address.",
+						"The index (e.g., 0 for the first node, 1 for the second).",
+						"The value of the node.",
+						"The size of the node."
+					],
+					"answer": "The index (e.g., 0 for the first node, 1 for the second)."
+				},
+				{
+					"question": "What kind of questions are Q1-Q4 in the exam described as?",
+					"options": [
+						"Easy multiple-choice.",
+						"Hurdles, programming questions (Array and Linked List).",
+						"Debugging exercises.",
+						"Theoretical concepts."
+					],
+					"answer": "Hurdles, programming questions (Array and Linked List)."
+				},
+				{
+					"question": "What is the purpose of the 'Q&A with the tutors' session?",
+					"options": [
+						"To introduce new course content.",
+						"To provide a platform for students to ask about exam tips, future courses, internships, etc.",
+						"To review past assignments.",
+						"To conduct a live coding session."
+					],
+					"answer": "To provide a platform for students to ask about exam tips, future courses, internships, etc."
+				},
+				{
+					"question": "What is the general advice for becoming a better programmer, as mentioned in the lecture?",
+					"options": [
+						"Focus only on theory.",
+						"Avoid practice and rely on memorization.",
+						"Lots of practice.",
+						"Only work on very simple programs."
+					],
+					"answer": "Lots of practice."
+				},
+				{
+					"question": "What does Problem 15 test, regarding command line arguments and string searching?",
+					"options": [
+						"Whether a word read as a command line argument appears in the main word.",
+						"Converting integers to strings.",
+						"Sorting command line arguments.",
+						"Counting the number of command line arguments."
+					],
+					"answer": "Whether a word read as a command line argument appears in the main word."
+				},
+				{
+					"question": "What is the primary purpose of the 'myExperience surveys' mentioned in the lectures?",
+					"options": [
+						"To sign up for help sessions.",
+						"To provide feedback on the course experience and shape future education at UNSW.",
+						"To submit assignments.",
+						"To register for exams."
+					],
+					"answer": "To provide feedback on the course experience and shape future education at UNSW."
+				}
+			]
+		}
+	}
+}

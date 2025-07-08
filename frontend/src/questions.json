@@ -1114,16 +1114,6 @@
     "Week 8": {
       "Lecture 1": [
         {
-          "question": "What is the primary topic of Lecture 13?",
-          "options": [
-            "Advanced sorting algorithms.",
-            "Time to delete from a linked list.",
-            "Introduction to recursion.",
-            "Multi-threading in C."
-          ],
-          "answer": "Time to delete from a linked list."
-        },
-        {
           "question": "What is an 'empty list' considered when performing deletion operations?",
           "options": [
             "A normal case.",
@@ -1216,116 +1206,10 @@
       ]
     },
     "Week 9": {
-      "Lecture 1": [
-        {
-          "question": "What is a major focus area for the COMP1511 exam?",
-          "options": [
-            "Advanced Python programming.",
-            "Simple IF statements and WHILE loops.",
-            "Database management.",
-            "Operating system design."
-          ],
-          "answer": "Simple IF statements and WHILE loops."
-        },
-        {
-          "question": "Which data types are explicitly mentioned as important for the exam?",
-          "options": [
-            "Only `int` and `char`.",
-            "`int`, `double`, `char`, `structs`.",
-            "Boolean and String.",
-            "Arrays of arrays only."
-          ],
-          "answer": "`int`, `double`, `char`, `structs`."
-        },
-        {
-          "question": "What are the two 'hurdles' in the COMP1511 exam?",
-          "options": [
-            "Debugging and style.",
-            "Pointers and memory allocation.",
-            "Array and Linked List questions.",
-            "Functions and loops."
-          ],
-          "answer": "Array and Linked List questions."
-        },
-        {
-          "question": "What is the minimum mark required for each hurdle question to pass it?",
-          "options": ["25%", "50%", "75%", "100%"],
-          "answer": "50%"
-        },
-        {
-          "question": "Are students allowed to refer to lecture material and code during the exam?",
-          "options": [
-            "No, it's a closed-book exam with no external resources.",
-            "Yes, the course website with lecture/tutorial/lab material will be open.",
-            "Only personal notes are allowed.",
-            "Only a pre-approved cheat sheet is allowed."
-          ],
-          "answer": "Yes, the course website with lecture/tutorial/lab material will be open."
-        },
-        {
-          "question": "What is considered plagiarism during the exam period?",
-          "options": [
-            "Discussing the exam with anyone within 24 hours of the start time.",
-            "Referring to the course website.",
-            "Using a compiler.",
-            "Submitting multiple times."
-          ],
-          "answer": "Discussing the exam with anyone within 24 hours of the start time."
-        },
-        {
-          "question": "What is the 'Fit to Sit' policy?",
-          "options": [
-            "It allows students to start the exam late.",
-            "By sitting the exam, you declare you are fit to do so and cannot later apply for Special Consideration due to illness during the exam.",
-            "It allows students to use external resources during the exam.",
-            "It requires students to complete all questions."
-          ],
-          "answer": "By sitting the exam, you declare you are fit to do so and cannot later apply for Special Consideration due to illness during the exam."
-        },
-        {
-          "question": "What is the advice for struggling with a question, particularly linked lists?",
-          "options": [
-            "Skip it and move on.",
-            "Spend more time compiling the code.",
-            "Draw diagrams to clarify the problem and logic.",
-            "Ask another student for the answer."
-          ],
-          "answer": "Draw diagrams to clarify the problem and logic."
-        },
-        {
-          "question": "What is the general marking approach for the exam?",
-          "options": [
-            "Mostly manual marking with strict style requirements.",
-            "Mainly automated marking, with minor errors resulting in small mark losses.",
-            "Only passing autotests earns marks.",
-            "Marks are only given for perfect solutions."
-          ],
-          "answer": "Mainly automated marking, with minor errors resulting in small mark losses."
-        },
-        {
-          "question": "What is the advice regarding answering questions in the exam?",
-          "options": [
-            "Answer as many questions as possible, even if partially complete.",
-            "Less questions answered completely is better than more questions partially answered.",
-            "Focus only on the hardest questions.",
-            "Only answer questions you are 100% sure about."
-          ],
-          "answer": "Less questions answered completely is better than more questions partially answered."
-        }
-      ],
+      "Lecture 1": [],
       "Lecture 2": [
         {
-          "question": "What type of questions are typically found in Lecture 16?",
-          "options": [
-            "Theoretical questions about computer architecture.",
-            "Exam-style questions, particularly on linked lists and arrays.",
-            "Questions about C++ programming.",
-            "Questions on web development."
-          ],
-          "answer": "Exam-style questions, particularly on linked lists and arrays."
-        },
-        {
-          "question": "Problem 1 in Lecture 16 asks to find the 'range' of a linked list. What does 'range' refer to?",
+          "question": "What does the 'range' of a linked list of numbers typically refer to?",
           "options": [
             "The number of elements in the list.",
             "The difference between the biggest and smallest term in the list.",
@@ -1335,7 +1219,7 @@
           "answer": "The difference between the biggest and smallest term in the list."
         },
         {
-          "question": "Problem 2 in Lecture 16 involves 'concatenating two linked lists'. What does this mean?",
+          "question": "What does it mean to 'concatenate' two linked lists?",
           "options": [
             "Finding common elements in both lists.",
             "Joining one linked list to another.",
@@ -1345,7 +1229,7 @@
           "answer": "Joining one linked list to another."
         },
         {
-          "question": "Problem 3 in Lecture 16 asks for the 'difference in the number of items' between two linked lists. What is the expected output?",
+          "question": "If a function must find the 'difference in the number of items' between two linked lists, what is the most likely expected output?",
           "options": [
             "A new linked list.",
             "A boolean value (true/false).",
@@ -1355,7 +1239,7 @@
           "answer": "An integer representing the absolute difference in counts."
         },
         {
-          "question": "What is an 'isogram' as defined in Problem 14?",
+          "question": "What is an 'isogram'?",
           "options": [
             "A word with repeating letters.",
             "A word in which no letter of the alphabet occurs more than once.",
@@ -1365,7 +1249,7 @@
           "answer": "A word in which no letter of the alphabet occurs more than once."
         },
         {
-          "question": "Problem 11 involves finding the sum of two numbers in an array closest to a target. What concept does this primarily test?",
+          "question": "A problem requires finding the sum of two numbers in an array that is closest to a target value. What programming concept does this primarily test?",
           "options": [
             "Linked list traversal.",
             "Array manipulation and searching/comparison.",
@@ -1375,7 +1259,7 @@
           "answer": "Array manipulation and searching/comparison."
         },
         {
-          "question": "Problem 12 focuses on reading integers until a negative number and then printing odd and even integers separately. What control flow structures are most relevant here?",
+          "question": "To read integers until a negative number is entered, then print odd and even integers separately, what control flow structures are most relevant?",
           "options": [
             "Functions and structs.",
             "Pointers and malloc.",
@@ -1385,7 +1269,7 @@
           "answer": "While loops and if statements."
         },
         {
-          "question": "What kind of problem is 'sum_cont_subarray' (Problem 13, second instance)?",
+          "question": "What is the 'maximum subarray sum' problem?",
           "options": [
             "Finding the smallest element in an array.",
             "Finding the largest contiguous sum of a subarray in a given array.",
@@ -1393,16 +1277,6 @@
             "Concatenating arrays."
           ],
           "answer": "Finding the largest contiguous sum of a subarray in a given array."
-        },
-        {
-          "question": "What is the general advice for approaching exam-style problems?",
-          "options": [
-            "Start coding immediately without planning.",
-            "Read all questions before starting and draw diagrams.",
-            "Only attempt problems you've seen before.",
-            "Ignore the problem sets and revision exercises."
-          ],
-          "answer": "Read all questions before starting and draw diagrams."
         },
         {
           "question": "What is the purpose of `main.c` in a multi-file linked list project?",
@@ -1419,17 +1293,7 @@
     "Week 10": {
       "Lecture 1": [
         {
-          "question": "What is the primary focus of Lecture 17?",
-          "options": [
-            "Introduction to new data structures.",
-            "Exam-style questions and Q&A with tutors.",
-            "Advanced C++ concepts.",
-            "Web security."
-          ],
-          "answer": "Exam-style questions and Q&A with tutors."
-        },
-        {
-          "question": "Problem 6 in the exam-style questions asks to insert a number into an ordered linked list while retaining order. What does this test?",
+          "question": "What is primarily tested when you are asked to insert a number into an ordered linked list while maintaining the order?",
           "options": [
             "Deletion from linked lists.",
             "Linked list insertion logic, particularly for ordered lists.",
@@ -1439,7 +1303,7 @@
           "answer": "Linked list insertion logic, particularly for ordered lists."
         },
         {
-          "question": "Problem 7 involves deleting the first node divisible by 6 from a linked list. What concept is primarily tested?",
+          "question": "What concept is primarily tested by a problem that requires deleting the first node divisible by a specific number from a linked list?",
           "options": [
             "Linked list traversal and conditional deletion.",
             "Array indexing.",
@@ -1449,7 +1313,7 @@
           "answer": "Linked list traversal and conditional deletion."
         },
         {
-          "question": "Problem 8 suggests duplicating every node in a linked list. What does this require?",
+          "question": "What is required to duplicate every node in a linked list?",
           "options": [
             "Only pointer manipulation.",
             "Creating new nodes (using `malloc`) and careful insertion.",
@@ -1459,7 +1323,7 @@
           "answer": "Creating new nodes (using `malloc`) and careful insertion."
         },
         {
-          "question": "Problem 9 asks to find the smallest element in a linked list and return its position. What does 'position' typically refer to in this context?",
+          "question": "When asked to find an element's 'position' in a linked list, what does this typically refer to?",
           "options": [
             "The memory address.",
             "The index (e.g., 0 for the first node, 1 for the second).",
@@ -1469,27 +1333,7 @@
           "answer": "The index (e.g., 0 for the first node, 1 for the second)."
         },
         {
-          "question": "What kind of questions are Q1-Q4 in the exam described as?",
-          "options": [
-            "Easy multiple-choice.",
-            "Hurdles, programming questions (Array and Linked List).",
-            "Debugging exercises.",
-            "Theoretical concepts."
-          ],
-          "answer": "Hurdles, programming questions (Array and Linked List)."
-        },
-        {
-          "question": "What is the purpose of the 'Q&A with the tutors' session?",
-          "options": [
-            "To introduce new course content.",
-            "To provide a platform for students to ask about exam tips, future courses, internships, etc.",
-            "To review past assignments.",
-            "To conduct a live coding session."
-          ],
-          "answer": "To provide a platform for students to ask about exam tips, future courses, internships, etc."
-        },
-        {
-          "question": "What is the general advice for becoming a better programmer, as mentioned in the lecture?",
+          "question": "What is a key practice for becoming a better programmer?",
           "options": [
             "Focus only on theory.",
             "Avoid practice and rely on memorization.",
@@ -1499,24 +1343,14 @@
           "answer": "Lots of practice."
         },
         {
-          "question": "What does Problem 15 test, regarding command line arguments and string searching?",
+          "question": "What concepts are tested by a problem that checks if a word from a command line argument appears within another string?",
           "options": [
-            "Whether a word read as a command line argument appears in the main word.",
+            "Handling command line arguments and performing string searching.",
             "Converting integers to strings.",
             "Sorting command line arguments.",
             "Counting the number of command line arguments."
           ],
-          "answer": "Whether a word read as a command line argument appears in the main word."
-        },
-        {
-          "question": "What is the primary purpose of the 'myExperience surveys' mentioned in the lectures?",
-          "options": [
-            "To sign up for help sessions.",
-            "To provide feedback on the course experience and shape future education at UNSW.",
-            "To submit assignments.",
-            "To register for exams."
-          ],
-          "answer": "To provide feedback on the course experience and shape future education at UNSW."
+          "answer": "Handling command line arguments and performing string searching."
         }
       ]
     }

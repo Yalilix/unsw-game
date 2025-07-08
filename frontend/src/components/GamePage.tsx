@@ -1,13 +1,21 @@
-import { useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  enterRoom,
+  leaveRoom,
+  muteLocalAudio,
+  unmuteLocalAudio,
+} from './Agora';
 
 export function GamePage() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
+  const [isVotingVisible, setIsVotingVisible] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
     if (!roomId) {
-      navigate("/");
+      navigate('/');
       return;
     }
 
@@ -17,26 +25,26 @@ export function GamePage() {
         let script: HTMLScriptElement | null = id
           ? (document.getElementById(id) as HTMLScriptElement | null)
           : null;
-        if (script && script.getAttribute("data-loaded") === "true") {
+        if (script && script.getAttribute('data-loaded') === 'true') {
           // Already loaded
           return resolve(script);
         }
         if (!script) {
-          script = document.createElement("script");
+          script = document.createElement('script');
           script.src = src;
           if (id) script.id = id;
           script.async = true;
           document.body.appendChild(script);
         }
         script.onload = () => {
-          script!.setAttribute("data-loaded", "true");
+          script!.setAttribute('data-loaded', 'true');
           resolve(script!);
         };
       });
     }
 
     const backendUrl =
-      import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+      import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
     // Make backend URL and room ID available to game.js
     (window as any).BACKEND_URL = backendUrl;
@@ -45,15 +53,57 @@ export function GamePage() {
     // Load in sequence so that socket.io is available before game.js executes
     (async () => {
       try {
-        await loadScript(`${backendUrl}/socket.io/socket.io.js`, "socket-io");
-        await loadScript("/game.js", "sus1511-game");
+        await loadScript(`${backendUrl}/socket.io/socket.io.js`, 'socket-io');
+        await loadScript('/game.js', 'sussy-uni-game');
       } catch (err) {
-        console.error("Failed to load game scripts", err);
+        console.error('Failed to load game scripts', err);
       }
     })();
 
-    return () => {};
+    // Agora voice chat integration: observe voting UI visibility
+    const votingUI = document.getElementById('votingUI');
+    let prevDisplay = votingUI?.style.display;
+    let joined = false;
+    let observer: MutationObserver | null = null;
+    if (votingUI) {
+      observer = new MutationObserver(() => {
+        const currentDisplay = votingUI.style.display;
+        if (currentDisplay !== prevDisplay) {
+          if (currentDisplay !== 'none' && !joined) {
+            enterRoom();
+            joined = true;
+            setIsVotingVisible(true);
+          } else if (currentDisplay === 'none' && joined) {
+            leaveRoom();
+            joined = false;
+            setIsVotingVisible(false);
+            setIsMuted(false); // reset mute state
+          }
+          prevDisplay = currentDisplay;
+        }
+      });
+      observer.observe(votingUI, {
+        attributes: true,
+        attributeFilter: ['style'],
+      });
+    }
+
+    return () => {
+      observer?.disconnect();
+      if (joined) leaveRoom();
+    };
   }, [roomId, navigate]);
+
+  // Handle mute/unmute toggle
+  const handleMuteToggle = () => {
+    if (isMuted) {
+      unmuteLocalAudio();
+      setIsMuted(false);
+    } else {
+      muteLocalAudio();
+      setIsMuted(true);
+    }
+  };
 
   return (
     <div className="w-screen h-screen bg-black relative overflow-hidden">
@@ -68,7 +118,7 @@ export function GamePage() {
         <button
           id="killButton"
           className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-lg cursor-pointer"
-          style={{ display: "none" }}
+          style={{ display: 'none' }}
           onClick={() => (window as any).attemptKill?.()}
         >
           KILL
@@ -78,7 +128,7 @@ export function GamePage() {
         <button
           id="taskButton"
           className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg cursor-pointer"
-          style={{ display: "none" }}
+          style={{ display: 'none' }}
           onClick={() => (window as any).attemptTask?.()}
         >
           DO TASK
@@ -88,7 +138,7 @@ export function GamePage() {
         <button
           id="reportButton"
           className="px-4 py-2 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-700 transition-colors shadow-lg cursor-pointer"
-          style={{ display: "none" }}
+          style={{ display: 'none' }}
           onClick={() => (window as any).attemptReport?.()}
         >
           REPORT
@@ -99,18 +149,32 @@ export function GamePage() {
       <div
         id="votingUI"
         className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
-        style={{ display: "none", zIndex: 1000 }}
+        style={{ display: 'none', zIndex: 1000 }}
       >
+        {/* Mute/Unmute Button */}
+        {isVotingVisible && (
+          <button
+            onClick={handleMuteToggle}
+            className={`absolute top-4 right-4 px-4 py-2 rounded font-bold transition-colors ${
+              isMuted
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-red-600 text-white hover:bg-red-700'
+            }`}
+            style={{ zIndex: 1100 }}
+          >
+            {isMuted ? 'Unmute' : 'Mute'}
+          </button>
+        )}
         <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4 border-2 border-gray-600 max-h-[90vh] overflow-y-auto">
           <h2 className="text-xl font-bold mb-4 text-center text-white">
             Vote to Eject
           </h2>
           <div className="text-center mb-4">
             <p className="text-sm text-gray-200">
-              Time remaining:{" "}
+              Time remaining:{' '}
               <span id="votingTimer" className="font-bold text-yellow-400">
                 59
-              </span>{" "}
+              </span>{' '}
               seconds
             </p>
           </div>
@@ -127,7 +191,7 @@ export function GamePage() {
       <div
         id="meetingUI"
         className="absolute inset-0 bg-red-900 bg-opacity-75 flex items-center justify-center"
-        style={{ display: "none", zIndex: 1000 }}
+        style={{ display: 'none', zIndex: 1000 }}
       >
         <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
           <h2 className="text-xl font-bold mb-4 text-center text-red-600">
@@ -139,7 +203,7 @@ export function GamePage() {
               Discuss who you think the imposter is.
             </p>
             <p className="text-sm">
-              Voting will start automatically in{" "}
+              Voting will start automatically in{' '}
               <span id="meetingTimer">60</span> seconds.
             </p>
           </div>
@@ -150,7 +214,7 @@ export function GamePage() {
       <div
         id="votingResultsUI"
         className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
-        style={{ display: "none", zIndex: 1000 }}
+        style={{ display: 'none', zIndex: 1000 }}
       >
         <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4 border-2 border-gray-600 max-h-[90vh] overflow-y-auto">
           <h2 className="text-xl font-bold mb-4 text-center text-white">
@@ -164,10 +228,10 @@ export function GamePage() {
           </div>
           <div className="text-center">
             <p className="text-sm text-gray-300">
-              Game continues in{" "}
+              Game continues in{' '}
               <span id="continueTimer" className="font-bold text-yellow-400">
                 5
-              </span>{" "}
+              </span>{' '}
               seconds
             </p>
           </div>
@@ -178,7 +242,7 @@ export function GamePage() {
       <div
         id="gameEndUI"
         className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
-        style={{ display: "none", zIndex: 1000 }}
+        style={{ display: 'none', zIndex: 1000 }}
       >
         <div className="bg-gray-800 p-6 rounded-lg max-w-lg w-full mx-4 border-2 border-gray-600 max-h-[90vh] overflow-y-auto">
           <h2
@@ -211,7 +275,7 @@ export function GamePage() {
       <div
         id="taskModal"
         className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
-        style={{ display: "none", zIndex: 1000 }}
+        style={{ display: 'none', zIndex: 1000 }}
       >
         <div className="bg-gray-800 p-6 rounded-lg max-w-lg w-full mx-4 border-2 border-gray-600 max-h-[90vh] overflow-y-auto">
           <h2 className="text-xl font-bold mb-4 text-center text-white">

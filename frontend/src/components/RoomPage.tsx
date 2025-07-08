@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { useSocket } from "../SocketContext";
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useSocket } from '../SocketContext';
 
 interface Player {
   id: string;
@@ -11,7 +11,7 @@ interface RoomData {
   roomId: string;
   players: Player[];
   isHost: boolean;
-  status: "waiting" | "playing";
+  status: 'waiting' | 'playing';
 }
 
 const RoomPage = () => {
@@ -20,23 +20,24 @@ const RoomPage = () => {
   const socket = useSocket();
   const location = useLocation();
   const [roomData, setRoomData] = useState<RoomData | null>(null);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [copySuccess, setCopySuccess] = useState(false);
+  const [copyIdSuccess, setCopyIdSuccess] = useState(false);
   const [editingName, setEditingName] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [currentPlayerName, setCurrentPlayerName] = useState("");
+  const [newName, setNewName] = useState('');
+  const [currentPlayerName, setCurrentPlayerName] = useState('');
 
-  const PLAYER_NAME_KEY = "playerName";
+  const PLAYER_NAME_KEY = 'playerName';
+
   // Set max name length
   const USERNAME_MAX_LENGTH = 14;
 
   useEffect(() => {
     if (!roomId || !socket) return;
     const params = new URLSearchParams(location.search);
-    const urlUserId = params.get("user");
+    const urlUserId = params.get('user');
     if (urlUserId && urlUserId !== socket.id) {
-      navigate("/waitingroom");
+      navigate('/waitingroom');
       return;
     }
     // If no user param or matches, update the URL to include the current user's id
@@ -51,13 +52,14 @@ const RoomPage = () => {
 
     // Check if this user created this room
     const isCreator =
-      sessionStorage.getItem(`room_${roomId}_creator`) === "true";
+      sessionStorage.getItem(`room_${roomId}_creator`) === 'true';
+    sessionStorage.getItem(`room_${roomId}_creator`) === 'true';
 
     // Join room
-    socket.emit("joinRoom", { roomId, isCreator });
+    socket.emit('joinRoom', { roomId, isCreator });
 
     // Room joined successfully
-    socket.on("roomJoined", (data: RoomData) => {
+    socket.on('roomJoined', (data: RoomData) => {
       setRoomData(data);
       setLoading(false);
 
@@ -66,33 +68,17 @@ const RoomPage = () => {
       if (currentPlayer) {
         setCurrentPlayerName(currentPlayer.name);
         setNewName(currentPlayer.name);
-
-        // Check if returning from game and restore original name
-        const returnFromGame = sessionStorage.getItem(
-          `room_${roomId}_returnFromGame`
-        );
-        const storedName = sessionStorage.getItem(`room_${roomId}_playerName`);
-
-        if (returnFromGame === "true" && storedName) {
-          console.log(`Restoring player name from game: "${storedName}"`);
-          socket.emit("updatePlayerName", { name: storedName });
-          localStorage.setItem(PLAYER_NAME_KEY, storedName);
-          // Clear the session storage flags
-          sessionStorage.removeItem(`room_${roomId}_returnFromGame`);
-          sessionStorage.removeItem(`room_${roomId}_playerName`);
-        } else {
-          // Normal logic - check localStorage for saved name
-          const savedName = localStorage.getItem(PLAYER_NAME_KEY);
-          if (savedName && savedName !== currentPlayer.name) {
-            socket.emit("updatePlayerName", { name: savedName });
-          }
+        // If we have a saved name and it's different, update it on the backend
+        const savedName = localStorage.getItem(PLAYER_NAME_KEY);
+        if (savedName && savedName !== currentPlayer.name) {
+          socket.emit('updatePlayerName', { name: savedName });
         }
       }
     });
 
     // Player joined room
     socket.on(
-      "playerJoined",
+      'playerJoined',
       (data: { playerId: string; playerCount: number }) => {
         setRoomData((prev) => {
           if (!prev) return prev;
@@ -112,7 +98,7 @@ const RoomPage = () => {
 
     // Room update event
     socket.on(
-      "roomUpdate",
+      'roomUpdate',
       (data: { playerCount: number; players: Player[] }) => {
         setRoomData((prev) => {
           if (!prev) return prev;
@@ -135,7 +121,7 @@ const RoomPage = () => {
 
     // Player left room
     socket.on(
-      "playerLeft",
+      'playerLeft',
       (data: { playerId: string; playerCount: number }) => {
         setRoomData((prev) => {
           if (!prev) return prev;
@@ -148,7 +134,7 @@ const RoomPage = () => {
     );
 
     // Game started
-    socket.on("gameStarted", (data: { roomId: string }) => {
+    socket.on('gameStarted', (data: { roomId: string }) => {
       // Store the socket ID for reconnection in the game
       if (socket.id) {
         sessionStorage.setItem(
@@ -160,25 +146,26 @@ const RoomPage = () => {
     });
 
     // Error handling
-    socket.on("error", (data: { message: string }) => {
+    socket.on('error', (data: { message: string }) => {
       setError(data.message);
       setLoading(false);
     });
 
     return () => {
       // Only remove listeners, do not disconnect socket
-      socket.off("roomJoined");
-      socket.off("playerJoined");
-      socket.off("roomUpdate");
-      socket.off("playerLeft");
-      socket.off("gameStarted");
-      socket.off("error");
+      socket.off('roomJoined');
+      socket.off('playerJoined');
+      socket.off('roomUpdate');
+      socket.off('playerLeft');
+      socket.off('gameStarted');
+      socket.off('error');
     };
   }, [roomId, socket, location, navigate]);
 
   const startGame = () => {
     if (socket && roomId) {
-      socket.emit("startGame", { roomId });
+      socket.emit('startGame', { roomId });
+      socket.emit('startGame', { roomId });
     }
   };
 
@@ -186,17 +173,17 @@ const RoomPage = () => {
     if (roomId) {
       try {
         await navigator.clipboard.writeText(roomId);
-        setCopySuccess(true);
-        setTimeout(() => setCopySuccess(false), 2000);
+        setCopyIdSuccess(true);
+        setTimeout(() => setCopyIdSuccess(false), 2000);
       } catch (err) {
-        console.error("Failed to copy room ID:", err);
+        console.error('Failed to copy room ID:', err);
       }
     }
   };
 
   const updatePlayerName = () => {
     if (socket && newName.trim() && newName.trim() !== currentPlayerName) {
-      socket.emit("updatePlayerName", { name: newName.trim() });
+      socket.emit('updatePlayerName', { name: newName.trim() });
       localStorage.setItem(PLAYER_NAME_KEY, newName.trim());
     }
     setEditingName(false);
@@ -209,9 +196,11 @@ const RoomPage = () => {
 
   const leaveRoom = () => {
     if (socket) {
-      socket.emit("leaveRoom");
+      socket.emit('leaveRoom');
+      socket.emit('leaveRoom');
     }
-    navigate("/");
+    navigate('/');
+    navigate('/');
   };
 
   if (loading) {
@@ -269,7 +258,7 @@ const RoomPage = () => {
                 onClick={copyRoomId}
                 className="bg-secondary text-secondary-foreground px-3 py-1 rounded hover:bg-secondary/80 transition-colors"
               >
-                {copySuccess ? "Copied!" : "Copy"}
+                {copyIdSuccess ? 'Copied ID!' : 'Copy ID'}
               </button>
             </div>
             {/* Status */}
@@ -298,8 +287,8 @@ const RoomPage = () => {
                   className={`relative w-40 h-20 flex items-center justify-center rounded-2xl text-xl font-bold transition-all duration-200
 										${
                       player
-                        ? "bg-gradient-to-br from-purple-500 to-blue-500 text-white shadow-lg"
-                        : "bg-muted text-muted-foreground border-2 border-dashed border-muted"
+                        ? 'bg-gradient-to-br from-purple-500 to-blue-500 text-white shadow-lg'
+                        : 'bg-muted text-muted-foreground border-2 border-dashed border-muted'
                     }
 									`}
                 >
@@ -308,10 +297,10 @@ const RoomPage = () => {
                       <span
                         className={`text-center block max-w-[8.5rem] whitespace-nowrap overflow-hidden ${
                           player.name.length > 13
-                            ? "text-base"
+                            ? 'text-base'
                             : player.name.length > 10
-                            ? "text-lg"
-                            : "text-xl"
+                            ? 'text-lg'
+                            : 'text-xl'
                         }`}
                       >
                         {player.name}
@@ -342,7 +331,7 @@ const RoomPage = () => {
             <div className="bg-muted p-4 rounded text-center">
               <p className="text-muted-foreground">
                 Need {minPlayersNeeded} more player
-                {minPlayersNeeded !== 1 ? "s" : ""} to start the game
+                {minPlayersNeeded !== 1 ? 's' : ''} to start the game
               </p>
             </div>
           ) : roomData.isHost ? (

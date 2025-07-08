@@ -1044,9 +1044,10 @@ function renderMinimap() {
   const myPlayer = players.find((player) => player.id === socket.id);
   if (!myPlayer) return;
 
-  // Minimap configuration
-  const minimapWidth = 200;
-  const minimapHeight = 150;
+  // Minimap configuration - responsive sizing for small screens
+  const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
+  const minimapWidth = isSmallScreen ? 100 : 200;
+  const minimapHeight = isSmallScreen ? 75 : 150;
   const minimapX = canvasEl.width - minimapWidth - 20; // 20px from right edge
   const minimapY = 20; // 20px from top edge
 
@@ -1091,10 +1092,11 @@ function renderMinimap() {
         const taskMinimapY =
           minimapY + offsetY + task.location.y * TILE_SIZE * scale;
 
-        // Draw yellow dot for task
+        // Draw yellow dot for task - smaller on small screens
+        const taskDotRadius = isSmallScreen ? 2 : 3;
         canvas.fillStyle = "yellow";
         canvas.beginPath();
-        canvas.arc(taskMinimapX, taskMinimapY, 3, 0, 2 * Math.PI);
+        canvas.arc(taskMinimapX, taskMinimapY, taskDotRadius, 0, 2 * Math.PI);
         canvas.fill();
       }
     }
@@ -1104,18 +1106,19 @@ function renderMinimap() {
   const playerMinimapX = minimapX + offsetX + myPlayer.x * scale;
   const playerMinimapY = minimapY + offsetY + myPlayer.y * scale;
 
-  // Draw player dot
+  // Draw player dot - smaller on small screens
+  const playerDotRadius = isSmallScreen ? 3 : 4;
   const playerColor = gameState.playerRole === "imposter" ? "red" : "cyan";
   canvas.fillStyle = playerColor;
   canvas.beginPath();
-  canvas.arc(playerMinimapX, playerMinimapY, 4, 0, 2 * Math.PI);
+  canvas.arc(playerMinimapX, playerMinimapY, playerDotRadius, 0, 2 * Math.PI);
   canvas.fill();
 
   // Add white outline to player dot for visibility
   canvas.strokeStyle = "white";
   canvas.lineWidth = 1;
   canvas.beginPath();
-  canvas.arc(playerMinimapX, playerMinimapY, 4, 0, 2 * Math.PI);
+  canvas.arc(playerMinimapX, playerMinimapY, playerDotRadius, 0, 2 * Math.PI);
   canvas.stroke();
 }
 

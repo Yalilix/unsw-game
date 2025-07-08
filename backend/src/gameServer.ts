@@ -22,6 +22,7 @@ const PLAYER_SIZE = 32; // Visual size remains 32
 const TILE_SIZE = 32;
 const TILE_COLLISION_SIZE = 32; // Smaller collision box for tiles (4px padding each side)
 const KILL_RADIUS = PLAYER_SIZE * 2; // larger proximity for teleport
+const VISION_RADIUS = 10 * TILE_SIZE; // 10 tiles vision radius
 
 let players: Player[] = [];
 const inputsMap: Record<string, InputsState> = {};
@@ -76,6 +77,43 @@ function isCollidingWithMap(player: { x: number; y: number }): boolean {
   return false;
 }
 
+function getVisiblePlayers(
+  viewer: Player,
+  allPlayers: Player[]
+): (Player & { opacity?: number })[] {
+  return allPlayers
+    .map((player) => {
+      // Always include the viewer themselves at full opacity
+      if (player.id === viewer.id) {
+        return { ...player, opacity: 1.0 };
+      }
+
+      // Calculate distance from viewer to other player
+      const distance = Math.sqrt(
+        (player.x - viewer.x) ** 2 + (player.y - viewer.y) ** 2
+      );
+
+      // Extended vision radius for gradual fading
+      const fadeStartRadius = VISION_RADIUS * 0.7; // Start fading at 70%
+      const fadeEndRadius = VISION_RADIUS * 1.2; // Completely hidden at 120%
+
+      if (distance <= fadeStartRadius) {
+        // Fully visible
+        return { ...player, opacity: 1.0 };
+      } else if (distance <= fadeEndRadius) {
+        // Gradual fade based on distance
+        const fadeProgress =
+          (distance - fadeStartRadius) / (fadeEndRadius - fadeStartRadius);
+        const opacity = Math.max(0, 1.0 - fadeProgress);
+        return { ...player, opacity };
+      } else {
+        // Too far, don't include
+        return null;
+      }
+    })
+    .filter((player) => player !== null) as (Player & { opacity: number })[];
+}
+
 function tick(delta: number, io: IOServer): void {
   // Update players based on inputs
   for (const player of players) {
@@ -111,8 +149,14 @@ function tick(delta: number, io: IOServer): void {
     }
   }
 
-  // Emit game state
-  io.emit("players", players);
+  // Send player data with vision filtering
+  for (const player of players) {
+    const socket = io.sockets.sockets.get(player.id);
+    if (socket) {
+      const visiblePlayers = getVisiblePlayers(player, players);
+      socket.emit("players", visiblePlayers);
+    }
+  }
 }
 
 export async function initGameServer(

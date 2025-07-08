@@ -3,7 +3,7 @@ import { Server as IOServer, Socket } from "socket.io";
 export interface RoomPlayer {
   id: string;
   socketId: string;
-  name?: string;
+  name: string;
 }
 
 export interface Room {
@@ -60,6 +60,7 @@ class RoomManager {
         {
           id: roomId + "_" + hostSocketId,
           socketId: hostSocketId,
+          name: "Player 1",
         },
       ],
       host: hostSocketId,
@@ -105,6 +106,7 @@ class RoomManager {
     room.players.push({
       id: roomId + "_" + socketId,
       socketId: socketId,
+      name: `Player ${room.players.length + 1}`,
     });
 
     this.playerToRoom.set(socketId, roomId);
@@ -234,6 +236,36 @@ class RoomManager {
   // Update player to room mapping (for when socket reconnects during game)
   updatePlayerToRoom(socketId: string, roomId: string): void {
     this.playerToRoom.set(socketId, roomId);
+  }
+
+  // Update player name
+  updatePlayerName(
+    socketId: string,
+    newName: string
+  ): { success: boolean; error?: string } {
+    const roomId = this.playerToRoom.get(socketId);
+    if (!roomId) {
+      return { success: false, error: "Player not in any room" };
+    }
+
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return { success: false, error: "Room not found" };
+    }
+
+    const player = room.players.find((p) => p.socketId === socketId);
+    if (!player) {
+      return { success: false, error: "Player not found in room" };
+    }
+
+    // Validate name (basic validation)
+    const trimmedName = newName.trim();
+    if (!trimmedName || trimmedName.length > 20) {
+      return { success: false, error: "Name must be 1-20 characters" };
+    }
+
+    player.name = trimmedName;
+    return { success: true };
   }
 
   // Clean up empty rooms (called periodically)

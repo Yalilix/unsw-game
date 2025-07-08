@@ -121,11 +121,20 @@ class RoomManager {
     this.leaveRoom(socketId);
 
     // Add to room
-    room.players.push({
+    const newPlayer = {
       id: roomId + "_" + socketId,
       socketId: socketId,
       name: `Player ${room.players.length + 1}`,
-    });
+    };
+    room.players.push(newPlayer);
+    console.log(
+      `[DEBUG] Player joined room: ${newPlayer.socketId} with name "${newPlayer.name}"`
+    );
+    console.log(
+      `[DEBUG] Room ${roomId} now has players: ${room.players
+        .map((p) => `${p.socketId}:"${p.name}"`)
+        .join(", ")}`
+    );
 
     this.playerToRoom.set(socketId, roomId);
     return { success: true, room };
@@ -190,16 +199,27 @@ class RoomManager {
     const imposterCount = playerCount <= 6 ? 1 : 2;
 
     // Shuffle players and assign roles
+    console.log(
+      `[DEBUG] Starting game for room ${roomId} with players: ${room.players
+        .map((p) => `${p.socketId}:"${p.name}"`)
+        .join(", ")}`
+    );
     const shuffledPlayers = [...room.players].sort(() => Math.random() - 0.5);
-    const playersWithRoles = shuffledPlayers.map((p, index) => ({
-      id: p.socketId,
-      x: 56 * 32, // TILE_SIZE
-      y: 14 * 32, // TILE_SIZE
-      role: (index < imposterCount ? "imposter" : "crewmate") as
+    const playersWithRoles = shuffledPlayers.map((p, index) => {
+      const role = (index < imposterCount ? "imposter" : "crewmate") as
         | "crewmate"
-        | "imposter",
-      isAlive: true,
-    }));
+        | "imposter";
+      console.log(
+        `[DEBUG] Assigning role to ${p.socketId} ("${p.name}"): ${role}`
+      );
+      return {
+        id: p.socketId,
+        x: 56 * 32, // TILE_SIZE
+        y: 14 * 32, // TILE_SIZE
+        role: role,
+        isAlive: true,
+      };
+    });
 
     // Create game instance
     const gameInstance: GameInstance = {
@@ -224,6 +244,17 @@ class RoomManager {
 
     room.status = "playing";
     this.gameInstances.set(roomId, gameInstance);
+
+    console.log(
+      `[DEBUG] Game instance created with players: ${gameInstance.players
+        .map((p) => `${p.id}:${p.role}`)
+        .join(", ")}`
+    );
+    console.log(
+      `[DEBUG] Room still has players: ${room.players
+        .map((p) => `${p.socketId}:"${p.name}"`)
+        .join(", ")}`
+    );
 
     return { success: true };
   }
@@ -272,22 +303,42 @@ class RoomManager {
     this.playerToRoom.set(socketId, roomId);
   }
 
+  // Remove player from mapping (for disconnections during game without removing from room)
+  removePlayerMapping(socketId: string): void {
+    this.playerToRoom.delete(socketId);
+  }
+
   // Map new socket to existing player in game (preserve role/state)
   reconnectPlayerToGame(
     oldSocketId: string,
     newSocketId: string,
     roomId: string
   ): boolean {
+    console.log(
+      `[DEBUG] reconnectPlayerToGame: ${oldSocketId} -> ${newSocketId} in room ${roomId}`
+    );
+
     const gameInstance = this.gameInstances.get(roomId);
-    if (!gameInstance) return false;
+    if (!gameInstance) {
+      console.log(`[DEBUG] No game instance found for room ${roomId}`);
+      return false;
+    }
 
     // Find existing player by old socket ID
     const existingPlayer = gameInstance.players.find(
       (p) => p.id === oldSocketId
     );
-    if (!existingPlayer) return false;
+    if (!existingPlayer) {
+      console.log(`[DEBUG] No existing player found with ID ${oldSocketId}`);
+      console.log(
+        `[DEBUG] Available player IDs: ${gameInstance.players
+          .map((p) => p.id)
+          .join(", ")}`
+      );
+      return false;
+    }
 
-    // Update the player's socket ID
+    // Update the player's socket ID in game instance
     existingPlayer.id = newSocketId;
 
     // Update input mapping
@@ -296,9 +347,50 @@ class RoomManager {
       delete gameInstance.inputsMap[oldSocketId];
     }
 
+    // IMPORTANT: Also update the room player's socket ID so name lookup works
+    const room = this.rooms.get(roomId);
+    if (room) {
+      const roomPlayer = room.players.find((p) => p.socketId === oldSocketId);
+      if (roomPlayer) {
+        console.log(
+          `[DEBUG] Updating room player socket ID: ${roomPlayer.socketId} ("${roomPlayer.name}") -> ${newSocketId}`
+        );
+        roomPlayer.socketId = newSocketId;
+        console.log(
+          `[DEBUG] Room players after reconnection: ${room.players
+            .map((p) => `${p.socketId}:"${p.name}"`)
+            .join(", ")}`
+        );
+      } else {
+        console.log(
+          `[DEBUG] No room player found with socketId ${oldSocketId}`
+        );
+        console.log(
+          `[DEBUG] Available room players: ${room.players
+            .map((p) => `${p.socketId}:"${p.name}"`)
+            .join(", ")}`
+        );
+      }
+
+      // Update host if needed
+      if (room.host === oldSocketId) {
+        room.host = newSocketId;
+        console.log(
+          `[DEBUG] Updated host from ${oldSocketId} to ${newSocketId}`
+        );
+      }
+    } else {
+      console.log(
+        `[DEBUG] No room found for roomId ${roomId} during reconnection`
+      );
+    }
+
     // Update player to room mapping
     this.playerToRoom.set(newSocketId, roomId);
 
+    console.log(
+      `[DEBUG] Successfully reconnected player: ${oldSocketId} -> ${newSocketId}, role: ${existingPlayer.role}`
+    );
     return true;
   }
 
@@ -329,6 +421,12 @@ class RoomManager {
     }
 
     player.name = trimmedName;
+    console.log(`[DEBUG] Player name updated: ${socketId} -> "${trimmedName}"`);
+    console.log(
+      `[DEBUG] Room ${roomId} players after name update: ${room.players
+        .map((p) => `${p.socketId}:"${p.name}"`)
+        .join(", ")}`
+    );
     return { success: true };
   }
 

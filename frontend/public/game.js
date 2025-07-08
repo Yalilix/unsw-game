@@ -109,13 +109,15 @@ socket.on("playerKilled", (data) => {
 
 // Meeting events
 socket.on("meetingStarted", (data) => {
-  gameState.meetingActive = true;
-  gameState.votingActive = false;
-  showMeetingUI();
-  console.log("Meeting started by", data.reportedBy);
+  gameState.meetingActive = false; // No separate meeting phase
+  gameState.votingActive = true; // Start voting immediately
+  gameState.alivePlayers = data.alivePlayers;
+  showVotingUI(); // Show voting UI immediately
+  console.log("Meeting started by", data.reportedBy, "- voting begins now");
 });
 
 socket.on("votingStarted", (data) => {
+  // This event may still be sent by old code, but we handle everything in meetingStarted now
   gameState.meetingActive = false;
   gameState.votingActive = true;
   gameState.alivePlayers = data.alivePlayers;
@@ -354,6 +356,7 @@ function showVotingUI() {
   if (votingUI) votingUI.style.display = "flex";
 
   createVotingOptions();
+  startVotingTimer(); // Start the 60-second voting timer
 }
 
 function hideAllUI() {
@@ -364,16 +367,16 @@ function hideAllUI() {
   if (votingUI) votingUI.style.display = "none";
 }
 
-function startMeetingTimer() {
+function startVotingTimer() {
   let timeLeft = 60;
   const timer = setInterval(() => {
-    const timerElement = document.getElementById("meetingTimer");
+    const timerElement = document.getElementById("votingTimer");
     if (timerElement) {
       timerElement.textContent = timeLeft;
     }
     timeLeft--;
 
-    if (timeLeft < 0 || !gameState.meetingActive) {
+    if (timeLeft < 0 || !gameState.votingActive) {
       clearInterval(timer);
     }
   }, 1000);
@@ -388,28 +391,34 @@ function createVotingOptions() {
   // Add skip option
   const skipButton = document.createElement("button");
   skipButton.className =
-    "w-full p-2 bg-gray-200 hover:bg-gray-300 rounded mb-2";
+    "w-full p-2 bg-gray-600 hover:bg-gray-500 text-white rounded mb-2";
   skipButton.textContent = "Skip Vote";
   skipButton.onclick = () => vote("skip");
   votingOptions.appendChild(skipButton);
 
-  // Add player options (only if alive)
+  // Add player options (only if alive) - including self
   if (gameState.isAlive) {
     gameState.alivePlayers.forEach((player) => {
-      if (player.id !== socket.id) {
-        // Can't vote for yourself
-        const button = document.createElement("button");
+      const button = document.createElement("button");
+      button.className =
+        "w-full p-2 bg-blue-600 hover:bg-blue-500 text-white rounded mb-2";
+
+      // Special styling for self-vote
+      if (player.id === socket.id) {
+        button.textContent = `Vote for ${player.name || player.id} (You)`;
         button.className =
-          "w-full p-2 bg-blue-200 hover:bg-blue-300 rounded mb-2";
+          "w-full p-2 bg-purple-600 hover:bg-purple-500 text-white rounded mb-2";
+      } else {
         button.textContent = `Vote for ${player.name || player.id}`;
-        button.onclick = () => vote(player.id);
-        votingOptions.appendChild(button);
       }
+
+      button.onclick = () => vote(player.id);
+      votingOptions.appendChild(button);
     });
   } else {
     // Dead players can't vote
     const deadMessage = document.createElement("p");
-    deadMessage.className = "text-center text-gray-500";
+    deadMessage.className = "text-center text-gray-300";
     deadMessage.textContent = "You are dead and cannot vote.";
     votingOptions.appendChild(deadMessage);
   }

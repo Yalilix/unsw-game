@@ -257,21 +257,11 @@ function tickRoom(roomId: string, delta: number, io: IOServer): void {
   }
 
   // Handle meeting timer (auto-start voting after 1 minute)
-  if (gameInstance.gameState === "meeting" && gameInstance.meetingStartTime) {
+  if (gameInstance.gameState === "voting" && gameInstance.meetingStartTime) {
     const meetingDuration = Date.now() - gameInstance.meetingStartTime;
     if (meetingDuration >= 60000) {
-      // 1 minute
-      gameInstance.gameState = "voting";
-      gameInstance.votes = {};
-
-      io.to(`game_${roomId}`).emit("votingStarted", {
-        alivePlayers: gameInstance.players
-          .filter((p) => p.isAlive)
-          .map((p) => ({
-            id: p.id,
-            name: "Player", // We'll need to get this from room data
-          })),
-      });
+      // 1 minute - process votes even if not everyone has voted
+      processVotes(gameInstance, io, roomId);
     }
   }
 
@@ -420,6 +410,9 @@ export async function initGameServer(
 
         // If room is playing, join the game
         if (room && room.status === "playing") {
+          console.log(
+            `[DEBUG] Player ${socket.id} joining active game ${roomId}`
+          );
           const gameInstance = roomManager.getGameInstance(roomId);
           if (!gameInstance) {
             socket.emit("error", { message: "Game not found" });
@@ -431,14 +424,27 @@ export async function initGameServer(
           // Try to reconnect to existing player if we have original socket ID
           let reconnected = false;
           if (originalSocketId) {
+            console.log(
+              `[DEBUG] Attempting reconnection: ${originalSocketId} -> ${socket.id}`
+            );
             reconnected = roomManager.reconnectPlayerToGame(
               originalSocketId,
               socket.id,
               roomId
             );
+            console.log(
+              `[DEBUG] Reconnection ${reconnected ? "SUCCESS" : "FAILED"}`
+            );
+          } else {
+            console.log(
+              `[DEBUG] No originalSocketId provided for ${socket.id}`
+            );
           }
 
           if (!reconnected) {
+            console.log(
+              `[DEBUG] Player ${socket.id} could not be reconnected, treating as new player`
+            );
             // Update the player to room mapping for this new socket connection
             roomManager.updatePlayerToRoom(socket.id, roomId);
 
@@ -484,10 +490,22 @@ export async function initGameServer(
             // Try to reconnect to existing player if we have original socket ID
             let reconnected = false;
             if (originalSocketId) {
+              console.log(
+                `[DEBUG] Attempting reconnection (no room): ${originalSocketId} -> ${socket.id}`
+              );
               reconnected = roomManager.reconnectPlayerToGame(
                 originalSocketId,
                 socket.id,
                 roomId
+              );
+              console.log(
+                `[DEBUG] Reconnection (no room) ${
+                  reconnected ? "SUCCESS" : "FAILED"
+                }`
+              );
+            } else {
+              console.log(
+                `[DEBUG] No originalSocketId provided (no room) for ${socket.id}`
               );
             }
 
@@ -533,11 +551,28 @@ export async function initGameServer(
     // Start game event (only host can start)
     socket.on("startGame", (data: { roomId: string }) => {
       const { roomId } = data;
+      console.log(
+        `[DEBUG] Starting game for room ${roomId} initiated by ${socket.id}`
+      );
       const result = roomManager.startGame(roomId, socket.id);
 
       if (result.success) {
         const room = roomManager.getRoom(roomId);
         if (room) {
+          console.log(`[DEBUG] Game started successfully for room ${roomId}`);
+          console.log(
+            `[DEBUG] Room players at game start: ${room.players
+              .map((p) => `${p.socketId}:"${p.name}"`)
+              .join(", ")}`
+          );
+          const startedGameInstance = roomManager.getGameInstance(roomId);
+          if (startedGameInstance) {
+            console.log(
+              `[DEBUG] Game instance players: ${startedGameInstance.players
+                .map((p) => `${p.id}:${p.role}`)
+                .join(", ")}`
+            );
+          }
           // Move all players from waiting room to game room
           io.in(`room_${roomId}`).socketsJoin(`game_${roomId}`);
           io.in(`room_${roomId}`).socketsLeave(`room_${roomId}`);
@@ -623,19 +658,51 @@ export async function initGameServer(
       );
       if (distance > KILL_RADIUS) return;
 
-      // Start meeting
-      gameInstance.gameState = "meeting";
+      // Start meeting with immediate voting
+      gameInstance.gameState = "voting";
       gameInstance.meetingStartTime = Date.now();
       gameInstance.votes = {};
 
       // Mark body as reported
       body.reportedBy = socket.id;
 
-      // Notify all players
+      // Get player names from room data
+      console.log(
+        `[DEBUG] Looking up names for alive players in room ${room.id}`
+      );
+      console.log(
+        `[DEBUG] Room players: ${room.players
+          .map((rp) => `${rp.socketId}:${rp.name}`)
+          .join(", ")}`
+      );
+      console.log(
+        `[DEBUG] Game players: ${gameInstance.players
+          .map((p) => `${p.id}:${p.isAlive ? "alive" : "dead"}`)
+          .join(", ")}`
+      );
+
+      const alivePlayers = gameInstance.players
+        .filter((p) => p.isAlive)
+        .map((p) => {
+          const roomPlayer = room.players.find((rp) => rp.socketId === p.id);
+          const name = roomPlayer?.name || `Player (${p.id.slice(-4)})`;
+          console.log(
+            `[DEBUG] Player ${
+              p.id
+            } -> name: ${name} (found roomPlayer: ${!!roomPlayer})`
+          );
+          return {
+            id: p.id,
+            name: name,
+          };
+        });
+
+      // Notify all players - start voting immediately
       io.to(`game_${room.id}`).emit("meetingStarted", {
         reportedBy: socket.id,
         bodyId: body.id,
         deadPlayer: body.playerId,
+        alivePlayers: alivePlayers,
       });
     });
 
@@ -667,27 +734,6 @@ export async function initGameServer(
           totalCount: alivePlayers.length,
         });
       }
-    });
-
-    // Start voting phase
-    socket.on("startVoting", () => {
-      const room = roomManager.getRoomByPlayer(socket.id);
-      if (!room || room.status !== "playing") return;
-
-      const gameInstance = roomManager.getGameInstance(room.id);
-      if (!gameInstance || gameInstance.gameState !== "meeting") return;
-
-      gameInstance.gameState = "voting";
-      gameInstance.votes = {};
-
-      io.to(`game_${room.id}`).emit("votingStarted", {
-        alivePlayers: gameInstance.players
-          .filter((p) => p.isAlive)
-          .map((p) => ({
-            id: p.id,
-            name: "Player", // We'll need to get this from room data
-          })),
-      });
     });
 
     // Kill functionality (imposters only)
@@ -773,11 +819,27 @@ export async function initGameServer(
       // Get the room before removing the player
       const room = roomManager.getRoomByPlayer(socketId);
 
-      // Remove player from any room they were in
+      console.log(
+        `[DEBUG] Player ${socketId} leaving, room status: ${
+          room?.status || "no room"
+        }`
+      );
+
+      // IMPORTANT: During active games, don't remove players from room data
+      // They might just be navigating from waiting room to game page
+      if (room && room.status === "playing") {
+        console.log(
+          `[DEBUG] Game in progress, keeping player ${socketId} in room data for reconnection`
+        );
+        // Just remove from playerToRoom mapping, but keep room player data intact
+        roomManager.removePlayerMapping(socketId);
+        return;
+      }
+
+      // Only remove from room if it's a waiting room (not during active game)
       roomManager.leaveRoom(socketId);
 
       // If there was a room and it's still in waiting status, notify remaining players
-      // Don't send updates if the room is playing (game in progress)
       if (room && room.status === "waiting") {
         const updatedRoom = roomManager.getRoom(room.id);
         if (updatedRoom && updatedRoom.players.length > 0) {

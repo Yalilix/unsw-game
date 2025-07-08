@@ -88,16 +88,27 @@ export function GamePage() {
       {/* Voting UI */}
       <div
         id="votingUI"
-        className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center"
+        className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
         style={{ display: "none", zIndex: 1000 }}
       >
-        <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
-          <h2 className="text-xl font-bold mb-4 text-center">Vote to Eject</h2>
+        <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4 border-2 border-gray-600">
+          <h2 className="text-xl font-bold mb-4 text-center text-white">
+            Vote to Eject
+          </h2>
+          <div className="text-center mb-4">
+            <p className="text-sm text-gray-200">
+              Time remaining:{" "}
+              <span id="votingTimer" className="font-bold text-yellow-400">
+                60
+              </span>{" "}
+              seconds
+            </p>
+          </div>
           <div id="votingOptions" className="space-y-2">
             {/* Voting options will be populated by JavaScript */}
           </div>
           <div className="mt-4 text-center">
-            <div id="voteStatus" className="text-sm text-gray-600"></div>
+            <div id="voteStatus" className="text-sm text-gray-200"></div>
           </div>
         </div>
       </div>

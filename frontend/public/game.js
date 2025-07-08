@@ -29,7 +29,8 @@ let players = [];
 let gameStarted = false;
 
 const TILE_SIZE = 32;
-const VISION_RADIUS = 10 * TILE_SIZE; // 10 tiles vision radius (must match backend)
+const IMPOSTER_VISION_RADIUS = 10 * TILE_SIZE; // 10 tiles vision radius for imposters
+const CREWMATE_VISION_RADIUS = Math.round((10 * TILE_SIZE * 2) / 3); // ~6.67 tiles vision radius for crewmates (2/3 of imposter vision)
 let TILES_IN_ROW = 8; // will be overwritten when image loads
 
 mapImage.onload = () => {
@@ -943,8 +944,12 @@ function renderFogOfWar(player, cameraX, cameraY) {
   const playerScreenX = player.x - cameraX + TILE_SIZE / 2;
   const playerScreenY = player.y - cameraY + TILE_SIZE / 2;
 
-  // Slightly larger visual fog radius with smoother transitions
-  const visualFogRadius = VISION_RADIUS * 1.1;
+  // Slightly larger visual fog radius with smoother transitions - use role-specific vision
+  const visionRadius =
+    gameState.playerRole === "imposter"
+      ? IMPOSTER_VISION_RADIUS
+      : CREWMATE_VISION_RADIUS;
+  const visualFogRadius = visionRadius * 1.1;
   const gradient = canvas.createRadialGradient(
     playerScreenX,
     playerScreenY,

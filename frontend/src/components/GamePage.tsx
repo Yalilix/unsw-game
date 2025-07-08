@@ -56,7 +56,7 @@ export function GamePage() {
   }, [roomId, navigate]);
 
   return (
-    <div className="w-screen h-screen bg-black relative">
+    <div className="w-screen h-screen bg-black relative overflow-hidden">
       <canvas id="canvas" className="block"></canvas>
 
       {/* Action Buttons - Bottom Right */}

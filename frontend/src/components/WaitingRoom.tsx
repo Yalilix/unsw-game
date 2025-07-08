@@ -1,23 +1,23 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-export function GameLanding() {
+export function WaitingRoom() {
   const navigate = useNavigate();
-  const [joinRoomId, setJoinRoomId] = useState("");
+  const [joinRoomId, setJoinRoomId] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const createRoom = async () => {
     setLoading(true);
-    setError("");
+    setError('');
 
     try {
       const backendUrl =
-        import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+        import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
       const response = await fetch(`${backendUrl}/api/rooms/create`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
@@ -25,13 +25,13 @@ export function GameLanding() {
 
       if (data.success) {
         // Store that this user is the creator of this room
-        sessionStorage.setItem(`room_${data.room.id}_creator`, "true");
+        sessionStorage.setItem(`room_${data.room.id}_creator`, 'true');
         navigate(`/room/${data.room.id}`);
       } else {
-        setError(data.error || "Failed to create room");
+        setError(data.error || 'Failed to create room');
       }
     } catch (err) {
-      setError("Failed to create room. Please try again.");
+      setError('Failed to create room. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -39,20 +39,20 @@ export function GameLanding() {
 
   const joinRoom = async () => {
     if (!joinRoomId.trim()) {
-      setError("Please enter a room ID");
+      setError('Please enter a room ID');
       return;
     }
 
     setLoading(true);
-    setError("");
+    setError('');
 
     try {
       const backendUrl =
-        import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+        import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
       const response = await fetch(`${backendUrl}/api/rooms/join`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ roomId: joinRoomId.trim() }),
       });
@@ -62,10 +62,10 @@ export function GameLanding() {
       if (data.success) {
         navigate(`/room/${data.room.id}`);
       } else {
-        setError(data.error || "Failed to join room");
+        setError(data.error || 'Failed to join room');
       }
     } catch (err) {
-      setError("Failed to join room. Please try again.");
+      setError('Failed to join room. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -102,7 +102,7 @@ export function GameLanding() {
             disabled={loading}
             className="w-full bg-gradient-button text-primary-foreground py-3 px-6 rounded font-bold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
-            {loading ? "Creating..." : "Create Room"}
+            {loading ? 'Creating...' : 'Create Room'}
           </button>
         </div>
 
@@ -128,7 +128,7 @@ export function GameLanding() {
               disabled={loading || !joinRoomId.trim()}
               className="w-full bg-secondary text-secondary-foreground py-3 px-6 rounded font-bold hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Joining..." : "Join Room"}
+              {loading ? 'Joining...' : 'Join Room'}
             </button>
           </div>
         </div>

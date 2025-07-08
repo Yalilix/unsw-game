@@ -2,14 +2,14 @@ import AgoraRTC, {
   type ILocalAudioTrack,
   type IMicrophoneAudioTrack,
   type IAgoraRTCClient,
-} from 'agora-rtc-sdk-ng';
+} from "agora-rtc-sdk-ng";
 
 const appId = import.meta.env.VITE_AGORA_APP_ID;
 const token = import.meta.env.VITE_AGORA_TOKEN || null;
 
 const rtcUid = Math.floor(Math.random() * 1000000);
 
-const roomid = 'main';
+const roomid = "main";
 
 const audioTrack: {
   localAudioTrack: IMicrophoneAudioTrack | null;
@@ -25,14 +25,14 @@ let rtcClient: IAgoraRTCClient | null;
 // This function should be called when someone press "report" button
 const initRtc = async () => {
   rtcClient = AgoraRTC.createClient({
-    mode: 'rtc',
-    codec: 'vp8',
+    mode: "rtc",
+    codec: "vp8",
   });
 
   // Set the client ID to the random number generated
-  rtcClient.on('user-joined', handleUserJoined);
-  rtcClient.on('user-published', handleUserPublished);
-  rtcClient.on('user-left', handleUserLeft);
+  rtcClient.on("user-joined", handleUserJoined);
+  rtcClient.on("user-published", handleUserPublished);
+  rtcClient.on("user-left", handleUserLeft);
 
   await rtcClient.join(appId, roomid, token, rtcUid);
 
@@ -44,12 +44,12 @@ const initRtc = async () => {
                       <div class="user-name">User ${rtcUid}</div>
                     </div>`;
   document
-    .getElementById('members')
-    ?.insertAdjacentHTML('beforeend', userWrapper);
+    .getElementById("members")
+    ?.insertAdjacentHTML("beforeend", userWrapper);
 };
 
 const handleUserJoined = async (user: any) => {
-  console.log('user joined', user);
+  console.log("user joined", user);
 
   // add user to the room by creating a wrapper
   const userWrapper = `<div class="speaker user-${user.uid}" id="${user.uid}">
@@ -57,24 +57,24 @@ const handleUserJoined = async (user: any) => {
                     </div>`;
 
   document
-    .getElementById('members')
-    ?.insertAdjacentHTML('beforeend', userWrapper);
+    .getElementById("members")
+    ?.insertAdjacentHTML("beforeend", userWrapper);
 };
 
-const handleUserPublished = async (user: any, mediaType: 'audio' | 'video') => {
-  console.log('user published', user, mediaType);
+const handleUserPublished = async (user: any, mediaType: "audio" | "video") => {
+  console.log("user published", user, mediaType);
 
   // subscribe to the remote audio track
   await rtcClient?.subscribe(user, mediaType);
 
-  if (mediaType === 'audio') {
+  if (mediaType === "audio") {
     audioTrack.remoteAudioTrack[user.uid] = user.audioTrack;
     user.audioTrack.play();
   }
 };
 
 const handleUserLeft = async (user: any) => {
-  console.log('user left', user);
+  console.log("user left", user);
 
   // remove user from the room by removing the wrapper
   const userWrapper = document.getElementById(user.uid);

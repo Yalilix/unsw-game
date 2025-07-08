@@ -12,6 +12,7 @@ import {
   DeadBody,
   TaskLocation,
   TASK_LOCATIONS,
+  REPAIR_LOCATION,
 } from "./roomManager";
 
 interface Player {
@@ -194,6 +195,37 @@ function resumeKillCooldowns(gameInstance: GameInstance): void {
   }
 }
 
+// Helper function to pause sabotage cooldowns when voting starts
+function pauseSabotageCooldowns(gameInstance: GameInstance): void {
+  const now = Date.now();
+  if (gameInstance.lastSabotageTime) {
+    const timeSinceLastSabotage = now - gameInstance.lastSabotageTime;
+    const remainingCooldown = Math.max(0, 60000 - timeSinceLastSabotage);
+
+    if (remainingCooldown > 0) {
+      gameInstance.sabotageCooldownPausedAt = now;
+      gameInstance.pausedSabotageCooldownRemaining = remainingCooldown;
+    }
+  }
+}
+
+// Helper function to resume sabotage cooldowns when voting ends
+function resumeSabotageCooldowns(gameInstance: GameInstance): void {
+  const now = Date.now();
+  if (
+    gameInstance.sabotageCooldownPausedAt &&
+    gameInstance.pausedSabotageCooldownRemaining
+  ) {
+    // Calculate new lastSabotageTime based on paused cooldown
+    gameInstance.lastSabotageTime =
+      now - (60000 - gameInstance.pausedSabotageCooldownRemaining);
+
+    // Clear pause data
+    gameInstance.sabotageCooldownPausedAt = undefined;
+    gameInstance.pausedSabotageCooldownRemaining = undefined;
+  }
+}
+
 function processVotes(
   gameInstance: GameInstance,
   io: IOServer,
@@ -266,6 +298,7 @@ function processVotes(
   // Resume game
   gameInstance.gameState = "playing";
   resumeKillCooldowns(gameInstance); // Resume any paused kill cooldowns
+  resumeSabotageCooldowns(gameInstance); // Resume any paused sabotage cooldowns
   gameInstance.votes = {};
 
   // Notify players
@@ -424,6 +457,9 @@ function tickRoom(roomId: string, delta: number, io: IOServer): void {
         lastKillTime: player.lastKillTime,
         playerTasks: gameInstance.playerTasks[player.id] || [],
         completedTasks: Array.from(gameInstance.completedTasks),
+        sabotageActive: gameInstance.sabotageActive,
+        lastSabotageTime: gameInstance.lastSabotageTime,
+        repairLocation: gameInstance.sabotageActive ? REPAIR_LOCATION : null,
       });
     }
   }
@@ -616,6 +652,11 @@ export async function initGameServer(
               lastKillTime: player.lastKillTime,
               playerTasks: gameInstance.playerTasks[player.id] || [],
               completedTasks: Array.from(gameInstance.completedTasks),
+              sabotageActive: gameInstance.sabotageActive,
+              lastSabotageTime: gameInstance.lastSabotageTime,
+              repairLocation: gameInstance.sabotageActive
+                ? REPAIR_LOCATION
+                : null,
             });
             console.log(
               `[DEBUG] Sent game state with ${
@@ -716,6 +757,11 @@ export async function initGameServer(
                 lastKillTime: player.lastKillTime,
                 playerTasks: gameInstance.playerTasks[player.id] || [],
                 completedTasks: Array.from(gameInstance.completedTasks),
+                sabotageActive: gameInstance.sabotageActive,
+                lastSabotageTime: gameInstance.lastSabotageTime,
+                repairLocation: gameInstance.sabotageActive
+                  ? REPAIR_LOCATION
+                  : null,
               });
               console.log(
                 `[DEBUG] Sent game state (no room) with ${
@@ -790,6 +836,11 @@ export async function initGameServer(
                   lastKillTime: player.lastKillTime,
                   playerTasks: playerTasks,
                   completedTasks: Array.from(gameInstance.completedTasks),
+                  sabotageActive: gameInstance.sabotageActive,
+                  lastSabotageTime: gameInstance.lastSabotageTime,
+                  repairLocation: gameInstance.sabotageActive
+                    ? REPAIR_LOCATION
+                    : null,
                 };
                 console.log(
                   `[DEBUG] Emitting gameState to ${player.id} with ${gameStateData.playerTasks.length} tasks`
@@ -872,6 +923,7 @@ export async function initGameServer(
       gameInstance.gameState = "voting";
       gameInstance.meetingStartTime = Date.now();
       pauseKillCooldowns(gameInstance); // Pause any active kill cooldowns
+      pauseSabotageCooldowns(gameInstance); // Pause any active sabotage cooldowns
       gameInstance.votes = {};
 
       // Mark body as reported
@@ -1047,6 +1099,273 @@ export async function initGameServer(
           killerId: killer.id,
           killerNewPosition: { x: killer.x, y: killer.y },
         });
+      }
+    });
+
+    // Sabotage functionality (imposters only)
+    socket.on("sabotage", async () => {
+      const room = roomManager.getRoomByPlayer(socket.id);
+      if (!room || room.status !== "playing") return;
+
+      const gameInstance = roomManager.getGameInstance(room.id);
+      if (!gameInstance || gameInstance.gameState !== "playing") return;
+
+      const imposter = gameInstance.players.find((p) => p.id === socket.id);
+      if (!imposter || !imposter.isAlive || imposter.role !== "imposter")
+        return;
+
+      const now = Date.now();
+      const timeSinceGameStart = now - gameInstance.gameStartTime;
+
+      // Cannot sabotage if another sabotage is already active
+      if (gameInstance.sabotageActive) {
+        socket.emit("sabotageCooldown", {
+          timeRemaining: 999999, // Large number to indicate it's disabled
+          reason: "Sabotage already active",
+        });
+        return;
+      }
+
+      // Check if imposter has a paused cooldown (from voting)
+      if (
+        gameInstance.pausedSabotageCooldownRemaining &&
+        gameInstance.pausedSabotageCooldownRemaining > 0
+      ) {
+        socket.emit("sabotageCooldown", {
+          timeRemaining: gameInstance.pausedSabotageCooldownRemaining,
+        });
+        return;
+      }
+
+      const timeSinceLastSabotage = gameInstance.lastSabotageTime
+        ? now - gameInstance.lastSabotageTime
+        : Infinity;
+
+      // Check cooldowns: no sabotage in first 30 seconds, then 60 second cooldown between sabotages
+      if (timeSinceGameStart < 30000 || timeSinceLastSabotage < 60000) {
+        socket.emit("sabotageCooldown", {
+          timeRemaining: Math.max(
+            30000 - timeSinceGameStart,
+            60000 - timeSinceLastSabotage
+          ),
+        });
+        return;
+      }
+
+      try {
+        // Load questions from questions.json
+        const questionsPath = path.join(
+          __dirname,
+          "../../frontend/src/questions.json"
+        );
+        const questionsData = await fs.readFile(questionsPath, "utf-8");
+        const questions = JSON.parse(questionsData);
+
+        // Get all questions from all weeks and lectures
+        const allQuestions: any[] = [];
+        for (const week of Object.values(questions.weeks)) {
+          for (const lecture of Object.values(week as any)) {
+            allQuestions.push(...(lecture as any[]));
+          }
+        }
+
+        // Pick a random question
+        const randomQuestion =
+          allQuestions[Math.floor(Math.random() * allQuestions.length)];
+
+        // Store the current question for this player
+        gameInstance.currentQuestions[socket.id] = randomQuestion;
+
+        socket.emit("sabotageQuestion", {
+          question: randomQuestion.question,
+          options: randomQuestion.options,
+          // Don't send the correct answer to the client
+        });
+
+        console.log(`[DEBUG] Sent sabotage question to ${socket.id}`);
+      } catch (error) {
+        console.error("[DEBUG] Error loading sabotage questions:", error);
+        socket.emit("error", { message: "Failed to load sabotage question" });
+      }
+    });
+
+    // Sabotage completion event (submit answer)
+    socket.on("completeSabotage", async (data: { answer: string }) => {
+      const room = roomManager.getRoomByPlayer(socket.id);
+      if (!room || room.status !== "playing") return;
+
+      const gameInstance = roomManager.getGameInstance(room.id);
+      if (!gameInstance || gameInstance.gameState !== "playing") return;
+
+      const imposter = gameInstance.players.find((p) => p.id === socket.id);
+      if (!imposter || !imposter.isAlive || imposter.role !== "imposter")
+        return;
+
+      try {
+        // Get the current question for this player
+        const currentQuestion = gameInstance.currentQuestions[socket.id];
+
+        if (!currentQuestion) {
+          socket.emit("error", {
+            message: "No active sabotage question found",
+          });
+          return;
+        }
+
+        // Check if the submitted answer matches the correct answer for this question
+        if (data.answer === currentQuestion.answer) {
+          // Correct answer! Activate sabotage
+          gameInstance.sabotageActive = true;
+          gameInstance.lastSabotageTime = Date.now();
+
+          socket.emit("sabotageCompleted", {
+            correct: true,
+          });
+
+          // Clear the current question for this player
+          delete gameInstance.currentQuestions[socket.id];
+
+          // Notify all players about sabotage activation
+          io.to(`game_${room.id}`).emit("sabotageActivated", {
+            sabotageType: "lights",
+            repairLocation: REPAIR_LOCATION,
+          });
+
+          console.log(`[DEBUG] Sabotage activated by ${socket.id}`);
+        } else {
+          // Wrong answer
+          socket.emit("sabotageCompleted", {
+            correct: false,
+            correctAnswer: `Correct answer: ${currentQuestion.answer}`,
+          });
+        }
+      } catch (error) {
+        console.error("[DEBUG] Error validating sabotage answer:", error);
+        socket.emit("error", { message: "Failed to validate sabotage answer" });
+      }
+    });
+
+    // Repair attempt event (for fixing sabotage)
+    socket.on("attemptRepair", async () => {
+      const room = roomManager.getRoomByPlayer(socket.id);
+      if (!room || room.status !== "playing") return;
+
+      const gameInstance = roomManager.getGameInstance(room.id);
+      if (!gameInstance || gameInstance.gameState !== "playing") return;
+
+      // Only allow repair if sabotage is active
+      if (!gameInstance.sabotageActive) {
+        socket.emit("error", { message: "No sabotage to repair" });
+        return;
+      }
+
+      const player = gameInstance.players.find((p) => p.id === socket.id);
+      if (!player) return;
+
+      // Check if player is at the repair location (within reasonable distance)
+      const TILE_SIZE = 32;
+      const repairPixelX = REPAIR_LOCATION.x * TILE_SIZE;
+      const repairPixelY = REPAIR_LOCATION.y * TILE_SIZE;
+      const distance = Math.sqrt(
+        (player.x - repairPixelX) ** 2 + (player.y - repairPixelY) ** 2
+      );
+
+      if (distance > TILE_SIZE * 1.5) {
+        socket.emit("error", { message: "Too far from repair location" });
+        return;
+      }
+
+      try {
+        // Load questions from questions.json
+        const questionsPath = path.join(
+          __dirname,
+          "../../frontend/src/questions.json"
+        );
+        const questionsData = await fs.readFile(questionsPath, "utf-8");
+        const questions = JSON.parse(questionsData);
+
+        // Get all questions from all weeks and lectures
+        const allQuestions: any[] = [];
+        for (const week of Object.values(questions.weeks)) {
+          for (const lecture of Object.values(week as any)) {
+            allQuestions.push(...(lecture as any[]));
+          }
+        }
+
+        // Pick a random question
+        const randomQuestion =
+          allQuestions[Math.floor(Math.random() * allQuestions.length)];
+
+        // Store the current question for this player
+        gameInstance.currentQuestions[socket.id] = randomQuestion;
+
+        socket.emit("repairQuestion", {
+          question: randomQuestion.question,
+          options: randomQuestion.options,
+          // Don't send the correct answer to the client
+        });
+
+        console.log(`[DEBUG] Sent repair question to ${socket.id}`);
+      } catch (error) {
+        console.error("[DEBUG] Error loading repair questions:", error);
+        socket.emit("error", { message: "Failed to load repair question" });
+      }
+    });
+
+    // Repair completion event (submit answer)
+    socket.on("completeRepair", async (data: { answer: string }) => {
+      const room = roomManager.getRoomByPlayer(socket.id);
+      if (!room || room.status !== "playing") return;
+
+      const gameInstance = roomManager.getGameInstance(room.id);
+      if (!gameInstance || gameInstance.gameState !== "playing") return;
+
+      // Only allow repair if sabotage is active
+      if (!gameInstance.sabotageActive) {
+        socket.emit("error", { message: "No sabotage to repair" });
+        return;
+      }
+
+      const player = gameInstance.players.find((p) => p.id === socket.id);
+      if (!player) return;
+
+      try {
+        // Get the current question for this player
+        const currentQuestion = gameInstance.currentQuestions[socket.id];
+
+        if (!currentQuestion) {
+          socket.emit("error", { message: "No active repair question found" });
+          return;
+        }
+
+        // Check if the submitted answer matches the correct answer for this question
+        if (data.answer === currentQuestion.answer) {
+          // Correct answer! Fix the sabotage
+          gameInstance.sabotageActive = false;
+
+          socket.emit("repairCompleted", {
+            correct: true,
+          });
+
+          // Clear the current question for this player
+          delete gameInstance.currentQuestions[socket.id];
+
+          // Notify all players about sabotage being fixed
+          io.to(`game_${room.id}`).emit("sabotageFixed", {
+            repairedBy: socket.id,
+          });
+
+          console.log(`[DEBUG] Sabotage repaired by ${socket.id}`);
+        } else {
+          // Wrong answer
+          socket.emit("repairCompleted", {
+            correct: false,
+            correctAnswer: `Correct answer: ${currentQuestion.answer}`,
+          });
+        }
+      } catch (error) {
+        console.error("[DEBUG] Error validating repair answer:", error);
+        socket.emit("error", { message: "Failed to validate repair answer" });
       }
     });
 

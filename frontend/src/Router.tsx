@@ -1,9 +1,9 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
-import { GameLanding } from './pages/GameLanding';
+import { Navigate, Route, Routes } from "react-router-dom";
+import { GameLanding } from "./pages/GameLanding";
 // import GameStart from './pages/GameStart';
-import { GamePage } from './components/GamePage';
-import RoomPage from './components/RoomPage';
-import VoiceChatRoom from './pages/VoiceChatRoom';
+import { GamePage } from "./components/GamePage";
+import RoomPage from "./components/RoomPage";
+import VoiceChatRoom from "./pages/VoiceChatRoom";
 
 export const Router = () => {
   return (

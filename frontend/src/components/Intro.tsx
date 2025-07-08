@@ -8,7 +8,7 @@ export const Intro = () => {
     <div className="absolute z-20 inset-0 overflow-hidden">
       <main className="flex flex-col items-center justify-center min-h-[100vh] px-4 text-center">
         <h1 className="text-6xl md:text-8xl lg:text-9xl font-bold text-foreground mb-8 tracking-wider">
-          Sussy Uni
+          SUS1511
         </h1>
 
         <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-12 leading-relaxed">

@@ -154,7 +154,13 @@ function loop() {
   }
 
   for (const player of players) {
-    canvas.drawImage(personImage, player.x - cameraX, player.y - cameraY);
+    canvas.drawImage(
+      personImage,
+      player.x - cameraX,
+      player.y - cameraY,
+      TILE_SIZE,
+      TILE_SIZE
+    );
   }
 
   window.requestAnimationFrame(loop);

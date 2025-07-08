@@ -18,8 +18,9 @@ interface InputsState {
 
 const SPEED = 3.5;
 const TICK_RATE = 30;
-const PLAYER_SIZE = 32;
+const PLAYER_SIZE = 32; // Visual size remains 32
 const TILE_SIZE = 32;
+const TILE_COLLISION_SIZE = 32; // Smaller collision box for tiles (4px padding each side)
 const KILL_RADIUS = PLAYER_SIZE * 2; // larger proximity for teleport
 
 let players: Player[] = [];
@@ -40,17 +41,35 @@ function isColliding(
 }
 
 function isCollidingWithMap(player: { x: number; y: number }): boolean {
+  // Use a rectangular collision box at the bottom: 100% width, 20% height
+  const footWidth = PLAYER_SIZE; // 100% of player width
+  const footHeight = PLAYER_SIZE * 0.2; // 20% of player height
+  const playerFootLeft = player.x;
+  const playerFootRight = player.x + footWidth;
+  const playerFootTop = player.y + PLAYER_SIZE - footHeight; // Start 20% from bottom
+  const playerFootBottom = player.y + PLAYER_SIZE; // Bottom of sprite
+
+  // Calculate tile collision offset to center smaller collision boxes
+  const tileCollisionOffset = (TILE_SIZE - TILE_COLLISION_SIZE) / 2;
+
   for (let row = 0; row < decal2D.length; row++) {
     for (let col = 0; col < decal2D[0].length; col++) {
       const tile = decal2D[row][col];
-      if (
-        tile &&
-        isColliding(
-          { x: player.x, y: player.y, w: PLAYER_SIZE, h: PLAYER_SIZE },
-          { x: col * TILE_SIZE, y: row * TILE_SIZE, w: TILE_SIZE, h: TILE_SIZE }
-        )
-      ) {
-        return true;
+      if (tile) {
+        const tileX = col * TILE_SIZE + tileCollisionOffset;
+        const tileY = row * TILE_SIZE + tileCollisionOffset;
+        const tileRight = tileX + TILE_COLLISION_SIZE;
+        const tileBottom = tileY + TILE_COLLISION_SIZE;
+
+        // Check if the player's foot rectangle intersects with the tile's collision box
+        if (
+          playerFootLeft < tileRight &&
+          playerFootRight > tileX &&
+          playerFootTop < tileBottom &&
+          playerFootBottom > tileY
+        ) {
+          return true;
+        }
       }
     }
   }
@@ -79,12 +98,16 @@ function tick(delta: number, io: IOServer): void {
       dy *= factor;
     }
 
+    // Try moving in X direction first
     player.x += dx;
-    player.y += dy;
-
     if (isCollidingWithMap(player)) {
-      player.x = previousX;
-      player.y = previousY;
+      player.x = previousX; // Revert X movement if collision
+    }
+
+    // Try moving in Y direction
+    player.y += dy;
+    if (isCollidingWithMap(player)) {
+      player.y = previousY; // Revert Y movement if collision
     }
   }
 

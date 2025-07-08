@@ -198,7 +198,7 @@ export async function initGameServer(
       right: false,
     };
 
-    players.push({ id: socket.id, x: 800, y: 800 });
+    players.push({ id: socket.id, x: 56 * TILE_SIZE, y: 14 * TILE_SIZE });
 
     socket.emit("map", { ground: ground2D, decal: decal2D });
 

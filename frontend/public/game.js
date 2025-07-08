@@ -298,6 +298,236 @@ window.addEventListener("keyup", (e) => {
   socket.emit("inputs", inputs);
 });
 
+// Mobile Joystick Implementation
+let joystick = null;
+let joystickKnob = null;
+let joystickActive = false;
+let joystickCenter = { x: 0, y: 0 };
+let joystickRadius = 60;
+let joystickKnobRadius = 25;
+
+function createJoystick() {
+  // Create joystick container
+  joystick = document.createElement("div");
+  joystick.id = "mobileJoystick";
+  joystick.style.cssText = `
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    width: ${joystickRadius * 2}px;
+    height: ${joystickRadius * 2}px;
+    border: 4px solid rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: none;
+    touch-action: none;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  `;
+
+  // Create joystick knob
+  joystickKnob = document.createElement("div");
+  joystickKnob.style.cssText = `
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: ${joystickKnobRadius * 2}px;
+    height: ${joystickKnobRadius * 2}px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    touch-action: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  `;
+
+  joystick.appendChild(joystickKnob);
+  document.body.appendChild(joystick);
+  console.log("Joystick created and added to document");
+
+  updateJoystickVisibility();
+
+  // Temporary: Force joystick to be visible for testing
+  setTimeout(() => {
+    console.log("Forcing joystick visibility for testing");
+    joystick.style.display = "block";
+  }, 1000);
+}
+
+function updateJoystickVisibility() {
+  if (!joystick) {
+    console.log("Joystick element not found");
+    return;
+  }
+
+  const shouldShow = window.innerWidth < 700 || window.innerHeight < 700;
+  console.log(
+    "Should show joystick:",
+    shouldShow,
+    "Screen:",
+    window.innerWidth,
+    "x",
+    window.innerHeight
+  );
+  joystick.style.display = shouldShow ? "block" : "none";
+
+  if (shouldShow) {
+    console.log("Joystick should be visible now");
+  }
+}
+
+function getJoystickInput(deltaX, deltaY) {
+  const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  const maxDistance = joystickRadius - joystickKnobRadius;
+
+  if (distance > maxDistance) {
+    deltaX = (deltaX / distance) * maxDistance;
+    deltaY = (deltaY / distance) * maxDistance;
+  }
+
+  // Calculate input based on joystick position (with dead zone)
+  const deadZone = 0.3;
+  const normalizedX = deltaX / maxDistance;
+  const normalizedY = deltaY / maxDistance;
+
+  const magnitude = Math.sqrt(
+    normalizedX * normalizedX + normalizedY * normalizedY
+  );
+
+  if (magnitude < deadZone) {
+    return { up: false, down: false, left: false, right: false };
+  }
+
+  // Convert to directional inputs
+  const threshold = 0.5;
+  return {
+    up: normalizedY < -threshold,
+    down: normalizedY > threshold,
+    left: normalizedX < -threshold,
+    right: normalizedX > threshold,
+  };
+}
+
+function updateJoystickKnobPosition(deltaX, deltaY) {
+  const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  const maxDistance = joystickRadius - joystickKnobRadius;
+
+  if (distance > maxDistance) {
+    deltaX = (deltaX / distance) * maxDistance;
+    deltaY = (deltaY / distance) * maxDistance;
+  }
+
+  joystickKnob.style.transform = `translate(${
+    -joystickKnobRadius + deltaX
+  }px, ${-joystickKnobRadius + deltaY}px)`;
+}
+
+function resetJoystickInputs() {
+  inputs.up = false;
+  inputs.down = false;
+  inputs.left = false;
+  inputs.right = false;
+
+  const stillMoving = false;
+  if (!stillMoving) {
+    try {
+      walking.pause();
+      walking.currentTime = 0;
+    } catch (err) {
+      console.warn("Walking audio pause error:", err);
+    }
+  }
+  socket.emit("inputs", inputs);
+}
+
+function handleJoystickTouch(clientX, clientY) {
+  const joystickRect = joystick.getBoundingClientRect();
+  joystickCenter.x = joystickRect.left + joystickRect.width / 2;
+  joystickCenter.y = joystickRect.top + joystickRect.height / 2;
+
+  const deltaX = clientX - joystickCenter.x;
+  const deltaY = clientY - joystickCenter.y;
+
+  updateJoystickKnobPosition(deltaX, deltaY);
+
+  const joystickInput = getJoystickInput(deltaX, deltaY);
+
+  // Update inputs and check if movement started
+  const wasMoving = inputs.up || inputs.down || inputs.left || inputs.right;
+  inputs.up = joystickInput.up;
+  inputs.down = joystickInput.down;
+  inputs.left = joystickInput.left;
+  inputs.right = joystickInput.right;
+
+  const isMoving = inputs.up || inputs.down || inputs.left || inputs.right;
+
+  // Handle audio
+  if (isMoving && !wasMoving && walking.paused) {
+    try {
+      walking.currentTime = 0;
+      walking
+        .play()
+        .catch((err) => console.warn("Walking audio blocked:", err));
+    } catch (err) {
+      console.warn("Walking audio error:", err);
+    }
+  } else if (!isMoving && wasMoving) {
+    try {
+      walking.pause();
+      walking.currentTime = 0;
+    } catch (err) {
+      console.warn("Walking audio pause error:", err);
+    }
+  }
+
+  socket.emit("inputs", inputs);
+}
+
+// Touch event listeners for joystick
+function setupJoystickEvents() {
+  if (!joystick) return;
+
+  joystick.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    joystickActive = true;
+    const touch = e.touches[0];
+    handleJoystickTouch(touch.clientX, touch.clientY);
+  });
+
+  document.addEventListener("touchmove", (e) => {
+    if (!joystickActive) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    handleJoystickTouch(touch.clientX, touch.clientY);
+  });
+
+  document.addEventListener("touchend", (e) => {
+    if (!joystickActive) return;
+    e.preventDefault();
+    joystickActive = false;
+
+    // Reset knob position
+    joystickKnob.style.transform = `translate(-${joystickKnobRadius}px, -${joystickKnobRadius}px)`;
+
+    // Reset inputs
+    resetJoystickInputs();
+  });
+}
+
+// Initialize joystick immediately since game.js loads after DOM is ready
+function initializeJoystick() {
+  console.log("Initializing joystick...");
+  console.log("Screen size:", window.innerWidth, "x", window.innerHeight);
+  createJoystick();
+  setupJoystickEvents();
+}
+
+// Call immediately - DOM is already ready when game.js loads
+initializeJoystick();
+
+// Update joystick visibility on window resize
+window.addEventListener("resize", updateJoystickVisibility);
+
 // Setup background nature sound
 nature.loop = true;
 nature.volume = 0.3;

@@ -33,6 +33,30 @@ export interface DeadBody {
   reportedBy?: string;
 }
 
+export interface TaskLocation {
+  x: number;
+  y: number;
+}
+
+export interface PlayerTask {
+  location: TaskLocation;
+  completed: boolean;
+}
+
+// Task locations in tile coordinates
+export const TASK_LOCATIONS: TaskLocation[] = [
+  { x: 3, y: 6 },
+  { x: 38, y: 49 },
+  { x: 28, y: 49 },
+  { x: 27, y: 37 },
+  { x: 6, y: 8 },
+  { x: 4, y: 2 },
+  { x: 5, y: 30 },
+  { x: 5, y: 20 },
+  { x: 10, y: 30 },
+  { x: 15, y: 30 },
+];
+
 export interface GameInstance {
   roomId: string;
   players: GamePlayer[];
@@ -50,6 +74,9 @@ export interface GameInstance {
       right: boolean;
     }
   >;
+  playerTasks: Record<string, PlayerTask[]>; // playerId -> assigned tasks
+  completedTasks: Set<string>; // completed task location keys "x,y"
+  currentQuestions: Record<string, any>; // playerId -> current question object
 }
 
 class RoomManager {
@@ -221,6 +248,30 @@ class RoomManager {
       };
     });
 
+    // Assign tasks to crewmates (5 random tasks from the 10 available)
+    const playerTasks: Record<string, PlayerTask[]> = {};
+    playersWithRoles.forEach((player) => {
+      if (player.role === "crewmate") {
+        // Shuffle all task locations and pick first 5
+        const shuffledTasks = [...TASK_LOCATIONS].sort(
+          () => Math.random() - 0.5
+        );
+        const assignedTasks = shuffledTasks.slice(0, 5).map((location) => ({
+          location,
+          completed: false,
+        }));
+        playerTasks[player.id] = assignedTasks;
+        console.log(
+          `[DEBUG] Assigned tasks to crewmate ${player.id}: ${assignedTasks
+            .map((t) => `(${t.location.x},${t.location.y})`)
+            .join(", ")}`
+        );
+      } else {
+        // Imposters don't get tasks
+        playerTasks[player.id] = [];
+      }
+    });
+
     // Create game instance
     const gameInstance: GameInstance = {
       roomId: roomId,
@@ -230,6 +281,9 @@ class RoomManager {
       votes: {},
       gameStartTime: Date.now(),
       inputsMap: {},
+      playerTasks: playerTasks,
+      completedTasks: new Set<string>(),
+      currentQuestions: {},
     };
 
     // Initialize inputs for all players
@@ -347,6 +401,26 @@ class RoomManager {
       delete gameInstance.inputsMap[oldSocketId];
     }
 
+    // Update task mapping
+    if (gameInstance.playerTasks[oldSocketId]) {
+      gameInstance.playerTasks[newSocketId] =
+        gameInstance.playerTasks[oldSocketId];
+      delete gameInstance.playerTasks[oldSocketId];
+      console.log(
+        `[DEBUG] Transferred ${gameInstance.playerTasks[newSocketId].length} tasks from ${oldSocketId} to ${newSocketId}`
+      );
+    }
+
+    // Update current question mapping
+    if (gameInstance.currentQuestions[oldSocketId]) {
+      gameInstance.currentQuestions[newSocketId] =
+        gameInstance.currentQuestions[oldSocketId];
+      delete gameInstance.currentQuestions[oldSocketId];
+      console.log(
+        `[DEBUG] Transferred current question from ${oldSocketId} to ${newSocketId}`
+      );
+    }
+
     // IMPORTANT: Also update the room player's socket ID so name lookup works
     const room = this.rooms.get(roomId);
     if (room) {
@@ -457,6 +531,84 @@ class RoomManager {
     );
 
     return { success: true };
+  }
+
+  // Complete a task for a player
+  completeTask(
+    socketId: string,
+    taskLocation: TaskLocation
+  ): { success: boolean; error?: string; allTasksCompleted?: boolean } {
+    const roomId = this.playerToRoom.get(socketId);
+    if (!roomId) {
+      return { success: false, error: "Player not in any room" };
+    }
+
+    const gameInstance = this.gameInstances.get(roomId);
+    if (!gameInstance) {
+      return { success: false, error: "Game not found" };
+    }
+
+    const player = gameInstance.players.find((p) => p.id === socketId);
+    if (!player || player.role !== "crewmate") {
+      return { success: false, error: "Only crewmates can complete tasks" };
+    }
+
+    const playerTasks = gameInstance.playerTasks[socketId] || [];
+    const taskToComplete = playerTasks.find(
+      (task) =>
+        task.location.x === taskLocation.x &&
+        task.location.y === taskLocation.y &&
+        !task.completed
+    );
+
+    if (!taskToComplete) {
+      return { success: false, error: "Task not found or already completed" };
+    }
+
+    // Mark task as completed
+    taskToComplete.completed = true;
+    const locationKey = `${taskLocation.x},${taskLocation.y}`;
+    gameInstance.completedTasks.add(locationKey);
+
+    console.log(
+      `[DEBUG] Player ${socketId} completed task at (${taskLocation.x},${taskLocation.y})`
+    );
+
+    // Check if all crewmate tasks are completed
+    const allTasksCompleted = this.areAllTasksCompleted(roomId);
+
+    return { success: true, allTasksCompleted };
+  }
+
+  // Check if all crewmate tasks are completed
+  areAllTasksCompleted(roomId: string): boolean {
+    const gameInstance = this.gameInstances.get(roomId);
+    if (!gameInstance) return false;
+
+    // Get all crewmates (alive and dead)
+    const crewmates = gameInstance.players.filter((p) => p.role === "crewmate");
+
+    for (const crewmate of crewmates) {
+      const tasks = gameInstance.playerTasks[crewmate.id] || [];
+      const incompleteTasks = tasks.filter((task) => !task.completed);
+      if (incompleteTasks.length > 0) {
+        return false; // Found a crewmate with incomplete tasks
+      }
+    }
+
+    console.log(`[DEBUG] All crewmate tasks completed in room ${roomId}!`);
+    return true;
+  }
+
+  // Get player's tasks
+  getPlayerTasks(socketId: string): PlayerTask[] {
+    const roomId = this.playerToRoom.get(socketId);
+    if (!roomId) return [];
+
+    const gameInstance = this.gameInstances.get(roomId);
+    if (!gameInstance) return [];
+
+    return gameInstance.playerTasks[socketId] || [];
   }
 
   // Clean up empty rooms (called periodically)

@@ -137,13 +137,13 @@ class RoomManager {
       return { success: false, error: "Room is full" };
     }
 
+    // Remove player from any existing room first
+    this.leaveRoom(socketId);
+
     // Check if player already in room
     if (room.players.some((p) => p.socketId === socketId)) {
       return { success: false, error: "Already in room" };
     }
-
-    // Remove player from any existing room first
-    this.leaveRoom(socketId);
 
     // Add to room
     const newPlayer = {
@@ -246,7 +246,7 @@ class RoomManager {
       };
     });
 
-    // Assign tasks to crewmates (5 random tasks from the 10 available)
+    // Assign tasks to crewmates (5 random tasks from the 7 available)
     const playerTasks: Record<string, PlayerTask[]> = {};
     playersWithRoles.forEach((player) => {
       if (player.role === "crewmate") {
@@ -426,7 +426,10 @@ class RoomManager {
   }
 
   // End game due to all players leaving
-  endGameAllPlayersLeft(roomId: string): { success: boolean; error?: string } {
+  endGameAllPlayersLeft(roomId: string): {
+    success: boolean;
+    error?: string;
+  } {
     const room = this.rooms.get(roomId);
     if (!room) {
       return { success: false, error: "Room not found" };
@@ -637,7 +640,10 @@ class RoomManager {
 
     const player = gameInstance.players.find((p) => p.id === socketId);
     if (!player || player.role !== "crewmate") {
-      return { success: false, error: "Only crewmates can complete tasks" };
+      return {
+        success: false,
+        error: "Only crewmates can complete tasks",
+      };
     }
 
     const playerTasks = gameInstance.playerTasks[socketId] || [];
@@ -649,7 +655,10 @@ class RoomManager {
     );
 
     if (!taskToComplete) {
-      return { success: false, error: "Task not found or already completed" };
+      return {
+        success: false,
+        error: "Task not found or already completed",
+      };
     }
 
     // Mark task as completed

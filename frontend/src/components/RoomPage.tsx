@@ -308,9 +308,9 @@ const RoomPage = () => {
 									{player ? (
 										<>
 											<span
-												className={`text-center block max-w-[8.5rem] whitespace-nowrap overflow-hidden ${
-													player.name.length > 13
-														? "text-base"
+												className={`text-center block max-w-[8.5rem] whitespace-nowrap overflow-hidden  tracking-[.1em] ${
+													player.name.length > 10
+														? "text-sm"
 														: player.name.length >
 														  10
 														? "text-lg"
@@ -320,12 +320,12 @@ const RoomPage = () => {
 												{player.name}
 											</span>
 											{player.id === socket?.id && (
-												<span className="absolute top-2 right-2 bg-accent text-accent-foreground px-2 py-1 rounded text-xs font-semibold shadow">
+												<span className="absolute top-2 right-2 bg-accent text-accent-foreground px-1.5 py-0.5 rounded text-[10px] font-semibold shadow">
 													YOU
 												</span>
 											)}
 											{i === 0 && (
-												<span className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-semibold shadow">
+												<span className="absolute top-2 left-2 bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[10px] font-semibold shadow">
 													HOST
 												</span>
 											)}

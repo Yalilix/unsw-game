@@ -1,10 +1,14 @@
+import './style.css';
 import { Intro } from '../components/Intro';
 import Particles from '../components/Particles';
 import { Footer } from '../components/Footer';
 
 export const GameLanding = () => {
   return (
-    <div className="min-h-screen w-full bg-gradient-space relative">
+    <div
+      className="min-h-screen w-full bg-gradient-space relative"
+      style={{ fontFamily: 'DragonHunter, sans-serif' }}
+    >
       <Particles
         particleColors={['#ffffff', '#ffffff']}
         particleCount={900}

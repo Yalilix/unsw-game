@@ -4,6 +4,7 @@ import io, { Socket } from "socket.io-client";
 
 interface Player {
   id: string;
+  name: string;
 }
 
 interface RoomData {
@@ -21,6 +22,9 @@ const RoomPage = () => {
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [currentPlayerName, setCurrentPlayerName] = useState("");
 
   useEffect(() => {
     if (!roomId) {
@@ -45,6 +49,13 @@ const RoomPage = () => {
     newSocket.on("roomJoined", (data: RoomData) => {
       setRoomData(data);
       setLoading(false);
+
+      // Find current player's name
+      const currentPlayer = data.players.find((p) => p.id === newSocket.id);
+      if (currentPlayer) {
+        setCurrentPlayerName(currentPlayer.name);
+        setNewName(currentPlayer.name);
+      }
     });
 
     // Player joined room
@@ -55,7 +66,10 @@ const RoomPage = () => {
           if (!prev) return prev;
           return {
             ...prev,
-            players: [...prev.players, { id: data.playerId }],
+            players: [
+              ...prev.players,
+              { id: data.playerId, name: `Player ${prev.players.length + 1}` },
+            ],
           };
         });
       }
@@ -72,6 +86,15 @@ const RoomPage = () => {
             players: data.players,
           };
         });
+
+        // Update current player name if it changed
+        const currentPlayer = data.players.find((p) => p.id === newSocket.id);
+        if (currentPlayer) {
+          setCurrentPlayerName(currentPlayer.name);
+          if (!editingName) {
+            setNewName(currentPlayer.name);
+          }
+        }
       }
     );
 
@@ -121,6 +144,18 @@ const RoomPage = () => {
         console.error("Failed to copy room ID:", err);
       }
     }
+  };
+
+  const updatePlayerName = () => {
+    if (socket && newName.trim() && newName.trim() !== currentPlayerName) {
+      socket.emit("updatePlayerName", { name: newName.trim() });
+    }
+    setEditingName(false);
+  };
+
+  const cancelNameEdit = () => {
+    setNewName(currentPlayerName);
+    setEditingName(false);
   };
 
   const leaveRoom = () => {
@@ -205,16 +240,67 @@ const RoomPage = () => {
         {/* Players List */}
         <div className="bg-card p-6 rounded-lg shadow-lg mb-6">
           <h2 className="text-xl font-bold text-foreground mb-4">Players</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2">
             {roomData.players.map((player, index) => (
               <div
                 key={player.id}
                 className="bg-muted p-3 rounded flex items-center justify-between"
               >
-                <span className="text-foreground">Player {index + 1}</span>
-                {index === 0 && (
-                  <span className="text-accent text-sm">HOST</span>
-                )}
+                <div className="flex items-center gap-2">
+                  {player.id === socket?.id && editingName ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") updatePlayerName();
+                          if (e.key === "Escape") cancelNameEdit();
+                        }}
+                        className="bg-background text-foreground px-2 py-1 rounded border border-border text-sm"
+                        maxLength={20}
+                        autoFocus
+                      />
+                      <button
+                        onClick={updatePlayerName}
+                        className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs hover:bg-primary/90"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={cancelNameEdit}
+                        className="bg-destructive text-destructive-foreground px-2 py-1 rounded text-xs hover:bg-destructive/90"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-foreground">{player.name}</span>
+                      {player.id === socket?.id && (
+                        <button
+                          onClick={() => setEditingName(true)}
+                          className="text-muted-foreground hover:text-foreground text-xs"
+                          title="Edit name"
+                        >
+                          ✏️
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {player.id === socket?.id && (
+                    <span className="bg-accent text-accent-foreground px-2 py-1 rounded text-xs">
+                      YOU
+                    </span>
+                  )}
+                  {index === 0 && (
+                    <span className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs">
+                      HOST
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
           </div>

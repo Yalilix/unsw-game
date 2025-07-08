@@ -237,7 +237,10 @@ export async function initGameServer(
 
           socket.emit("roomJoined", {
             roomId: roomId,
-            players: updatedRoom.players.map((p) => ({ id: p.socketId })),
+            players: updatedRoom.players.map((p) => ({
+              id: p.socketId,
+              name: p.name,
+            })),
             isHost: updatedRoom.host === socket.id,
             status: updatedRoom.status,
           });
@@ -251,7 +254,10 @@ export async function initGameServer(
           // Also emit updated room state to all players in room
           io.to(`room_${roomId}`).emit("roomUpdate", {
             playerCount: updatedRoom.players.length,
-            players: updatedRoom.players.map((p) => ({ id: p.socketId })),
+            players: updatedRoom.players.map((p) => ({
+              id: p.socketId,
+              name: p.name,
+            })),
           });
           return;
         }
@@ -356,6 +362,26 @@ export async function initGameServer(
       }
     });
 
+    // Update player name
+    socket.on("updatePlayerName", (data: { name: string }) => {
+      const result = roomManager.updatePlayerName(socket.id, data.name);
+      if (result.success) {
+        const room = roomManager.getRoomByPlayer(socket.id);
+        if (room && room.status === "waiting") {
+          // Notify all players in the room about the updated player list
+          io.to(`room_${room.id}`).emit("roomUpdate", {
+            playerCount: room.players.length,
+            players: room.players.map((p) => ({
+              id: p.socketId,
+              name: p.name,
+            })),
+          });
+        }
+      } else {
+        socket.emit("error", { message: result.error });
+      }
+    });
+
     // Game inputs
     socket.on("inputs", (inputs: InputsState) => {
       const room = roomManager.getRoomByPlayer(socket.id);
@@ -426,7 +452,10 @@ export async function initGameServer(
           // Send updated room state
           io.to(`room_${room.id}`).emit("roomUpdate", {
             playerCount: updatedRoom.players.length,
-            players: updatedRoom.players.map((p) => ({ id: p.socketId })),
+            players: updatedRoom.players.map((p) => ({
+              id: p.socketId,
+              name: p.name,
+            })),
           });
         }
       }

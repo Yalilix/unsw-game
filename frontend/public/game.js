@@ -156,6 +156,13 @@ socket.on("gameOver", (data) => {
   console.log("Game Over! Winner:", data.winner);
 });
 
+// Return to lobby event
+socket.on("returnToLobby", (data) => {
+  console.log("Returning to lobby for room:", data.roomId);
+  // Navigate to the room lobby page
+  window.location.href = `/room/${data.roomId}`;
+});
+
 const inputs = {
   up: false,
   down: false,
@@ -471,8 +478,8 @@ function setupGameEndButtons() {
 
   if (goToLobbyButton) {
     goToLobbyButton.onclick = () => {
-      // Navigate back to the room/lobby
-      window.location.href = `/room/${window.ROOM_ID}`;
+      // Send return to lobby request to server
+      socket.emit("returnToLobby");
     };
   }
 

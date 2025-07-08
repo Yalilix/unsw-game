@@ -109,7 +109,7 @@ export function GamePage() {
             <p className="text-sm text-gray-200">
               Time remaining:{" "}
               <span id="votingTimer" className="font-bold text-yellow-400">
-                60
+                59
               </span>{" "}
               seconds
             </p>

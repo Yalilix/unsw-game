@@ -993,7 +993,7 @@ function showTaskSuccess() {
 }
 
 function startVotingTimer() {
-  let timeLeft = 60;
+  let timeLeft = 59;
   const timer = setInterval(() => {
     const timerElement = document.getElementById("votingTimer");
     if (timerElement) {

@@ -262,7 +262,10 @@ const RoomPage = () => {
 							<span className="text-muted-foreground">
 								Room ID:
 							</span>
-							<code className="bg-muted px-3 py-1 rounded text-foreground font-mono text-lg">
+							<code
+								className="bg-muted px-3 py-1 rounded text-foreground font-mono text-lg tracking-[.1em]"
+								style={{ fontFamily: "DragonHunter" }}
+							>
 								{roomId}
 							</code>
 							<button

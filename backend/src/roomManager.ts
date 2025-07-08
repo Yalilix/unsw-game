@@ -430,6 +430,35 @@ class RoomManager {
     return { success: true };
   }
 
+  // Return room to lobby (reset from playing to waiting)
+  returnToLobby(roomId: string): { success: boolean; error?: string } {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return { success: false, error: "Room not found" };
+    }
+
+    if (room.status !== "playing") {
+      return { success: false, error: "Room is not currently playing" };
+    }
+
+    // Reset room status to waiting
+    room.status = "waiting";
+
+    // Remove the game instance
+    this.gameInstances.delete(roomId);
+
+    console.log(
+      `[DEBUG] Room ${roomId} returned to lobby - status reset to waiting`
+    );
+    console.log(
+      `[DEBUG] Room players in lobby: ${room.players
+        .map((p) => `${p.socketId}:"${p.name}"`)
+        .join(", ")}`
+    );
+
+    return { success: true };
+  }
+
   // Clean up empty rooms (called periodically)
   cleanup(): void {
     const now = new Date();

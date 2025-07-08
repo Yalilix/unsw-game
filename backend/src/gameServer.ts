@@ -867,6 +867,47 @@ export async function initGameServer(
       }
     });
 
+    // Return to lobby functionality
+    socket.on("returnToLobby", () => {
+      const room = roomManager.getRoomByPlayer(socket.id);
+      if (!room || room.status !== "playing") {
+        socket.emit("error", { message: "Not in an active game" });
+        return;
+      }
+
+      console.log(
+        `[DEBUG] Player ${socket.id} initiated return to lobby for room ${room.id}`
+      );
+
+      const result = roomManager.returnToLobby(room.id);
+      if (result.success) {
+        // Move all players from game room back to waiting room
+        io.in(`game_${room.id}`).socketsJoin(`room_${room.id}`);
+        io.in(`game_${room.id}`).socketsLeave(`game_${room.id}`);
+
+        // Get updated room data
+        const updatedRoom = roomManager.getRoom(room.id);
+        if (updatedRoom) {
+          // Notify all players to return to lobby
+          io.to(`room_${room.id}`).emit("returnToLobby", {
+            roomId: room.id,
+            players: updatedRoom.players.map((p) => ({
+              id: p.socketId,
+              name: p.name,
+            })),
+            isHost: updatedRoom.host,
+            status: updatedRoom.status,
+          });
+
+          console.log(
+            `[DEBUG] All players in room ${room.id} have been returned to lobby`
+          );
+        }
+      } else {
+        socket.emit("error", { message: result.error });
+      }
+    });
+
     // Helper function to handle player leaving
     const handlePlayerLeave = (socketId: string) => {
       // Get the room before removing the player

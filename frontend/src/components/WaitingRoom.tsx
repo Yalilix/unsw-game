@@ -242,7 +242,24 @@ export function WaitingRoom() {
             </li>
           </ul>
         </div>
+
+        {/* Footer with Art Credit */}
+        <footer className="pt-8 pb-4">
+          <div className="text-center text-xs text-gray-400">
+            Blue blob asset made by{" "}
+            <a
+              href="https://cactusturtle.itch.io/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300 underline"
+            >
+              cactusturtle
+            </a>{" "}
+            - Create and Be Merry
+          </div>
+        </footer>
       </div>
+
       {showNameModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
           <form

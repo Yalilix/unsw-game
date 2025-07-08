@@ -166,28 +166,56 @@ function processVotes(
   // Find target with most votes
   let maxVotes = 0;
   let ejectedPlayer: string | null = null;
-  let isTie = false;
+  let targetsWithMaxVotes: string[] = [];
 
+  // First pass: find the maximum vote count
   Object.entries(voteCounts).forEach(([target, count]) => {
     if (count > maxVotes) {
       maxVotes = count;
-      ejectedPlayer = target;
-      isTie = false;
-    } else if (count === maxVotes && count > 0) {
-      isTie = true;
     }
   });
 
-  // Handle tie or skip
-  if (isTie || ejectedPlayer === "skip" || !ejectedPlayer) {
+  // Second pass: collect all targets with maximum votes
+  Object.entries(voteCounts).forEach(([target, count]) => {
+    if (count === maxVotes && count > 0) {
+      targetsWithMaxVotes.push(target);
+    }
+  });
+
+  // Determine ejection result
+  if (targetsWithMaxVotes.length === 0) {
+    // No votes cast
     ejectedPlayer = null;
+  } else if (targetsWithMaxVotes.length > 1) {
+    // Tie between multiple targets (including potentially skip)
+    ejectedPlayer = null;
+  } else if (targetsWithMaxVotes[0] === "skip") {
+    // Skip won outright
+    ejectedPlayer = null;
+  } else {
+    // A specific player won outright
+    ejectedPlayer = targetsWithMaxVotes[0];
   }
 
   // Eject player if not a tie
+  let ejectedRole: string | null = null;
+  let ejectedPlayerName: string | null = null;
+
   if (ejectedPlayer && ejectedPlayer !== "skip") {
     const player = gameInstance.players.find((p) => p.id === ejectedPlayer);
     if (player) {
       player.isAlive = false;
+      ejectedRole = player.role;
+
+      // Get player name from room data
+      const room = roomManager.getRoom(roomId);
+      if (room) {
+        const roomPlayer = room.players.find(
+          (rp) => rp.socketId === ejectedPlayer
+        );
+        ejectedPlayerName =
+          roomPlayer?.name || `Player (${ejectedPlayer.slice(-4)})`;
+      }
     }
   }
 
@@ -198,7 +226,8 @@ function processVotes(
 
   // Notify players
   io.to(`game_${roomId}`).emit("votingResults", {
-    ejectedPlayer: ejectedPlayer,
+    ejectedPlayer: ejectedPlayerName,
+    ejectedRole: ejectedRole,
     votes: votes,
     voteCounts: voteCounts,
   });
@@ -633,7 +662,18 @@ export async function initGameServer(
       if (room && room.status === "playing") {
         const gameInstance = roomManager.getGameInstance(room.id);
         if (gameInstance) {
-          gameInstance.inputsMap[socket.id] = inputs;
+          // Prevent movement during voting phase
+          if (gameInstance.gameState === "voting") {
+            // Clear all inputs during voting
+            gameInstance.inputsMap[socket.id] = {
+              up: false,
+              down: false,
+              left: false,
+              right: false,
+            };
+          } else {
+            gameInstance.inputsMap[socket.id] = inputs;
+          }
         }
       }
     });
@@ -665,6 +705,17 @@ export async function initGameServer(
 
       // Mark body as reported
       body.reportedBy = socket.id;
+
+      // Remove ALL dead bodies from the map after report
+      gameInstance.deadBodies = [];
+
+      // Teleport ALL players back to spawn (both alive and dead)
+      const SPAWN_X = 56 * 32; // TILE_SIZE
+      const SPAWN_Y = 14 * 32; // TILE_SIZE
+      gameInstance.players.forEach((player) => {
+        player.x = SPAWN_X;
+        player.y = SPAWN_Y;
+      });
 
       // Get player names from room data
       console.log(
@@ -703,6 +754,8 @@ export async function initGameServer(
         bodyId: body.id,
         deadPlayer: body.playerId,
         alivePlayers: alivePlayers,
+        allBodiesRemoved: true,
+        teleportToSpawn: { x: SPAWN_X, y: SPAWN_Y },
       });
     });
 

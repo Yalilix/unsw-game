@@ -1422,8 +1422,6 @@ function renderMinimap() {
   const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
   const minimapWidth = isSmallScreen ? 100 : 200;
   const minimapHeight = isSmallScreen ? 75 : 150;
-  const minimapX = canvasEl.width - minimapWidth - 20; // 20px from right edge
-  const minimapY = 20; // 20px from top edge
 
   // Calculate scale factors
   const mapPixelWidth = groundMap[0].length * TILE_SIZE;
@@ -1435,9 +1433,14 @@ function renderMinimap() {
   const scaledWidth = mapPixelWidth * scale;
   const scaledHeight = mapPixelHeight * scale;
 
-  // Center the minimap if aspect ratios don't match
-  const offsetX = (minimapWidth - scaledWidth) / 2;
-  const offsetY = (minimapHeight - scaledHeight) / 2;
+  // Position minimap with equal spacing from top and right edges
+  const spacing = 20; // Equal spacing from edges
+  const minimapX = canvasEl.width - scaledWidth - spacing;
+  const minimapY = spacing;
+
+  // No offset needed since we're positioning the actual content
+  const offsetX = 0;
+  const offsetY = 0;
 
   // Draw minimap background - fit exactly around the map content
   canvas.fillStyle = "rgba(0, 0, 0, 0.7)";

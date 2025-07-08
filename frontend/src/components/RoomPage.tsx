@@ -28,8 +28,6 @@ const RoomPage = () => {
 	const [currentPlayerName, setCurrentPlayerName] = useState("");
 
 	const PLAYER_NAME_KEY = "playerName";
-	// Set max name length
-	const USERNAME_MAX_LENGTH = 14;
 
 	useEffect(() => {
 		if (!roomId || !socket) return;
@@ -182,24 +180,11 @@ const RoomPage = () => {
 		}
 	};
 
-	const updatePlayerName = () => {
-		if (socket && newName.trim() && newName.trim() !== currentPlayerName) {
-			socket.emit("updatePlayerName", { name: newName.trim() });
-			localStorage.setItem(PLAYER_NAME_KEY, newName.trim());
-		}
-		setEditingName(false);
-	};
-
-	const cancelNameEdit = () => {
-		setNewName(currentPlayerName);
-		setEditingName(false);
-	};
-
 	const leaveRoom = () => {
 		if (socket) {
 			socket.emit("leaveRoom");
 		}
-		navigate("/");
+		navigate("/waitingroom");
 	};
 
 	if (loading) {
@@ -237,7 +222,6 @@ const RoomPage = () => {
 		);
 	}
 
-	const canStartGame = roomData.players.length >= 4 && roomData.isHost;
 	const minPlayersNeeded = Math.max(0, 4 - roomData.players.length);
 
 	return (

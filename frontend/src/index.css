@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 /* Space-themed design system for Among Us inspired landing page
 All colors MUST be HSL.
@@ -119,12 +119,91 @@ All colors MUST be HSL.
   }
 }
 
-/* @layer base {
-  * {
-    @apply border-border;
+@layer base {
+  body {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+}
+
+@layer utilities {
+  .bg-gradient-space {
+    background: var(--gradient-space);
   }
 
-  body {
-    @apply bg-background text-foreground;
+  .bg-gradient-button {
+    background: var(--gradient-button);
   }
-} */
+
+  .text-foreground {
+    color: hsl(var(--foreground));
+  }
+
+  .text-muted-foreground {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .bg-card {
+    background: hsl(var(--card));
+  }
+
+  .bg-muted {
+    background: hsl(var(--muted));
+  }
+
+  .bg-input {
+    background: hsl(var(--input));
+  }
+
+  .bg-secondary {
+    background: hsl(var(--secondary));
+  }
+
+  .text-secondary-foreground {
+    color: hsl(var(--secondary-foreground));
+  }
+
+  .bg-primary {
+    background: hsl(var(--primary));
+  }
+
+  .text-primary-foreground {
+    color: hsl(var(--primary-foreground));
+  }
+
+  .bg-destructive {
+    background: hsl(var(--destructive));
+  }
+
+  .text-destructive-foreground {
+    color: hsl(var(--destructive-foreground));
+  }
+
+  .text-destructive {
+    color: hsl(var(--destructive));
+  }
+
+  .bg-accent {
+    background: hsl(var(--accent));
+  }
+
+  .text-accent-foreground {
+    color: hsl(var(--accent-foreground));
+  }
+
+  .text-accent {
+    color: hsl(var(--accent));
+  }
+
+  .border-border {
+    border-color: hsl(var(--border));
+  }
+
+  .border {
+    border-width: 1px;
+  }
+
+  .focus\:ring-ring:focus {
+    box-shadow: 0 0 0 2px hsl(var(--ring));
+  }
+}

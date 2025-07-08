@@ -1,7 +1,16 @@
 import { useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 
 export function GamePage() {
+  const { roomId } = useParams<{ roomId: string }>();
+  const navigate = useNavigate();
+
   useEffect(() => {
+    if (!roomId) {
+      navigate("/");
+      return;
+    }
+
     // Promise-based loader that ensures the script fires its onload before resolving.
     function loadScript(src: string, id?: string): Promise<HTMLScriptElement> {
       return new Promise((resolve) => {
@@ -29,8 +38,9 @@ export function GamePage() {
     const backendUrl =
       import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
-    // Make it available to game.js
+    // Make backend URL and room ID available to game.js
     (window as any).BACKEND_URL = backendUrl;
+    (window as any).ROOM_ID = roomId;
 
     // Load in sequence so that socket.io is available before game.js executes
     (async () => {
@@ -43,10 +53,10 @@ export function GamePage() {
     })();
 
     return () => {};
-  }, []);
+  }, [roomId, navigate]);
 
   return (
-    <div className="w-screen h-screen">
+    <div className="w-screen h-screen bg-black">
       <canvas id="canvas" className="block"></canvas>
     </div>
   );

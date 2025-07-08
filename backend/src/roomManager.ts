@@ -16,13 +16,31 @@ export interface Room {
   createdAt: Date;
 }
 
+export interface GamePlayer {
+  id: string;
+  x: number;
+  y: number;
+  role: "crewmate" | "imposter";
+  isAlive: boolean;
+  lastKillTime?: number;
+}
+
+export interface DeadBody {
+  id: string;
+  x: number;
+  y: number;
+  playerId: string;
+  reportedBy?: string;
+}
+
 export interface GameInstance {
   roomId: string;
-  players: Array<{
-    id: string;
-    x: number;
-    y: number;
-  }>;
+  players: GamePlayer[];
+  deadBodies: DeadBody[];
+  gameState: "playing" | "meeting" | "voting";
+  meetingStartTime?: number;
+  votes: Record<string, string>; // playerId -> targetId ("skip" for skip vote)
+  gameStartTime: number;
   inputsMap: Record<
     string,
     {
@@ -167,14 +185,30 @@ class RoomManager {
       return { success: false, error: "Game already started" };
     }
 
+    // Assign roles - determine imposter count based on player count
+    const playerCount = room.players.length;
+    const imposterCount = playerCount <= 6 ? 1 : 2;
+
+    // Shuffle players and assign roles
+    const shuffledPlayers = [...room.players].sort(() => Math.random() - 0.5);
+    const playersWithRoles = shuffledPlayers.map((p, index) => ({
+      id: p.socketId,
+      x: 56 * 32, // TILE_SIZE
+      y: 14 * 32, // TILE_SIZE
+      role: (index < imposterCount ? "imposter" : "crewmate") as
+        | "crewmate"
+        | "imposter",
+      isAlive: true,
+    }));
+
     // Create game instance
     const gameInstance: GameInstance = {
       roomId: roomId,
-      players: room.players.map((p) => ({
-        id: p.socketId,
-        x: 56 * 32, // TILE_SIZE
-        y: 14 * 32, // TILE_SIZE
-      })),
+      players: playersWithRoles,
+      deadBodies: [],
+      gameState: "playing",
+      votes: {},
+      gameStartTime: Date.now(),
       inputsMap: {},
     };
 
@@ -236,6 +270,36 @@ class RoomManager {
   // Update player to room mapping (for when socket reconnects during game)
   updatePlayerToRoom(socketId: string, roomId: string): void {
     this.playerToRoom.set(socketId, roomId);
+  }
+
+  // Map new socket to existing player in game (preserve role/state)
+  reconnectPlayerToGame(
+    oldSocketId: string,
+    newSocketId: string,
+    roomId: string
+  ): boolean {
+    const gameInstance = this.gameInstances.get(roomId);
+    if (!gameInstance) return false;
+
+    // Find existing player by old socket ID
+    const existingPlayer = gameInstance.players.find(
+      (p) => p.id === oldSocketId
+    );
+    if (!existingPlayer) return false;
+
+    // Update the player's socket ID
+    existingPlayer.id = newSocketId;
+
+    // Update input mapping
+    if (gameInstance.inputsMap[oldSocketId]) {
+      gameInstance.inputsMap[newSocketId] = gameInstance.inputsMap[oldSocketId];
+      delete gameInstance.inputsMap[oldSocketId];
+    }
+
+    // Update player to room mapping
+    this.playerToRoom.set(newSocketId, roomId);
+
+    return true;
   }
 
   // Update player name

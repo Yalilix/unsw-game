@@ -41,7 +41,14 @@ socket.on("connect", () => {
   // Join the room when connected
   const roomId = window.ROOM_ID;
   if (roomId) {
-    socket.emit("joinRoom", { roomId });
+    // Check if we have an original socket ID from the waiting room
+    const originalSocketId = sessionStorage.getItem(
+      `room_${roomId}_originalSocketId`
+    );
+    socket.emit("joinRoom", {
+      roomId,
+      originalSocketId: originalSocketId,
+    });
   }
 });
 
@@ -64,6 +71,77 @@ socket.on("error", (data) => {
 
 socket.on("players", (serverPlayers) => {
   players = serverPlayers;
+});
+
+// Game state updates
+let gameState = {
+  state: "playing",
+  playerRole: "crewmate",
+  isAlive: true,
+  deadBodies: [],
+  killCooldown: 0,
+  killCooldownStart: 0,
+  meetingActive: false,
+  votingActive: false,
+};
+
+socket.on("gameState", (data) => {
+  gameState.state = data.state;
+  gameState.playerRole = data.playerRole;
+  gameState.isAlive = data.isAlive;
+  gameState.deadBodies = data.deadBodies;
+});
+
+// Kill cooldown updates
+socket.on("killCooldown", (data) => {
+  gameState.killCooldown = data.timeRemaining;
+  gameState.killCooldownStart = Date.now();
+});
+
+// Player killed event
+socket.on("playerKilled", (data) => {
+  console.log("Player killed:", data.victimId);
+});
+
+// Meeting events
+socket.on("meetingStarted", (data) => {
+  gameState.meetingActive = true;
+  gameState.votingActive = false;
+  showMeetingUI();
+  console.log("Meeting started by", data.reportedBy);
+});
+
+socket.on("votingStarted", (data) => {
+  gameState.meetingActive = false;
+  gameState.votingActive = true;
+  gameState.alivePlayers = data.alivePlayers;
+  showVotingUI();
+  console.log("Voting started");
+});
+
+socket.on("voteUpdate", (data) => {
+  updateVoteStatus(data);
+});
+
+socket.on("votingResults", (data) => {
+  gameState.meetingActive = false;
+  gameState.votingActive = false;
+  hideAllUI();
+
+  let message = "Voting Results:\n";
+  if (data.ejectedPlayer) {
+    message += `${data.ejectedPlayer} was ejected!`;
+  } else {
+    message += "No one was ejected (tie or skip)";
+  }
+  alert(message);
+
+  console.log("Voting results:", data);
+});
+
+socket.on("gameOver", (data) => {
+  console.log("Game Over! Winner:", data.winner);
+  alert(`Game Over! ${data.winner} win!`);
 });
 
 const inputs = {
@@ -94,9 +172,7 @@ window.addEventListener("keydown", (e) => {
       console.warn("Walking audio error:", err);
     }
   }
-  if (e.code === "Space") {
-    socket.emit("teleport");
-  }
+  // Removed spacebar functionality - now using buttons
   socket.emit("inputs", inputs);
 });
 
@@ -136,6 +212,207 @@ function startNatureSound() {
 // Listen for any user interaction to start audio
 document.addEventListener("click", startNatureSound, { once: true });
 document.addEventListener("keydown", startNatureSound, { once: true });
+
+// Helper function to find closest dead body
+function findClosestBody(player) {
+  let closest = null;
+  let closestDist = Infinity;
+  const REPORT_RADIUS = TILE_SIZE * 3; // Same as kill radius
+
+  for (const body of gameState.deadBodies) {
+    const dist = Math.sqrt((body.x - player.x) ** 2 + (body.y - player.y) ** 2);
+    if (dist < closestDist && dist <= REPORT_RADIUS) {
+      closestDist = dist;
+      closest = body;
+    }
+  }
+  return closest;
+}
+
+// Button Functions
+window.attemptKill = function () {
+  if (
+    gameState.playerRole === "imposter" &&
+    gameState.isAlive &&
+    !gameState.meetingActive &&
+    !gameState.votingActive
+  ) {
+    socket.emit("kill");
+  }
+};
+
+window.attemptReport = function () {
+  if (
+    gameState.isAlive &&
+    !gameState.meetingActive &&
+    !gameState.votingActive
+  ) {
+    const myPlayer = players.find((player) => player.id === socket.id);
+    if (myPlayer) {
+      const closestBody = findClosestBody(myPlayer);
+      if (closestBody) {
+        socket.emit("reportBody", { bodyId: closestBody.id });
+      }
+    }
+  }
+};
+
+// Update button visibility and state
+function updateButtons() {
+  const killButton = document.getElementById("killButton");
+  const reportButton = document.getElementById("reportButton");
+
+  if (!killButton || !reportButton) return;
+
+  const gameActive = !gameState.meetingActive && !gameState.votingActive;
+  const myPlayer = players.find((player) => player.id === socket.id);
+
+  // Kill button - only show for living imposters during active game
+  if (gameState.playerRole === "imposter" && gameState.isAlive && gameActive) {
+    killButton.style.display = "block";
+
+    // Check cooldown
+    let remainingCooldown = 0;
+    if (gameState.killCooldownStart > 0) {
+      const elapsed = Date.now() - gameState.killCooldownStart;
+      remainingCooldown = Math.max(0, gameState.killCooldown - elapsed);
+    }
+
+    if (remainingCooldown > 0) {
+      killButton.disabled = true;
+      killButton.textContent = `KILL (${Math.ceil(remainingCooldown / 1000)}s)`;
+      killButton.className =
+        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+    } else {
+      killButton.disabled = false;
+      killButton.textContent = "KILL";
+      killButton.className =
+        "px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-lg";
+    }
+  } else {
+    killButton.style.display = "none";
+  }
+
+  // Report button - show for all living players during active game
+  if (gameState.isAlive && gameActive) {
+    reportButton.style.display = "block";
+
+    // Check if there's a body nearby
+    const hasNearbyBody = myPlayer && findClosestBody(myPlayer);
+
+    if (hasNearbyBody) {
+      reportButton.disabled = false;
+      reportButton.textContent = "REPORT";
+      reportButton.className =
+        "px-4 py-2 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-700 transition-colors shadow-lg";
+    } else {
+      reportButton.disabled = true;
+      reportButton.textContent = "REPORT";
+      reportButton.className =
+        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+    }
+  } else {
+    reportButton.style.display = "none";
+  }
+}
+
+// UI Management Functions
+function showMeetingUI() {
+  const meetingUI = document.getElementById("meetingUI");
+  if (meetingUI) {
+    meetingUI.style.display = "flex";
+    startMeetingTimer();
+  }
+}
+
+function showVotingUI() {
+  const meetingUI = document.getElementById("meetingUI");
+  const votingUI = document.getElementById("votingUI");
+
+  if (meetingUI) meetingUI.style.display = "none";
+  if (votingUI) votingUI.style.display = "flex";
+
+  createVotingOptions();
+}
+
+function hideAllUI() {
+  const meetingUI = document.getElementById("meetingUI");
+  const votingUI = document.getElementById("votingUI");
+
+  if (meetingUI) meetingUI.style.display = "none";
+  if (votingUI) votingUI.style.display = "none";
+}
+
+function startMeetingTimer() {
+  let timeLeft = 60;
+  const timer = setInterval(() => {
+    const timerElement = document.getElementById("meetingTimer");
+    if (timerElement) {
+      timerElement.textContent = timeLeft;
+    }
+    timeLeft--;
+
+    if (timeLeft < 0 || !gameState.meetingActive) {
+      clearInterval(timer);
+    }
+  }, 1000);
+}
+
+function createVotingOptions() {
+  const votingOptions = document.getElementById("votingOptions");
+  if (!votingOptions || !gameState.alivePlayers) return;
+
+  votingOptions.innerHTML = "";
+
+  // Add skip option
+  const skipButton = document.createElement("button");
+  skipButton.className =
+    "w-full p-2 bg-gray-200 hover:bg-gray-300 rounded mb-2";
+  skipButton.textContent = "Skip Vote";
+  skipButton.onclick = () => vote("skip");
+  votingOptions.appendChild(skipButton);
+
+  // Add player options (only if alive)
+  if (gameState.isAlive) {
+    gameState.alivePlayers.forEach((player) => {
+      if (player.id !== socket.id) {
+        // Can't vote for yourself
+        const button = document.createElement("button");
+        button.className =
+          "w-full p-2 bg-blue-200 hover:bg-blue-300 rounded mb-2";
+        button.textContent = `Vote for ${player.name || player.id}`;
+        button.onclick = () => vote(player.id);
+        votingOptions.appendChild(button);
+      }
+    });
+  } else {
+    // Dead players can't vote
+    const deadMessage = document.createElement("p");
+    deadMessage.className = "text-center text-gray-500";
+    deadMessage.textContent = "You are dead and cannot vote.";
+    votingOptions.appendChild(deadMessage);
+  }
+}
+
+function vote(targetId) {
+  if (gameState.isAlive && gameState.votingActive) {
+    socket.emit("vote", { targetId: targetId });
+
+    // Disable all voting buttons
+    const buttons = document.querySelectorAll("#votingOptions button");
+    buttons.forEach((button) => {
+      button.disabled = true;
+      button.className = button.className.replace("hover:bg-", "");
+    });
+  }
+}
+
+function updateVoteStatus(data) {
+  const voteStatus = document.getElementById("voteStatus");
+  if (voteStatus) {
+    voteStatus.textContent = `Votes cast: ${data.votedCount}/${data.totalCount}`;
+  }
+}
 
 function loop() {
   // Fill background with black
@@ -191,6 +468,12 @@ function loop() {
     }
   }
 
+  // Render dead bodies
+  for (const body of gameState.deadBodies) {
+    canvas.fillStyle = "red";
+    canvas.fillRect(body.x - cameraX, body.y - cameraY, TILE_SIZE, TILE_SIZE);
+  }
+
   for (const player of players) {
     // Set player opacity if provided
     if (player.opacity !== undefined && player.opacity < 1.0) {
@@ -214,7 +497,66 @@ function loop() {
     renderFogOfWar(myPlayer, cameraX, cameraY);
   }
 
+  // Render UI
+  renderUI();
+
+  // Update buttons
+  updateButtons();
+
   window.requestAnimationFrame(loop);
+}
+
+function renderUI() {
+  // Role display
+  canvas.fillStyle = "white";
+  canvas.font = "20px Arial";
+  canvas.fillText(`Role: ${gameState.playerRole}`, 10, 30);
+  canvas.fillText(`Status: ${gameState.isAlive ? "Alive" : "Dead"}`, 10, 55);
+
+  // Kill cooldown for imposters
+  if (gameState.playerRole === "imposter" && gameState.isAlive) {
+    let remainingCooldown = 0;
+    if (gameState.killCooldownStart > 0) {
+      const elapsed = Date.now() - gameState.killCooldownStart;
+      remainingCooldown = Math.max(0, gameState.killCooldown - elapsed);
+    }
+
+    if (remainingCooldown > 0) {
+      canvas.fillStyle = "red";
+      canvas.font = "16px Arial";
+      const cooldownSeconds = Math.ceil(remainingCooldown / 1000);
+      canvas.fillText(`Kill Cooldown: ${cooldownSeconds}s`, 10, 80);
+    } else {
+      canvas.fillStyle = "green";
+      canvas.font = "16px Arial";
+      canvas.fillText("Kill Ready", 10, 80);
+    }
+  }
+
+  // Meeting/Voting status
+  if (gameState.meetingActive) {
+    canvas.fillStyle = "yellow";
+    canvas.font = "24px Arial";
+    canvas.fillText("MEETING IN PROGRESS", canvasEl.width / 2 - 150, 50);
+  } else if (gameState.votingActive) {
+    canvas.fillStyle = "orange";
+    canvas.font = "24px Arial";
+    canvas.fillText("VOTING IN PROGRESS", canvasEl.width / 2 - 150, 50);
+  }
+
+  // Instructions
+  canvas.fillStyle = "white";
+  canvas.font = "14px Arial";
+  canvas.fillText("WASD: Move", 10, canvasEl.height - 20);
+  if (gameState.playerRole === "imposter" && gameState.isAlive) {
+    canvas.fillText("Use buttons to KILL and REPORT", 10, canvasEl.height - 40);
+  } else if (gameState.isAlive) {
+    canvas.fillText(
+      "Use button to REPORT dead bodies",
+      10,
+      canvasEl.height - 40
+    );
+  }
 }
 
 function renderFogOfWar(player, cameraX, cameraY) {

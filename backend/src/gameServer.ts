@@ -2,7 +2,13 @@ import express from "express";
 import { Server as IOServer } from "socket.io";
 import { Server as HTTPServer } from "http";
 import loadMap, { MapData } from "./mapLoader";
-import { roomManager, Room, GameInstance } from "./roomManager";
+import {
+  roomManager,
+  Room,
+  GameInstance,
+  GamePlayer,
+  DeadBody,
+} from "./roomManager";
 
 interface Player {
   id: string;
@@ -90,12 +96,28 @@ function isCollidingWithMap(player: { x: number; y: number }): boolean {
 }
 
 function getVisiblePlayers(
-  viewer: Player,
-  allPlayers: Player[]
-): (Player & { opacity?: number })[] {
+  viewer: GamePlayer,
+  allPlayers: GamePlayer[]
+): (GamePlayer & { opacity?: number })[] {
   return allPlayers
     .map((player) => {
-      // Always include the viewer themselves at full opacity
+      // Ghost visibility rules
+      if (!viewer.isAlive) {
+        // Dead players (ghosts) can see everyone
+        if (!player.isAlive) {
+          // Other ghosts at 50% opacity
+          return { ...player, opacity: 0.5 };
+        }
+        // Ghosts can see living players at full opacity (fall through to distance check)
+      } else {
+        // Living player visibility
+        if (!player.isAlive) {
+          // Living players can't see ghosts
+          return null;
+        }
+      }
+
+      // Always include the viewer themselves at full opacity (if alive)
       if (player.id === viewer.id) {
         return { ...player, opacity: 1.0 };
       }
@@ -123,7 +145,107 @@ function getVisiblePlayers(
         return null;
       }
     })
-    .filter((player) => player !== null) as (Player & { opacity: number })[];
+    .filter((player) => player !== null) as (GamePlayer & {
+    opacity: number;
+  })[];
+}
+
+function processVotes(
+  gameInstance: GameInstance,
+  io: IOServer,
+  roomId: string
+): void {
+  const votes = gameInstance.votes;
+  const voteCounts: Record<string, number> = {};
+
+  // Count votes
+  Object.values(votes).forEach((target) => {
+    voteCounts[target] = (voteCounts[target] || 0) + 1;
+  });
+
+  // Find target with most votes
+  let maxVotes = 0;
+  let ejectedPlayer: string | null = null;
+  let isTie = false;
+
+  Object.entries(voteCounts).forEach(([target, count]) => {
+    if (count > maxVotes) {
+      maxVotes = count;
+      ejectedPlayer = target;
+      isTie = false;
+    } else if (count === maxVotes && count > 0) {
+      isTie = true;
+    }
+  });
+
+  // Handle tie or skip
+  if (isTie || ejectedPlayer === "skip" || !ejectedPlayer) {
+    ejectedPlayer = null;
+  }
+
+  // Eject player if not a tie
+  if (ejectedPlayer && ejectedPlayer !== "skip") {
+    const player = gameInstance.players.find((p) => p.id === ejectedPlayer);
+    if (player) {
+      player.isAlive = false;
+    }
+  }
+
+  // Resume game
+  gameInstance.gameState = "playing";
+  gameInstance.gameStartTime = Date.now(); // Reset kill cooldown timer
+  gameInstance.votes = {};
+
+  // Notify players
+  io.to(`game_${roomId}`).emit("votingResults", {
+    ejectedPlayer: ejectedPlayer,
+    votes: votes,
+    voteCounts: voteCounts,
+  });
+
+  // Check win conditions after ejection
+  if (ejectedPlayer) {
+    checkWinConditions(gameInstance, io, roomId);
+  }
+}
+
+function checkWinConditions(
+  gameInstance: GameInstance,
+  io: IOServer,
+  roomId: string
+): void {
+  const alivePlayers = gameInstance.players.filter((p) => p.isAlive);
+  const aliveImposters = alivePlayers.filter((p) => p.role === "imposter");
+  const aliveCrewmates = alivePlayers.filter((p) => p.role === "crewmate");
+
+  let gameOver = false;
+  let winner: "imposters" | "crewmates" | null = null;
+
+  // Imposters win if they equal or outnumber crewmates
+  if (
+    aliveImposters.length >= aliveCrewmates.length &&
+    aliveImposters.length > 0
+  ) {
+    gameOver = true;
+    winner = "imposters";
+  }
+  // Crewmates win if all imposters are dead
+  else if (aliveImposters.length === 0) {
+    gameOver = true;
+    winner = "crewmates";
+  }
+
+  if (gameOver) {
+    io.to(`game_${roomId}`).emit("gameOver", {
+      winner: winner,
+      alivePlayers: alivePlayers.map((p) => ({ id: p.id, role: p.role })),
+      allPlayers: gameInstance.players.map((p) => ({
+        id: p.id,
+        role: p.role,
+        isAlive: p.isAlive,
+      })),
+    });
+  }
 }
 
 function tickRoom(roomId: string, delta: number, io: IOServer): void {
@@ -134,7 +256,26 @@ function tickRoom(roomId: string, delta: number, io: IOServer): void {
     return;
   }
 
-  // Update players based on inputs
+  // Handle meeting timer (auto-start voting after 1 minute)
+  if (gameInstance.gameState === "meeting" && gameInstance.meetingStartTime) {
+    const meetingDuration = Date.now() - gameInstance.meetingStartTime;
+    if (meetingDuration >= 60000) {
+      // 1 minute
+      gameInstance.gameState = "voting";
+      gameInstance.votes = {};
+
+      io.to(`game_${roomId}`).emit("votingStarted", {
+        alivePlayers: gameInstance.players
+          .filter((p) => p.isAlive)
+          .map((p) => ({
+            id: p.id,
+            name: "Player", // We'll need to get this from room data
+          })),
+      });
+    }
+  }
+
+  // Update players based on inputs (both alive and dead can move)
   for (const player of gameInstance.players) {
     const inputs = gameInstance.inputsMap[player.id];
     const previousY = player.y;
@@ -174,6 +315,14 @@ function tickRoom(roomId: string, delta: number, io: IOServer): void {
     if (socket) {
       const visiblePlayers = getVisiblePlayers(player, gameInstance.players);
       socket.emit("players", visiblePlayers);
+
+      // Send game state info
+      socket.emit("gameState", {
+        state: gameInstance.gameState,
+        playerRole: player.role,
+        isAlive: player.isAlive,
+        deadBodies: gameInstance.deadBodies,
+      });
     }
   }
 }
@@ -200,8 +349,13 @@ export async function initGameServer(
     // Join room event
     socket.on(
       "joinRoom",
-      (data: { roomId: string; playerToken?: string; isCreator?: boolean }) => {
-        const { roomId, playerToken, isCreator } = data;
+      (data: {
+        roomId: string;
+        playerToken?: string;
+        isCreator?: boolean;
+        originalSocketId?: string;
+      }) => {
+        const { roomId, playerToken, isCreator, originalSocketId } = data;
         let room = roomManager.getRoom(roomId);
 
         // If room doesn't exist and user is the creator, create it
@@ -272,27 +426,45 @@ export async function initGameServer(
 
           socket.join(`game_${roomId}`);
 
-          // Update the player to room mapping for this new socket connection
-          roomManager.updatePlayerToRoom(socket.id, roomId);
+          // Try to reconnect to existing player if we have original socket ID
+          let reconnected = false;
+          if (originalSocketId) {
+            reconnected = roomManager.reconnectPlayerToGame(
+              originalSocketId,
+              socket.id,
+              roomId
+            );
+          }
 
-          // Add this socket to the game instance if not already present
-          const existingPlayer = gameInstance.players.find(
-            (p) => p.id === socket.id
-          );
-          if (!existingPlayer) {
-            gameInstance.players.push({
-              id: socket.id,
-              x: 56 * 32, // TILE_SIZE
-              y: 14 * 32, // TILE_SIZE
-            });
+          if (!reconnected) {
+            // Update the player to room mapping for this new socket connection
+            roomManager.updatePlayerToRoom(socket.id, roomId);
 
-            // Initialize inputs for new player
-            gameInstance.inputsMap[socket.id] = {
-              up: false,
-              down: false,
-              left: false,
-              right: false,
-            };
+            // Add this socket to the game instance if not already present
+            const existingPlayer = gameInstance.players.find(
+              (p) => p.id === socket.id
+            );
+            if (!existingPlayer) {
+              // For truly new players joining mid-game, assign them as crewmate
+              console.log(
+                `[WARNING] New player ${socket.id} joining mid-game, assigning as crewmate`
+              );
+              gameInstance.players.push({
+                id: socket.id,
+                x: 56 * 32, // TILE_SIZE
+                y: 14 * 32, // TILE_SIZE
+                role: "crewmate",
+                isAlive: true,
+              });
+
+              // Initialize inputs for new player
+              gameInstance.inputsMap[socket.id] = {
+                up: false,
+                down: false,
+                left: false,
+                right: false,
+              };
+            }
           }
 
           socket.emit("gameJoined", { roomId });
@@ -307,27 +479,45 @@ export async function initGameServer(
           if (gameInstance) {
             socket.join(`game_${roomId}`);
 
-            // Update the player to room mapping for this new socket connection
-            roomManager.updatePlayerToRoom(socket.id, roomId);
+            // Try to reconnect to existing player if we have original socket ID
+            let reconnected = false;
+            if (originalSocketId) {
+              reconnected = roomManager.reconnectPlayerToGame(
+                originalSocketId,
+                socket.id,
+                roomId
+              );
+            }
 
-            // Add this socket to the game instance if not already present
-            const existingPlayer = gameInstance.players.find(
-              (p) => p.id === socket.id
-            );
-            if (!existingPlayer) {
-              gameInstance.players.push({
-                id: socket.id,
-                x: 56 * 32, // TILE_SIZE
-                y: 14 * 32, // TILE_SIZE
-              });
+            if (!reconnected) {
+              // Update the player to room mapping for this new socket connection
+              roomManager.updatePlayerToRoom(socket.id, roomId);
 
-              // Initialize inputs for new player
-              gameInstance.inputsMap[socket.id] = {
-                up: false,
-                down: false,
-                left: false,
-                right: false,
-              };
+              // Add this socket to the game instance if not already present
+              const existingPlayer = gameInstance.players.find(
+                (p) => p.id === socket.id
+              );
+              if (!existingPlayer) {
+                // For truly new players joining mid-game, assign them as crewmate
+                console.log(
+                  `[WARNING] New player ${socket.id} joining mid-game without room, assigning as crewmate`
+                );
+                gameInstance.players.push({
+                  id: socket.id,
+                  x: 56 * 32, // TILE_SIZE
+                  y: 14 * 32, // TILE_SIZE
+                  role: "crewmate",
+                  isAlive: true,
+                });
+
+                // Initialize inputs for new player
+                gameInstance.inputsMap[socket.id] = {
+                  up: false,
+                  down: false,
+                  left: false,
+                  right: false,
+                };
+              }
             }
 
             socket.emit("gameJoined", { roomId });
@@ -356,6 +546,22 @@ export async function initGameServer(
             ground: ground2D,
             decal: decal2D,
           });
+
+          // Send initial game state to each player with their role
+          const gameInstance = roomManager.getGameInstance(roomId);
+          if (gameInstance) {
+            gameInstance.players.forEach((player) => {
+              const socket = io.sockets.sockets.get(player.id);
+              if (socket) {
+                socket.emit("gameState", {
+                  state: gameInstance.gameState,
+                  playerRole: player.role,
+                  isAlive: player.isAlive,
+                  deadBodies: gameInstance.deadBodies,
+                });
+              }
+            });
+          }
         }
       } else {
         socket.emit("error", { message: result.error });
@@ -393,40 +599,162 @@ export async function initGameServer(
       }
     });
 
-    // Teleport functionality
-    socket.on("teleport", () => {
+    // Report dead body
+    socket.on("reportBody", (data: { bodyId: string }) => {
       const room = roomManager.getRoomByPlayer(socket.id);
       if (!room || room.status !== "playing") return;
 
       const gameInstance = roomManager.getGameInstance(room.id);
-      if (!gameInstance) return;
+      if (!gameInstance || gameInstance.gameState !== "playing") return;
 
-      const player = gameInstance.players.find((p) => p.id === socket.id);
-      if (!player) return;
+      const reporter = gameInstance.players.find((p) => p.id === socket.id);
+      if (!reporter || !reporter.isAlive) return;
 
-      // find closest other player
-      let closest: Player | null = null;
+      const body = gameInstance.deadBodies.find((b) => b.id === data.bodyId);
+      if (!body) return;
+
+      // Check if reporter is close enough to the body
+      const distance = Math.sqrt(
+        (body.x - reporter.x) ** 2 + (body.y - reporter.y) ** 2
+      );
+      if (distance > KILL_RADIUS) return;
+
+      // Start meeting
+      gameInstance.gameState = "meeting";
+      gameInstance.meetingStartTime = Date.now();
+      gameInstance.votes = {};
+
+      // Mark body as reported
+      body.reportedBy = socket.id;
+
+      // Notify all players
+      io.to(`game_${room.id}`).emit("meetingStarted", {
+        reportedBy: socket.id,
+        bodyId: body.id,
+        deadPlayer: body.playerId,
+      });
+    });
+
+    // Vote during meeting
+    socket.on("vote", (data: { targetId: string }) => {
+      const room = roomManager.getRoomByPlayer(socket.id);
+      if (!room || room.status !== "playing") return;
+
+      const gameInstance = roomManager.getGameInstance(room.id);
+      if (!gameInstance || gameInstance.gameState !== "voting") return;
+
+      const voter = gameInstance.players.find((p) => p.id === socket.id);
+      if (!voter || !voter.isAlive) return;
+
+      // Record vote
+      gameInstance.votes[socket.id] = data.targetId;
+
+      // Check if all living players have voted
+      const alivePlayers = gameInstance.players.filter((p) => p.isAlive);
+      const votedPlayers = Object.keys(gameInstance.votes);
+
+      if (votedPlayers.length >= alivePlayers.length) {
+        processVotes(gameInstance, io, room.id);
+      } else {
+        // Notify players of vote update
+        io.to(`game_${room.id}`).emit("voteUpdate", {
+          votes: gameInstance.votes,
+          votedCount: votedPlayers.length,
+          totalCount: alivePlayers.length,
+        });
+      }
+    });
+
+    // Start voting phase
+    socket.on("startVoting", () => {
+      const room = roomManager.getRoomByPlayer(socket.id);
+      if (!room || room.status !== "playing") return;
+
+      const gameInstance = roomManager.getGameInstance(room.id);
+      if (!gameInstance || gameInstance.gameState !== "meeting") return;
+
+      gameInstance.gameState = "voting";
+      gameInstance.votes = {};
+
+      io.to(`game_${room.id}`).emit("votingStarted", {
+        alivePlayers: gameInstance.players
+          .filter((p) => p.isAlive)
+          .map((p) => ({
+            id: p.id,
+            name: "Player", // We'll need to get this from room data
+          })),
+      });
+    });
+
+    // Kill functionality (imposters only)
+    socket.on("kill", () => {
+      const room = roomManager.getRoomByPlayer(socket.id);
+      if (!room || room.status !== "playing") return;
+
+      const gameInstance = roomManager.getGameInstance(room.id);
+      if (!gameInstance || gameInstance.gameState !== "playing") return;
+
+      const killer = gameInstance.players.find((p) => p.id === socket.id);
+      if (!killer || !killer.isAlive || killer.role !== "imposter") return;
+
+      const now = Date.now();
+      const timeSinceGameStart = now - gameInstance.gameStartTime;
+      const timeSinceLastKill = killer.lastKillTime
+        ? now - killer.lastKillTime
+        : Infinity;
+
+      // Check cooldowns: no kills in first 30 seconds, then 30 second cooldown between kills
+      if (timeSinceGameStart < 30000 || timeSinceLastKill < 30000) {
+        socket.emit("killCooldown", {
+          timeRemaining: Math.max(
+            30000 - timeSinceGameStart,
+            30000 - timeSinceLastKill
+          ),
+        });
+        return;
+      }
+
+      // Find closest living non-imposter player
+      let closestVictim: GamePlayer | null = null;
       let closestDist = Infinity;
       for (const other of gameInstance.players) {
-        if (other.id === player.id) continue;
+        if (
+          other.id === killer.id ||
+          !other.isAlive ||
+          other.role === "imposter"
+        )
+          continue;
         const dist = Math.sqrt(
-          (other.x - player.x) ** 2 + (other.y - player.y) ** 2
+          (other.x - killer.x) ** 2 + (other.y - killer.y) ** 2
         );
         if (dist < closestDist) {
           closestDist = dist;
-          closest = other;
+          closestVictim = other;
         }
       }
 
-      if (closest && closestDist <= KILL_RADIUS) {
-        // teleport to target's position and respawn target
-        player.x = closest.x;
-        player.y = closest.y;
-        closest.x = 56 * TILE_SIZE;
-        closest.y = 14 * TILE_SIZE;
+      if (closestVictim && closestDist <= KILL_RADIUS) {
+        // Kill the victim
+        closestVictim.isAlive = false;
+        killer.lastKillTime = now;
 
-        // Emit to all players in this game room only
-        io.to(`game_${room.id}`).emit("players", gameInstance.players);
+        // Create dead body
+        const deadBody: DeadBody = {
+          id: `body_${now}_${closestVictim.id}`,
+          x: closestVictim.x,
+          y: closestVictim.y,
+          playerId: closestVictim.id,
+        };
+        gameInstance.deadBodies.push(deadBody);
+
+        // Check win conditions
+        checkWinConditions(gameInstance, io, room.id);
+
+        // Emit to all players in this game room
+        io.to(`game_${room.id}`).emit("playerKilled", {
+          victimId: closestVictim.id,
+          deadBody: deadBody,
+        });
       }
     });
 

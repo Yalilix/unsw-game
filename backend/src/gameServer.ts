@@ -322,6 +322,8 @@ function tickRoom(roomId: string, delta: number, io: IOServer): void {
         playerRole: player.role,
         isAlive: player.isAlive,
         deadBodies: gameInstance.deadBodies,
+        gameStartTime: gameInstance.gameStartTime,
+        lastKillTime: player.lastKillTime,
       });
     }
   }
@@ -558,6 +560,8 @@ export async function initGameServer(
                   playerRole: player.role,
                   isAlive: player.isAlive,
                   deadBodies: gameInstance.deadBodies,
+                  gameStartTime: gameInstance.gameStartTime,
+                  lastKillTime: player.lastKillTime,
                 });
               }
             });

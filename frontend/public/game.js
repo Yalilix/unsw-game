@@ -81,6 +81,8 @@ let gameState = {
   deadBodies: [],
   killCooldown: 0,
   killCooldownStart: 0,
+  gameStartTime: 0,
+  lastKillTime: 0,
   meetingActive: false,
   votingActive: false,
 };
@@ -90,6 +92,8 @@ socket.on("gameState", (data) => {
   gameState.playerRole = data.playerRole;
   gameState.isAlive = data.isAlive;
   gameState.deadBodies = data.deadBodies;
+  gameState.gameStartTime = data.gameStartTime;
+  gameState.lastKillTime = data.lastKillTime;
 });
 
 // Kill cooldown updates
@@ -271,11 +275,28 @@ function updateButtons() {
   if (gameState.playerRole === "imposter" && gameState.isAlive && gameActive) {
     killButton.style.display = "block";
 
-    // Check cooldown
+    // Calculate cooldown based on game start time and last kill time
+    const now = Date.now();
     let remainingCooldown = 0;
+
+    if (gameState.gameStartTime > 0) {
+      const timeSinceGameStart = now - gameState.gameStartTime;
+      const timeSinceLastKill = gameState.lastKillTime
+        ? now - gameState.lastKillTime
+        : Infinity;
+
+      // Check both initial 30s cooldown and kill cooldown
+      const initialCooldown = Math.max(0, 30000 - timeSinceGameStart);
+      const killCooldown = Math.max(0, 30000 - timeSinceLastKill);
+
+      remainingCooldown = Math.max(initialCooldown, killCooldown);
+    }
+
+    // Fallback to server-provided cooldown if we have it
     if (gameState.killCooldownStart > 0) {
-      const elapsed = Date.now() - gameState.killCooldownStart;
-      remainingCooldown = Math.max(0, gameState.killCooldown - elapsed);
+      const elapsed = now - gameState.killCooldownStart;
+      const serverCooldown = Math.max(0, gameState.killCooldown - elapsed);
+      remainingCooldown = Math.max(remainingCooldown, serverCooldown);
     }
 
     if (remainingCooldown > 0) {
@@ -513,25 +534,7 @@ function renderUI() {
   canvas.fillText(`Role: ${gameState.playerRole}`, 10, 30);
   canvas.fillText(`Status: ${gameState.isAlive ? "Alive" : "Dead"}`, 10, 55);
 
-  // Kill cooldown for imposters
-  if (gameState.playerRole === "imposter" && gameState.isAlive) {
-    let remainingCooldown = 0;
-    if (gameState.killCooldownStart > 0) {
-      const elapsed = Date.now() - gameState.killCooldownStart;
-      remainingCooldown = Math.max(0, gameState.killCooldown - elapsed);
-    }
-
-    if (remainingCooldown > 0) {
-      canvas.fillStyle = "red";
-      canvas.font = "16px Arial";
-      const cooldownSeconds = Math.ceil(remainingCooldown / 1000);
-      canvas.fillText(`Kill Cooldown: ${cooldownSeconds}s`, 10, 80);
-    } else {
-      canvas.fillStyle = "green";
-      canvas.font = "16px Arial";
-      canvas.fillText("Kill Ready", 10, 80);
-    }
-  }
+  // Kill cooldown info removed - now shown on button
 
   // Meeting/Voting status
   if (gameState.meetingActive) {

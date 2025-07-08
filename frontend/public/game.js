@@ -990,7 +990,7 @@ function loop() {
 		);
 	}
 
-	const BLOB_SIZE = 40; // reduced size for the blob
+	const BLOB_SIZE = 34; // reduced size for the blob
 	for (const [i, player] of players.entries()) {
 		// Draw colored aura (halo) so it overlaps more with the bottom of the blob
 		const auraColors = [

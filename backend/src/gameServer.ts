@@ -738,11 +738,15 @@ export async function initGameServer(
       }
 
       if (closestVictim && closestDist <= KILL_RADIUS) {
+        // Teleport killer to victim's position
+        killer.x = closestVictim.x;
+        killer.y = closestVictim.y;
+
         // Kill the victim
         closestVictim.isAlive = false;
         killer.lastKillTime = now;
 
-        // Create dead body
+        // Create dead body at victim's position
         const deadBody: DeadBody = {
           id: `body_${now}_${closestVictim.id}`,
           x: closestVictim.x,
@@ -758,6 +762,8 @@ export async function initGameServer(
         io.to(`game_${room.id}`).emit("playerKilled", {
           victimId: closestVictim.id,
           deadBody: deadBody,
+          killerId: killer.id,
+          killerNewPosition: { x: killer.x, y: killer.y },
         });
       }
     });

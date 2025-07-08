@@ -4,8 +4,17 @@ mapImage.src = "/Modern_Exteriors_Complete_Tileset_32x32.png";
 const personImage = new Image();
 personImage.src = "/person.png";
 
-const walking = new Audio("walking.mp3");
-const nature = new Audio("nature.mp3");
+const walking = new Audio("/walking.mp3");
+const nature = new Audio("/nature.mp3");
+
+// Add error handlers for audio
+walking.addEventListener("error", (e) => {
+  console.warn("Walking audio failed to load:", e);
+});
+
+nature.addEventListener("error", (e) => {
+  console.warn("Nature audio failed to load:", e);
+});
 
 const canvasEl = document.getElementById("canvas");
 canvasEl.width = window.innerWidth;
@@ -17,6 +26,7 @@ const socket = io(window.BACKEND_URL || "http://localhost:3000");
 let groundMap = [[]];
 let decalMap = [[]];
 let players = [];
+let gameStarted = false;
 
 const TILE_SIZE = 32;
 const VISION_RADIUS = 10 * TILE_SIZE; // 10 tiles vision radius (must match backend)
@@ -28,11 +38,28 @@ mapImage.onload = () => {
 
 socket.on("connect", () => {
   console.log("connected");
+  // Join the room when connected
+  const roomId = window.ROOM_ID;
+  if (roomId) {
+    socket.emit("joinRoom", { roomId });
+  }
+});
+
+socket.on("gameJoined", (data) => {
+  console.log("Joined game room:", data.roomId);
+  gameStarted = true;
 });
 
 socket.on("map", (loadedMap) => {
   groundMap = loadedMap.ground;
   decalMap = loadedMap.decal;
+});
+
+socket.on("error", (data) => {
+  console.error("Game error:", data.message);
+  alert(data.message);
+  // Redirect to home page
+  window.location.href = "/";
 });
 
 socket.on("players", (serverPlayers) => {
@@ -60,8 +87,12 @@ window.addEventListener("keydown", (e) => {
   if (moving && walking.paused) {
     try {
       walking.currentTime = 0;
-      walking.play();
-    } catch (_) {}
+      walking
+        .play()
+        .catch((err) => console.warn("Walking audio blocked:", err));
+    } catch (err) {
+      console.warn("Walking audio error:", err);
+    }
   }
   if (e.code === "Space") {
     socket.emit("teleport");
@@ -81,8 +112,12 @@ window.addEventListener("keyup", (e) => {
   }
   const stillMoving = inputs.up || inputs.down || inputs.left || inputs.right;
   if (!stillMoving) {
-    walking.pause();
-    walking.currentTime = 0;
+    try {
+      walking.pause();
+      walking.currentTime = 0;
+    } catch (err) {
+      console.warn("Walking audio pause error:", err);
+    }
   }
   socket.emit("inputs", inputs);
 });

@@ -2,6 +2,7 @@ import express from "express";
 import { Server as IOServer } from "socket.io";
 import { Server as HTTPServer } from "http";
 import loadMap, { MapData } from "./mapLoader";
+import { roomManager, Room, GameInstance } from "./roomManager";
 
 interface Player {
   id: string;
@@ -24,8 +25,6 @@ const TILE_COLLISION_SIZE = 32; // Smaller collision box for tiles (4px padding 
 const KILL_RADIUS = PLAYER_SIZE * 2; // larger proximity for teleport
 const VISION_RADIUS = 10 * TILE_SIZE; // 10 tiles vision radius
 
-let players: Player[] = [];
-const inputsMap: Record<string, InputsState> = {};
 let ground2D: MapData["ground2D"]; // will be set after map loads
 let decal2D: MapData["decal2D"];
 
@@ -127,10 +126,17 @@ function getVisiblePlayers(
     .filter((player) => player !== null) as (Player & { opacity: number })[];
 }
 
-function tick(delta: number, io: IOServer): void {
+function tickRoom(roomId: string, delta: number, io: IOServer): void {
+  const gameInstance = roomManager.getGameInstance(roomId);
+  const room = roomManager.getRoom(roomId);
+
+  if (!gameInstance || !room || room.status !== "playing") {
+    return;
+  }
+
   // Update players based on inputs
-  for (const player of players) {
-    const inputs = inputsMap[player.id];
+  for (const player of gameInstance.players) {
+    const inputs = gameInstance.inputsMap[player.id];
     const previousY = player.y;
     const previousX = player.x;
 
@@ -162,11 +168,11 @@ function tick(delta: number, io: IOServer): void {
     }
   }
 
-  // Send player data with vision filtering
-  for (const player of players) {
+  // Send player data with vision filtering to each player in the room
+  for (const player of gameInstance.players) {
     const socket = io.sockets.sockets.get(player.id);
     if (socket) {
-      const visiblePlayers = getVisiblePlayers(player, players);
+      const visiblePlayers = getVisiblePlayers(player, gameInstance.players);
       socket.emit("players", visiblePlayers);
     }
   }
@@ -181,7 +187,7 @@ export async function initGameServer(
   ground2D = map.ground2D;
   decal2D = map.decal2D;
 
-  // Initialise Socket.IO server
+  // Initialize Socket.IO server
   const io = new IOServer(httpServer, {
     cors: {
       origin: "*", // Allow dev server on different port
@@ -191,29 +197,191 @@ export async function initGameServer(
   io.on("connect", (socket) => {
     console.log("[game] user connected", socket.id);
 
-    inputsMap[socket.id] = {
-      up: false,
-      down: false,
-      left: false,
-      right: false,
-    };
+    // Join room event
+    socket.on(
+      "joinRoom",
+      (data: { roomId: string; playerToken?: string; isCreator?: boolean }) => {
+        const { roomId, playerToken, isCreator } = data;
+        let room = roomManager.getRoom(roomId);
 
-    players.push({ id: socket.id, x: 56 * TILE_SIZE, y: 14 * TILE_SIZE });
+        // If room doesn't exist and user is the creator, create it
+        if (!room && isCreator) {
+          const newRoom = roomManager.createRoom(socket.id);
+          // Update the room ID to match the requested one
+          roomManager.updateRoomId(newRoom.id, roomId);
+          room = roomManager.getRoom(roomId);
+        }
 
-    socket.emit("map", { ground: ground2D, decal: decal2D });
+        if (!room) {
+          socket.emit("error", { message: "Room not found" });
+          return;
+        }
 
-    socket.on("inputs", (inputs: InputsState) => {
-      inputsMap[socket.id] = inputs;
+        // If room is in waiting state, join the waiting room
+        if (room.status === "waiting") {
+          // Try to join the room through room manager (only if not already the creator)
+          if (!isCreator) {
+            const joinResult = roomManager.joinRoom(roomId, socket.id);
+            if (!joinResult.success) {
+              socket.emit("error", { message: joinResult.error });
+              return;
+            }
+          }
+
+          // Join socket room
+          socket.join(`room_${roomId}`);
+
+          // Get updated room after join
+          const updatedRoom = roomManager.getRoom(roomId);
+          if (!updatedRoom) return;
+
+          socket.emit("roomJoined", {
+            roomId: roomId,
+            players: updatedRoom.players.map((p) => ({ id: p.socketId })),
+            isHost: updatedRoom.host === socket.id,
+            status: updatedRoom.status,
+          });
+
+          // Notify others in room
+          socket.to(`room_${roomId}`).emit("playerJoined", {
+            playerId: socket.id,
+            playerCount: updatedRoom.players.length,
+          });
+
+          // Also emit updated room state to all players in room
+          io.to(`room_${roomId}`).emit("roomUpdate", {
+            playerCount: updatedRoom.players.length,
+            players: updatedRoom.players.map((p) => ({ id: p.socketId })),
+          });
+          return;
+        }
+
+        // If room is playing, join the game
+        if (room && room.status === "playing") {
+          const gameInstance = roomManager.getGameInstance(roomId);
+          if (!gameInstance) {
+            socket.emit("error", { message: "Game not found" });
+            return;
+          }
+
+          socket.join(`game_${roomId}`);
+
+          // Update the player to room mapping for this new socket connection
+          roomManager.updatePlayerToRoom(socket.id, roomId);
+
+          // Add this socket to the game instance if not already present
+          const existingPlayer = gameInstance.players.find(
+            (p) => p.id === socket.id
+          );
+          if (!existingPlayer) {
+            gameInstance.players.push({
+              id: socket.id,
+              x: 56 * 32, // TILE_SIZE
+              y: 14 * 32, // TILE_SIZE
+            });
+
+            // Initialize inputs for new player
+            gameInstance.inputsMap[socket.id] = {
+              up: false,
+              down: false,
+              left: false,
+              right: false,
+            };
+          }
+
+          socket.emit("gameJoined", { roomId });
+          socket.emit("map", { ground: ground2D, decal: decal2D });
+          return;
+        }
+
+        // If no room found but there's a game instance, allow joining
+        // (for when players reconnect after game started)
+        if (!room) {
+          const gameInstance = roomManager.getGameInstance(roomId);
+          if (gameInstance) {
+            socket.join(`game_${roomId}`);
+
+            // Update the player to room mapping for this new socket connection
+            roomManager.updatePlayerToRoom(socket.id, roomId);
+
+            // Add this socket to the game instance if not already present
+            const existingPlayer = gameInstance.players.find(
+              (p) => p.id === socket.id
+            );
+            if (!existingPlayer) {
+              gameInstance.players.push({
+                id: socket.id,
+                x: 56 * 32, // TILE_SIZE
+                y: 14 * 32, // TILE_SIZE
+              });
+
+              // Initialize inputs for new player
+              gameInstance.inputsMap[socket.id] = {
+                up: false,
+                down: false,
+                left: false,
+                right: false,
+              };
+            }
+
+            socket.emit("gameJoined", { roomId });
+            socket.emit("map", { ground: ground2D, decal: decal2D });
+            return;
+          }
+        }
+      }
+    );
+
+    // Start game event (only host can start)
+    socket.on("startGame", (data: { roomId: string }) => {
+      const { roomId } = data;
+      const result = roomManager.startGame(roomId, socket.id);
+
+      if (result.success) {
+        const room = roomManager.getRoom(roomId);
+        if (room) {
+          // Move all players from waiting room to game room
+          io.in(`room_${roomId}`).socketsJoin(`game_${roomId}`);
+          io.in(`room_${roomId}`).socketsLeave(`room_${roomId}`);
+
+          // Notify all players that game started
+          io.to(`game_${roomId}`).emit("gameStarted", { roomId });
+          io.to(`game_${roomId}`).emit("map", {
+            ground: ground2D,
+            decal: decal2D,
+          });
+        }
+      } else {
+        socket.emit("error", { message: result.error });
+      }
     });
 
+    // Game inputs
+    socket.on("inputs", (inputs: InputsState) => {
+      const room = roomManager.getRoomByPlayer(socket.id);
+      if (room && room.status === "playing") {
+        const gameInstance = roomManager.getGameInstance(room.id);
+        if (gameInstance) {
+          gameInstance.inputsMap[socket.id] = inputs;
+        }
+      }
+    });
+
+    // Teleport functionality
     socket.on("teleport", () => {
-      const player = players.find((p) => p.id === socket.id);
+      const room = roomManager.getRoomByPlayer(socket.id);
+      if (!room || room.status !== "playing") return;
+
+      const gameInstance = roomManager.getGameInstance(room.id);
+      if (!gameInstance) return;
+
+      const player = gameInstance.players.find((p) => p.id === socket.id);
       if (!player) return;
 
       // find closest other player
       let closest: Player | null = null;
       let closestDist = Infinity;
-      for (const other of players) {
+      for (const other of gameInstance.players) {
         if (other.id === player.id) continue;
         const dist = Math.sqrt(
           (other.x - player.x) ** 2 + (other.y - player.y) ** 2
@@ -228,24 +396,66 @@ export async function initGameServer(
         // teleport to target's position and respawn target
         player.x = closest.x;
         player.y = closest.y;
-        closest.x = 0;
-        closest.y = 0;
-        io.emit("players", players);
+        closest.x = 56 * TILE_SIZE;
+        closest.y = 14 * TILE_SIZE;
+
+        // Emit to all players in this game room only
+        io.to(`game_${room.id}`).emit("players", gameInstance.players);
       }
     });
 
+    // Helper function to handle player leaving
+    const handlePlayerLeave = (socketId: string) => {
+      // Get the room before removing the player
+      const room = roomManager.getRoomByPlayer(socketId);
+
+      // Remove player from any room they were in
+      roomManager.leaveRoom(socketId);
+
+      // If there was a room and it's still in waiting status, notify remaining players
+      // Don't send updates if the room is playing (game in progress)
+      if (room && room.status === "waiting") {
+        const updatedRoom = roomManager.getRoom(room.id);
+        if (updatedRoom && updatedRoom.players.length > 0) {
+          // Notify all remaining players in the room about the updated player list
+          io.to(`room_${room.id}`).emit("playerLeft", {
+            playerId: socketId,
+            playerCount: updatedRoom.players.length,
+          });
+
+          // Send updated room state
+          io.to(`room_${room.id}`).emit("roomUpdate", {
+            playerCount: updatedRoom.players.length,
+            players: updatedRoom.players.map((p) => ({ id: p.socketId })),
+          });
+        }
+      }
+    };
+
+    // Handle explicit leave room
+    socket.on("leaveRoom", () => {
+      handlePlayerLeave(socket.id);
+    });
+
     socket.on("disconnect", () => {
-      players = players.filter((p) => p.id !== socket.id);
-      delete inputsMap[socket.id];
+      handlePlayerLeave(socket.id);
+      console.log("[game] user disconnected", socket.id);
     });
   });
 
-  // Game loop
+  // Game loop for all active rooms
   let lastUpdate = Date.now();
   setInterval(() => {
     const now = Date.now();
     const delta = now - lastUpdate;
-    tick(delta, io);
+
+    // Tick all active game rooms
+    for (const room of roomManager.getAllRooms()) {
+      if (room.status === "playing") {
+        tickRoom(room.id, delta, io);
+      }
+    }
+
     lastUpdate = now;
   }, 1000 / TICK_RATE);
 

@@ -360,6 +360,95 @@ class RoomManager {
     this.playerToRoom.delete(socketId);
   }
 
+  // Remove player from active game when they disconnect (not just mapping)
+  removePlayerFromGame(socketId: string): {
+    success: boolean;
+    shouldEndGame?: boolean;
+    error?: string;
+  } {
+    const roomId = this.playerToRoom.get(socketId);
+    if (!roomId) {
+      return { success: false, error: "Player not in any room" };
+    }
+
+    const room = this.rooms.get(roomId);
+    const gameInstance = this.gameInstances.get(roomId);
+
+    if (!room || !gameInstance) {
+      return { success: false, error: "Room or game instance not found" };
+    }
+
+    // Remove player from room players list
+    room.players = room.players.filter((p) => p.socketId !== socketId);
+
+    // Remove player from game instance
+    gameInstance.players = gameInstance.players.filter(
+      (p) => p.id !== socketId
+    );
+
+    // Clean up all related data for this player
+    delete gameInstance.inputsMap[socketId];
+    delete gameInstance.playerTasks[socketId];
+    delete gameInstance.currentQuestions[socketId];
+    delete gameInstance.votes[socketId];
+
+    // Remove player from mapping
+    this.playerToRoom.delete(socketId);
+
+    // If host left, assign new host to first remaining player
+    if (room.host === socketId && room.players.length > 0) {
+      room.host = room.players[0].socketId;
+    }
+
+    console.log(
+      `[DEBUG] Player ${socketId} removed from active game in room ${roomId}`
+    );
+    console.log(
+      `[DEBUG] Remaining players in game: ${gameInstance.players
+        .map((p) => p.id)
+        .join(", ")}`
+    );
+
+    // Check if all players have left the game
+    const shouldEndGame = room.players.length === 0;
+
+    return { success: true, shouldEndGame };
+  }
+
+  // Check if all players have disconnected from an active game
+  hasAllPlayersLeft(roomId: string): boolean {
+    const room = this.rooms.get(roomId);
+    if (!room || room.status !== "playing") {
+      return false;
+    }
+
+    return room.players.length === 0;
+  }
+
+  // End game due to all players leaving
+  endGameAllPlayersLeft(roomId: string): { success: boolean; error?: string } {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return { success: false, error: "Room not found" };
+    }
+
+    if (room.status !== "playing") {
+      return { success: false, error: "Room is not in playing status" };
+    }
+
+    // Clean up the game instance
+    this.gameInstances.delete(roomId);
+
+    // Delete the empty room entirely
+    this.rooms.delete(roomId);
+
+    console.log(
+      `[DEBUG] Game in room ${roomId} ended due to all players leaving`
+    );
+
+    return { success: true };
+  }
+
   // Map new socket to existing player in game (preserve role/state)
   reconnectPlayerToGame(
     oldSocketId: string,

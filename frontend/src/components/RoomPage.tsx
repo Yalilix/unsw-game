@@ -28,7 +28,9 @@ const RoomPage = () => {
   const [newName, setNewName] = useState('');
   const [currentPlayerName, setCurrentPlayerName] = useState('');
 
-  const PLAYER_NAME_KEY = 'playerName';
+	const PLAYER_NAME_KEY = "playerName";
+	// Set max name length
+	const USERNAME_MAX_LENGTH = 14;
 
   useEffect(() => {
     if (!roomId || !socket) return;
@@ -221,22 +223,24 @@ const RoomPage = () => {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-space flex items-center justify-center">
-        <div className="bg-card p-8 rounded-lg shadow-lg max-w-md w-full mx-4">
-          <h2 className="text-xl font-bold text-red-400 mb-4">Error</h2>
-          <p className="text-foreground mb-6">{error}</p>
-          <button
-            onClick={leaveRoom}
-            className="w-full bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 transition-colors"
-          >
-            Back to Home
-          </button>
-        </div>
-      </div>
-    );
-  }
+	if (error) {
+		return (
+			<div className="min-h-screen bg-gradient-space flex items-center justify-center">
+				<div className="bg-card p-8 rounded-lg shadow-lg max-w-lg w-full mx-4">
+					<h2 className="text-xl font-bold text-red-400 mb-4">
+						Error
+					</h2>
+					<p className="text-foreground mb-6">{error}</p>
+					<button
+						onClick={leaveRoom}
+						className="w-full bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 transition-colors"
+					>
+						Back to Home
+					</button>
+				</div>
+			</div>
+		);
+	}
 
   if (!roomData) {
     return (
@@ -249,149 +253,122 @@ const RoomPage = () => {
   const canStartGame = roomData.players.length >= 4 && roomData.isHost;
   const minPlayersNeeded = Math.max(0, 4 - roomData.players.length);
 
-  return (
-    <div className="min-h-screen bg-gradient-space p-4">
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="max-w-2xl mx-auto w-full">
-          {/* Header */}
-          <div className="bg-card p-6 rounded-lg shadow-lg mb-6">
-            <h1 className="text-3xl font-bold text-foreground mb-4">
-              Waiting Room
-            </h1>
+	return (
+		<div className="min-h-screen bg-gradient-space p-4">
+			<div className="max-w-4xl mx-auto">
+				{/* Header */}
+				<div className="bg-card p-4 rounded-lg shadow-lg mb-4 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+					<div className="flex-1 min-w-0">
+						<h1 className="text-3xl font-bold text-foreground mb-4">
+							Waiting Room
+						</h1>
+						{/* Room ID */}
+						<div className="flex items-center gap-3 mb-4">
+							<span className="text-muted-foreground">
+								Room ID:
+							</span>
+							<code className="bg-muted px-3 py-1 rounded text-foreground font-mono text-lg">
+								{roomId}
+							</code>
+							<button
+								onClick={copyRoomId}
+								className="bg-secondary text-secondary-foreground px-3 py-1 rounded hover:bg-secondary/80 transition-colors"
+							>
+								{copySuccess ? "Copied!" : "Copy"}
+							</button>
+						</div>
+						{/* Status */}
+						<div className="flex items-center justify-between">
+							<span className="text-muted-foreground">
+								Players: {roomData.players.length}/10
+							</span>
+							{roomData.isHost && (
+								<span className="bg-accent text-accent-foreground px-2 py-1 rounded text-sm">
+									HOST
+								</span>
+							)}
+						</div>
+					</div>
+				</div>
 
-            {/* Room ID */}
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-muted-foreground">Room ID:</span>
-              <code className="bg-muted px-3 py-1 rounded text-foreground font-mono text-lg">
-                {roomId}
-              </code>
-              <button
-                onClick={copyRoomId}
-                className="bg-secondary text-secondary-foreground px-3 py-1 rounded hover:bg-secondary/80 transition-colors"
-              >
-                {copyIdSuccess ? 'Copied ID!' : 'Copy ID'}
-              </button>
-              <button
-                onClick={copyRoomURL}
-                className="bg-secondary text-secondary-foreground px-3 py-1 rounded hover:bg-secondary/80 transition-colors"
-              >
-                {copyUrlSuccess ? 'Copied URL!' : 'Copy URL'}
-              </button>
-            </div>
+				{/* Players List - Kahoot Style Grid */}
+				<div className="bg-card p-6 rounded-lg shadow-lg mb-6">
+					<h2 className="text-xl font-bold text-foreground mb-4">
+						Players
+					</h2>
+					<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 justify-items-center">
+						{Array.from({ length: 10 }).map((_, i) => {
+							const player = roomData.players[i];
+							return (
+								<div
+									key={player ? player.id : i}
+									className={`relative w-40 h-20 flex items-center justify-center rounded-2xl text-xl font-bold transition-all duration-200
+										${
+											player
+												? "bg-gradient-to-br from-purple-500 to-blue-500 text-white shadow-lg"
+												: "bg-muted text-muted-foreground border-2 border-dashed border-muted"
+										}
+									`}
+								>
+									{player ? (
+										<>
+											<span
+												className={`text-center block max-w-[8.5rem] whitespace-nowrap overflow-hidden ${
+													player.name.length > 13
+														? "text-base"
+														: player.name.length >
+														  10
+														? "text-lg"
+														: "text-xl"
+												}`}
+											>
+												{player.name}
+											</span>
+											{player.id === socket?.id && (
+												<span className="absolute top-2 right-2 bg-accent text-accent-foreground px-2 py-1 rounded text-xs font-semibold shadow">
+													YOU
+												</span>
+											)}
+											{i === 0 && (
+												<span className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-semibold shadow">
+													HOST
+												</span>
+											)}
+										</>
+									) : (
+										<span className="opacity-50">
+											Empty
+										</span>
+									)}
+								</div>
+							);
+						})}
+					</div>
+				</div>
 
-            {/* Status */}
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">
-                Players: {roomData.players.length}/10
-              </span>
-              {roomData.isHost && (
-                <span className="bg-accent text-accent-foreground px-2 py-1 rounded text-sm">
-                  HOST
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Players List */}
-          <div className="bg-card p-6 rounded-lg shadow-lg mb-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">Players</h2>
-            <div className="grid grid-cols-1 gap-2">
-              {roomData.players.map((player, index) => (
-                <div
-                  key={player.id}
-                  className="bg-muted p-3 rounded flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2">
-                    {player.id === socket?.id && editingName ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={newName}
-                          onChange={(e) => setNewName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') updatePlayerName();
-                            if (e.key === 'Escape') cancelNameEdit();
-                          }}
-                          className="bg-background text-foreground px-2 py-1 rounded border border-border text-sm"
-                          maxLength={20}
-                          autoFocus
-                        />
-                        <button
-                          onClick={updatePlayerName}
-                          className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs hover:bg-primary/90"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          onClick={cancelNameEdit}
-                          className="bg-destructive text-destructive-foreground px-2 py-1 rounded text-xs hover:bg-destructive/90"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-foreground">{player.name}</span>
-                        {player.id === socket?.id && (
-                          <button
-                            onClick={() => setEditingName(true)}
-                            className="text-muted-foreground hover:text-foreground text-xs"
-                            title="Edit name"
-                          >
-                            ✏️
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {player.id === socket?.id && (
-                      <span className="bg-accent text-accent-foreground px-2 py-1 rounded text-xs">
-                        YOU
-                      </span>
-                    )}
-                    {index === 0 && (
-                      <span className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs">
-                        HOST
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Game Start Section */}
-          <div className="bg-card p-6 rounded-lg shadow-lg mb-6">
-            {minPlayersNeeded > 0 && (
-              <div className="bg-muted p-4 rounded mb-4">
-                <p className="text-muted-foreground text-center">
-                  Need {minPlayersNeeded} more player
-                  {minPlayersNeeded !== 1 ? 's' : ''} to start the game
-                </p>
-              </div>
-            )}
-
-            {roomData.isHost ? (
-              <button
-                onClick={startGame}
-                disabled={!canStartGame}
-                className={`w-full py-3 px-6 rounded font-bold transition-colors ${
-                  canStartGame
-                    ? 'bg-gradient-button text-primary-foreground hover:opacity-90 shadow-lg'
-                    : 'bg-muted text-muted-foreground cursor-not-allowed'
-                }`}
-              >
-                {canStartGame
-                  ? 'Start Game'
-                  : `Need ${minPlayersNeeded} More Players`}
-              </button>
-            ) : (
-              <div className="text-center text-muted-foreground">
-                Waiting for host to start the game...
-              </div>
-            )}
-          </div>
+				{/* Game Start Section */}
+				<div className="bg-card p-4 rounded-lg shadow-lg mb-4">
+					{minPlayersNeeded > 0 ? (
+						<div className="bg-muted p-4 rounded text-center">
+							<p className="text-muted-foreground">
+								Need {minPlayersNeeded} more player
+								{minPlayersNeeded !== 1 ? "s" : ""} to start the
+								game
+							</p>
+						</div>
+					) : roomData.isHost ? (
+						<button
+							onClick={startGame}
+							className="w-full py-3 px-6 rounded font-bold transition-colors bg-gradient-button text-primary-foreground hover:opacity-90 shadow-lg"
+						>
+							Start Game
+						</button>
+					) : (
+						<div className="text-center text-muted-foreground">
+							Waiting for host to start the game...
+						</div>
+					)}
+				</div>
 
           {/* Leave Room */}
           <div className="text-center">

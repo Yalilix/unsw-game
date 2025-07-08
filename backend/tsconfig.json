@@ -7,5 +7,6 @@
     "sourceMap": true,
     "outDir": "dist"
   },
+  "exclude": ["src/*.tsx"],
   "lib": ["es2015"]
 }

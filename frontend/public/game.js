@@ -29,17 +29,19 @@ window.addEventListener("resize", () => {
   handleAutoFullscreen(); // Check if fullscreen should be toggled
 });
 
-// Initial fullscreen check when game loads
+// Initial setup when game loads
 setTimeout(() => {
-  handleAutoFullscreen();
+  lockToLandscape(); // Lock to landscape orientation
+  handleAutoFullscreen(); // Handle fullscreen for small screens
 }, 1000); // Small delay to ensure page is fully loaded
 
-// Trigger fullscreen on first user interaction (many browsers require this)
+// Trigger fullscreen and orientation lock on first user interaction (many browsers require this)
 let hasInteracted = false;
 function handleFirstInteraction() {
   if (!hasInteracted) {
     hasInteracted = true;
-    handleAutoFullscreen();
+    lockToLandscape(); // Ensure landscape lock on first interaction
+    handleAutoFullscreen(); // Ensure fullscreen on small screens
     // Remove listeners after first interaction
     document.removeEventListener("click", handleFirstInteraction);
     document.removeEventListener("keydown", handleFirstInteraction);
@@ -50,6 +52,21 @@ function handleFirstInteraction() {
 document.addEventListener("click", handleFirstInteraction);
 document.addEventListener("keydown", handleFirstInteraction);
 document.addEventListener("touchstart", handleFirstInteraction);
+
+// Cleanup orientation lock when leaving the page
+window.addEventListener("beforeunload", () => {
+  unlockOrientation();
+});
+
+// Also unlock when the page becomes hidden (user switches tabs/apps)
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    unlockOrientation();
+  } else {
+    // Re-lock when page becomes visible again
+    lockToLandscape();
+  }
+});
 
 const socket = io(window.BACKEND_URL || "http://localhost:3000");
 
@@ -235,13 +252,13 @@ const inputs = {
 };
 
 window.addEventListener("keydown", (e) => {
-  if (e.key === "w") {
+  if (e.key === "w" || e.key === "ArrowUp") {
     inputs["up"] = true;
-  } else if (e.key === "s") {
+  } else if (e.key === "s" || e.key === "ArrowDown") {
     inputs["down"] = true;
-  } else if (e.key === "d") {
+  } else if (e.key === "d" || e.key === "ArrowRight") {
     inputs["right"] = true;
-  } else if (e.key === "a") {
+  } else if (e.key === "a" || e.key === "ArrowLeft") {
     inputs["left"] = true;
   }
   const moving = inputs.up || inputs.down || inputs.left || inputs.right;
@@ -260,13 +277,13 @@ window.addEventListener("keydown", (e) => {
 });
 
 window.addEventListener("keyup", (e) => {
-  if (e.key === "w") {
+  if (e.key === "w" || e.key === "ArrowUp") {
     inputs["up"] = false;
-  } else if (e.key === "s") {
+  } else if (e.key === "s" || e.key === "ArrowDown") {
     inputs["down"] = false;
-  } else if (e.key === "d") {
+  } else if (e.key === "d" || e.key === "ArrowRight") {
     inputs["right"] = false;
-  } else if (e.key === "a") {
+  } else if (e.key === "a" || e.key === "ArrowLeft") {
     inputs["left"] = false;
   }
   const stillMoving = inputs.up || inputs.down || inputs.left || inputs.right;
@@ -403,6 +420,40 @@ window.attemptKill = function () {
     socket.emit("kill");
   }
 };
+
+// Lock orientation to landscape for better mobile gaming experience
+function lockToLandscape() {
+  if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock("landscape").catch((err) => {
+      console.log("Orientation lock failed:", err);
+      // Fallback: some browsers don't support orientation lock
+    });
+  } else if (screen.lockOrientation) {
+    // Fallback for older browsers
+    screen.lockOrientation("landscape");
+  } else if (screen.mozLockOrientation) {
+    // Firefox fallback
+    screen.mozLockOrientation("landscape");
+  } else if (screen.msLockOrientation) {
+    // IE/Edge fallback
+    screen.msLockOrientation("landscape");
+  } else {
+    console.log("Orientation lock not supported on this browser");
+  }
+}
+
+// Unlock orientation (for cleanup)
+function unlockOrientation() {
+  if (screen.orientation && screen.orientation.unlock) {
+    screen.orientation.unlock();
+  } else if (screen.unlockOrientation) {
+    screen.unlockOrientation();
+  } else if (screen.mozUnlockOrientation) {
+    screen.mozUnlockOrientation();
+  } else if (screen.msUnlockOrientation) {
+    screen.msUnlockOrientation();
+  }
+}
 
 // Automatic fullscreen management for small screens
 function handleAutoFullscreen() {
@@ -1077,10 +1128,18 @@ function renderUI() {
           canvas.fillText(fullText, 10, yOffset);
           yOffset += 20;
         } else {
-          // Wrap text for small screens
-          const wrappedLines = wrapText(fullText, maxTextWidth);
-          for (const line of wrappedLines) {
-            canvas.fillText(line, 10, yOffset);
+          // Wrap text for small screens with proper indentation
+          const statusWidth = canvas.measureText(status + " ").width;
+          const indentedMaxWidth = maxTextWidth - statusWidth;
+          const locationOnlyWrapped = wrapText(location, indentedMaxWidth);
+
+          // First line: status + first part of location
+          canvas.fillText(`${status} ${locationOnlyWrapped[0]}`, 10, yOffset);
+          yOffset += 20;
+
+          // Subsequent lines: indented to align with text after status
+          for (let i = 1; i < locationOnlyWrapped.length; i++) {
+            canvas.fillText(locationOnlyWrapped[i], 10 + statusWidth, yOffset);
             yOffset += 20;
           }
         }
@@ -1099,57 +1158,6 @@ function renderUI() {
     canvas.fillStyle = "orange";
     canvas.font = "24px Arial";
     canvas.fillText("VOTING IN PROGRESS", canvasEl.width / 2 - 150, 50);
-  }
-
-  // Instructions
-  const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
-  const maxInstructionsWidth = isSmallScreen
-    ? canvasEl.width / 3
-    : canvasEl.width * 0.6; // 1/3 on small screens, 60% on large
-
-  canvas.fillStyle = "white";
-  canvas.font = "14px Arial";
-
-  // Render "WASD: Move" instruction
-  const moveText = "WASD: Move";
-  if (canvas.measureText(moveText).width <= maxInstructionsWidth) {
-    canvas.fillText(moveText, 10, canvasEl.height - 20);
-  } else {
-    const wrappedMoveLines = wrapText(moveText, maxInstructionsWidth);
-    let yOffsetMove = canvasEl.height - 20 - (wrappedMoveLines.length - 1) * 16;
-    for (const line of wrappedMoveLines) {
-      canvas.fillText(line, 10, yOffsetMove);
-      yOffsetMove += 16;
-    }
-  }
-
-  // Render role-specific instructions
-  if (gameState.playerRole === "imposter" && gameState.isAlive) {
-    const imposterText = "Use buttons to KILL and REPORT";
-    if (canvas.measureText(imposterText).width <= maxInstructionsWidth) {
-      canvas.fillText(imposterText, 10, canvasEl.height - 40);
-    } else {
-      const wrappedImposterLines = wrapText(imposterText, maxInstructionsWidth);
-      let yOffsetImposter =
-        canvasEl.height - 40 - (wrappedImposterLines.length - 1) * 16;
-      for (const line of wrappedImposterLines) {
-        canvas.fillText(line, 10, yOffsetImposter);
-        yOffsetImposter += 16;
-      }
-    }
-  } else if (gameState.isAlive) {
-    const crewText = "Use button to REPORT dead bodies";
-    if (canvas.measureText(crewText).width <= maxInstructionsWidth) {
-      canvas.fillText(crewText, 10, canvasEl.height - 40);
-    } else {
-      const wrappedCrewLines = wrapText(crewText, maxInstructionsWidth);
-      let yOffsetCrew =
-        canvasEl.height - 40 - (wrappedCrewLines.length - 1) * 16;
-      for (const line of wrappedCrewLines) {
-        canvas.fillText(line, 10, yOffsetCrew);
-        yOffsetCrew += 16;
-      }
-    }
   }
 
   // Render minimap

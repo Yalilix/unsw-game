@@ -1,23 +1,23 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export function WaitingRoom() {
   const navigate = useNavigate();
-  const [joinRoomId, setJoinRoomId] = useState('');
+  const [joinRoomId, setJoinRoomId] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const createRoom = async () => {
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const backendUrl =
-        import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+        import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
       const response = await fetch(`${backendUrl}/api/rooms/create`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
@@ -25,13 +25,13 @@ export function WaitingRoom() {
 
       if (data.success) {
         // Store that this user is the creator of this room
-        sessionStorage.setItem(`room_${data.room.id}_creator`, 'true');
+        sessionStorage.setItem(`room_${data.room.id}_creator`, "true");
         navigate(`/room/${data.room.id}`);
       } else {
-        setError(data.error || 'Failed to create room');
+        setError(data.error || "Failed to create room");
       }
     } catch (err) {
-      setError('Failed to create room. Please try again.');
+      setError("Failed to create room. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -39,20 +39,20 @@ export function WaitingRoom() {
 
   const joinRoom = async () => {
     if (!joinRoomId.trim()) {
-      setError('Please enter a room ID');
+      setError("Please enter a room ID");
       return;
     }
 
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const backendUrl =
-        import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+        import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
       const response = await fetch(`${backendUrl}/api/rooms/join`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ roomId: joinRoomId.trim() }),
       });
@@ -62,10 +62,10 @@ export function WaitingRoom() {
       if (data.success) {
         navigate(`/room/${data.room.id}`);
       } else {
-        setError(data.error || 'Failed to join room');
+        setError(data.error || "Failed to join room");
       }
     } catch (err) {
-      setError('Failed to join room. Please try again.');
+      setError("Failed to join room. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -77,7 +77,7 @@ export function WaitingRoom() {
         {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-bold text-foreground">
-            Welcome to Sussy UNSW!
+            Welcome to Sussy Uni!
           </h1>
           <p className="text-muted-foreground">
             Create or join a room to start playing
@@ -102,7 +102,7 @@ export function WaitingRoom() {
             disabled={loading}
             className="w-full bg-gradient-button text-primary-foreground py-3 px-6 rounded font-bold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
-            {loading ? 'Creating...' : 'Create Room'}
+            {loading ? "Creating..." : "Create Room"}
           </button>
         </div>
 
@@ -128,7 +128,7 @@ export function WaitingRoom() {
               disabled={loading || !joinRoomId.trim()}
               className="w-full bg-secondary text-secondary-foreground py-3 px-6 rounded font-bold hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Joining...' : 'Join Room'}
+              {loading ? "Joining..." : "Join Room"}
             </button>
           </div>
         </div>
@@ -137,13 +137,27 @@ export function WaitingRoom() {
         <div className="bg-card p-6 rounded-lg shadow-lg">
           <h3 className="text-lg font-bold text-foreground mb-2">Game Rules</h3>
           <ul className="text-muted-foreground text-sm space-y-1">
-            <li>• Minimum 4 players required to start</li>
-            <li>• Maximum 10 players per room</li>
-            <li>• Use WASD to move around</li>
+            <li>• 4-10 players required to start</li>
+            <li>• Use WASD or arrow keys to move around campus</li>
             <li>
-              • Press SPACE to if you are an impostor to eliminate other players
+              • <strong>Students:</strong> Answer questions correctly to
+              complete tasks and save the campus
             </li>
-            <li>• Find and eliminate other players!</li>
+            <li>
+              • <strong>Imposters:</strong> Eliminate students and sabotage
+              their mission
+            </li>
+            <li>
+              • Hold emergency meetings to discuss and vote out suspicious
+              players
+            </li>
+            <li>
+              • Students win by completing all tasks or voting out all imposters
+            </li>
+            <li>
+              • Imposters win by eliminating enough students or sabotaging the
+              campus
+            </li>
           </ul>
         </div>
       </div>

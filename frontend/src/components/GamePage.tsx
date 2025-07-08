@@ -46,7 +46,7 @@ export function GamePage() {
     (async () => {
       try {
         await loadScript(`${backendUrl}/socket.io/socket.io.js`, "socket-io");
-        await loadScript("/game.js", "unsw-game");
+        await loadScript("/game.js", "sussy-uni-game");
       } catch (err) {
         console.error("Failed to load game scripts", err);
       }

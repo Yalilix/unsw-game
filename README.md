@@ -1,10 +1,10 @@
-# Sussy Uni
+# SUS1511
 
 A multiplayer Among Us-inspired game set on a university campus where students must complete academic tasks while imposters attempt to sabotage the mission.
 
 ## 🎮 Game Description
 
-**Sussy Uni** is an online multiplayer social deduction game for 4-10 players. Players are divided into two teams:
+**SUS1511** is an online multiplayer social deduction game for 4-10 players. Players are divided into two teams:
 
 - **Students (Crewmates)**: Answer course questions correctly to complete tasks around campus and save the university
 - **Imposters**: Eliminate students and sabotage their mission to take over the campus

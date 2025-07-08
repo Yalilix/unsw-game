@@ -157,7 +157,7 @@ export function WaitingRoom() {
         {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-bold text-foreground">
-            Welcome to Sussy Uni!
+            Welcome to SUS1511!
           </h1>
           <p className="text-muted-foreground">
             Create or join a room to start playing

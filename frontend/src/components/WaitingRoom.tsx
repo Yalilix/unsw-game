@@ -54,18 +54,6 @@ export function WaitingRoom() {
 			setError("Please enter a room ID");
 			return;
 		}
-		// Prompt for name if not set or is default
-		let savedName = localStorage.getItem(PLAYER_NAME_KEY) || "";
-		if (!savedName || isDefaultPlayerName(savedName)) {
-			setPendingJoinRoomId(joinRoomId.trim());
-			setShowNameModal(true);
-			setPendingName("");
-			return;
-		}
-		await doJoinRoom(joinRoomId.trim(), savedName);
-	};
-
-	async function doJoinRoom(roomId: string, name: string) {
 		setLoading(true);
 		setError("");
 		try {
@@ -76,12 +64,15 @@ export function WaitingRoom() {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({ roomId }),
+				body: JSON.stringify({ roomId: joinRoomId.trim() }),
 			});
 			const data = await response.json();
 			if (data.success) {
-				localStorage.setItem(PLAYER_NAME_KEY, name);
-				navigate(`/room/${data.room.id}`);
+				setPendingJoinRoomId(joinRoomId.trim());
+				setShowNameModal(true);
+				setPendingName("");
+				setLoading(false);
+				return;
 			} else {
 				setError(data.error || "Failed to join room");
 			}
@@ -90,7 +81,7 @@ export function WaitingRoom() {
 		} finally {
 			setLoading(false);
 		}
-	}
+	};
 
 	function handleNameSubmit(e?: React.FormEvent) {
 		if (e) e.preventDefault();
@@ -112,9 +103,37 @@ export function WaitingRoom() {
 			setNameError("Name cannot be a default like 'Player 1'.");
 			return;
 		}
-		setNameError("");
-		setShowNameModal(false);
-		doJoinRoom(pendingJoinRoomId, trimmed);
+
+		// Check for duplicate name in the room
+		fetch(
+			`${
+				import.meta.env.VITE_BACKEND_URL || "http://localhost:3000"
+			}/api/rooms/${pendingJoinRoomId}`
+		)
+			.then((res) => res.json())
+			.then((data) => {
+				if (data.success && data.room && data.room.players) {
+					const taken = data.room.players.some(
+						(p: any) =>
+							p.name.toLowerCase() === trimmed.toLowerCase()
+					);
+					if (taken) {
+						setNameError(
+							"That name is already taken in this room."
+						);
+						return;
+					}
+				}
+				setNameError("");
+				setShowNameModal(false);
+				localStorage.setItem(PLAYER_NAME_KEY, trimmed);
+				navigate(`/room/${pendingJoinRoomId}`);
+			})
+			.catch(() => {
+				setNameError(
+					"Failed to check for duplicate names. Please try again."
+				);
+			});
 	}
 
 	return (
@@ -173,13 +192,15 @@ export function WaitingRoom() {
 							className="w-full bg-input border border-border rounded px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 							maxLength={6}
 						/>
-						<button
-							onClick={joinRoom}
-							disabled={loading || !joinRoomId.trim()}
-							className="w-full bg-secondary text-secondary-foreground py-3 px-6 rounded font-bold hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-						>
-							{loading ? "Joining..." : "Join Room"}
-						</button>
+						<div className="flex items-center gap-2">
+							<button
+								onClick={joinRoom}
+								disabled={loading || !joinRoomId.trim()}
+								className="flex-1 bg-secondary text-secondary-foreground py-3 px-6 rounded font-bold hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								{loading ? "Joining..." : "Join Room"}
+							</button>
+						</div>
 					</div>
 				</div>
 

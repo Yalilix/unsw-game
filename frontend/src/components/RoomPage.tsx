@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import io, { Socket } from "socket.io-client";
 import { useSocket } from "../SocketContext";
 
 interface Player {

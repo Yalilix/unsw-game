@@ -93,6 +93,7 @@ app.get("/api/rooms/:roomId", (req, res) => {
 				maxPlayers: room.maxPlayers,
 				minPlayers: room.minPlayers,
 				status: room.status,
+				players: room.players.map((p) => ({ name: p.name })),
 			},
 		});
 	} catch (error) {

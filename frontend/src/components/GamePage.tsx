@@ -46,7 +46,7 @@ export function GamePage() {
     (async () => {
       try {
         await loadScript(`${backendUrl}/socket.io/socket.io.js`, "socket-io");
-        await loadScript("/game.js", "unsw-game");
+        await loadScript("/game.js", "sussy-uni-game");
       } catch (err) {
         console.error("Failed to load game scripts", err);
       }
@@ -101,7 +101,7 @@ export function GamePage() {
         className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
         style={{ display: "none", zIndex: 1000 }}
       >
-        <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4 border-2 border-gray-600">
+        <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4 border-2 border-gray-600 max-h-[90vh] overflow-y-auto">
           <h2 className="text-xl font-bold mb-4 text-center text-white">
             Vote to Eject
           </h2>
@@ -129,7 +129,7 @@ export function GamePage() {
         className="absolute inset-0 bg-red-900 bg-opacity-75 flex items-center justify-center"
         style={{ display: "none", zIndex: 1000 }}
       >
-        <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+        <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
           <h2 className="text-xl font-bold mb-4 text-center text-red-600">
             Emergency Meeting
           </h2>
@@ -152,7 +152,7 @@ export function GamePage() {
         className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
         style={{ display: "none", zIndex: 1000 }}
       >
-        <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4 border-2 border-gray-600">
+        <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4 border-2 border-gray-600 max-h-[90vh] overflow-y-auto">
           <h2 className="text-xl font-bold mb-4 text-center text-white">
             Voting Results
           </h2>
@@ -180,7 +180,7 @@ export function GamePage() {
         className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
         style={{ display: "none", zIndex: 1000 }}
       >
-        <div className="bg-gray-800 p-6 rounded-lg max-w-lg w-full mx-4 border-2 border-gray-600">
+        <div className="bg-gray-800 p-6 rounded-lg max-w-lg w-full mx-4 border-2 border-gray-600 max-h-[90vh] overflow-y-auto">
           <h2
             id="gameEndTitle"
             className="text-2xl font-bold mb-4 text-center text-white"
@@ -213,7 +213,7 @@ export function GamePage() {
         className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
         style={{ display: "none", zIndex: 1000 }}
       >
-        <div className="bg-gray-800 p-6 rounded-lg max-w-lg w-full mx-4 border-2 border-gray-600">
+        <div className="bg-gray-800 p-6 rounded-lg max-w-lg w-full mx-4 border-2 border-gray-600 max-h-[90vh] overflow-y-auto">
           <h2 className="text-xl font-bold mb-4 text-center text-white">
             Complete Task
           </h2>

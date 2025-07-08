@@ -29,17 +29,19 @@ window.addEventListener("resize", () => {
   handleAutoFullscreen(); // Check if fullscreen should be toggled
 });
 
-// Initial fullscreen check when game loads
+// Initial setup when game loads
 setTimeout(() => {
-  handleAutoFullscreen();
+  lockToLandscape(); // Lock to landscape orientation
+  handleAutoFullscreen(); // Handle fullscreen for small screens
 }, 1000); // Small delay to ensure page is fully loaded
 
-// Trigger fullscreen on first user interaction (many browsers require this)
+// Trigger fullscreen and orientation lock on first user interaction (many browsers require this)
 let hasInteracted = false;
 function handleFirstInteraction() {
   if (!hasInteracted) {
     hasInteracted = true;
-    handleAutoFullscreen();
+    lockToLandscape(); // Ensure landscape lock on first interaction
+    handleAutoFullscreen(); // Ensure fullscreen on small screens
     // Remove listeners after first interaction
     document.removeEventListener("click", handleFirstInteraction);
     document.removeEventListener("keydown", handleFirstInteraction);
@@ -50,6 +52,21 @@ function handleFirstInteraction() {
 document.addEventListener("click", handleFirstInteraction);
 document.addEventListener("keydown", handleFirstInteraction);
 document.addEventListener("touchstart", handleFirstInteraction);
+
+// Cleanup orientation lock when leaving the page
+window.addEventListener("beforeunload", () => {
+  unlockOrientation();
+});
+
+// Also unlock when the page becomes hidden (user switches tabs/apps)
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    unlockOrientation();
+  } else {
+    // Re-lock when page becomes visible again
+    lockToLandscape();
+  }
+});
 
 const socket = io(window.BACKEND_URL || "http://localhost:3000");
 
@@ -234,14 +251,24 @@ const inputs = {
   right: false,
 };
 
+// Track if any modal is currently open to prevent movement
+let isModalOpen = false;
+
+// Helper function to emit inputs only when no modal is open
+function emitInputs() {
+  if (!isModalOpen) {
+    socket.emit("inputs", inputs);
+  }
+}
+
 window.addEventListener("keydown", (e) => {
-  if (e.key === "w") {
+  if (e.key === "w" || e.key === "ArrowUp") {
     inputs["up"] = true;
-  } else if (e.key === "s") {
+  } else if (e.key === "s" || e.key === "ArrowDown") {
     inputs["down"] = true;
-  } else if (e.key === "d") {
+  } else if (e.key === "d" || e.key === "ArrowRight") {
     inputs["right"] = true;
-  } else if (e.key === "a") {
+  } else if (e.key === "a" || e.key === "ArrowLeft") {
     inputs["left"] = true;
   }
   const moving = inputs.up || inputs.down || inputs.left || inputs.right;
@@ -256,17 +283,17 @@ window.addEventListener("keydown", (e) => {
     }
   }
   // Removed spacebar functionality - now using buttons
-  socket.emit("inputs", inputs);
+  emitInputs();
 });
 
 window.addEventListener("keyup", (e) => {
-  if (e.key === "w") {
+  if (e.key === "w" || e.key === "ArrowUp") {
     inputs["up"] = false;
-  } else if (e.key === "s") {
+  } else if (e.key === "s" || e.key === "ArrowDown") {
     inputs["down"] = false;
-  } else if (e.key === "d") {
+  } else if (e.key === "d" || e.key === "ArrowRight") {
     inputs["right"] = false;
-  } else if (e.key === "a") {
+  } else if (e.key === "a" || e.key === "ArrowLeft") {
     inputs["left"] = false;
   }
   const stillMoving = inputs.up || inputs.down || inputs.left || inputs.right;
@@ -278,8 +305,235 @@ window.addEventListener("keyup", (e) => {
       console.warn("Walking audio pause error:", err);
     }
   }
-  socket.emit("inputs", inputs);
+  emitInputs();
 });
+
+// Mobile Joystick Implementation
+let joystick = null;
+let joystickKnob = null;
+let joystickActive = false;
+let joystickCenter = { x: 0, y: 0 };
+let joystickRadius = 60;
+let joystickKnobRadius = 25;
+
+function createJoystick() {
+  // Create joystick container
+  joystick = document.createElement("div");
+  joystick.id = "mobileJoystick";
+  joystick.style.cssText = `
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    width: ${joystickRadius * 2}px;
+    height: ${joystickRadius * 2}px;
+    border: 4px solid rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    display: none;
+    touch-action: none;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  `;
+
+  // Create joystick knob
+  joystickKnob = document.createElement("div");
+  joystickKnob.style.cssText = `
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: ${joystickKnobRadius * 2}px;
+    height: ${joystickKnobRadius * 2}px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    touch-action: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  `;
+
+  joystick.appendChild(joystickKnob);
+  document.body.appendChild(joystick);
+  console.log("Joystick created and added to document");
+
+  updateJoystickVisibility();
+}
+
+function updateJoystickVisibility() {
+  if (!joystick) {
+    console.log("Joystick element not found");
+    return;
+  }
+
+  const shouldShow =
+    (window.innerWidth < 700 || window.innerHeight < 700) && !isModalOpen;
+  console.log(
+    "Should show joystick:",
+    shouldShow,
+    "Screen:",
+    window.innerWidth,
+    "x",
+    window.innerHeight,
+    "Modal open:",
+    isModalOpen
+  );
+  joystick.style.display = shouldShow ? "block" : "none";
+
+  if (shouldShow) {
+    console.log("Joystick should be visible now");
+  }
+}
+
+function getJoystickInput(deltaX, deltaY) {
+  const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  const maxDistance = joystickRadius - joystickKnobRadius;
+
+  if (distance > maxDistance) {
+    deltaX = (deltaX / distance) * maxDistance;
+    deltaY = (deltaY / distance) * maxDistance;
+  }
+
+  // Calculate input based on joystick position (with dead zone)
+  const deadZone = 0.3;
+  const normalizedX = deltaX / maxDistance;
+  const normalizedY = deltaY / maxDistance;
+
+  const magnitude = Math.sqrt(
+    normalizedX * normalizedX + normalizedY * normalizedY
+  );
+
+  if (magnitude < deadZone) {
+    return { up: false, down: false, left: false, right: false };
+  }
+
+  // Convert to directional inputs
+  const threshold = 0.5;
+  return {
+    up: normalizedY < -threshold,
+    down: normalizedY > threshold,
+    left: normalizedX < -threshold,
+    right: normalizedX > threshold,
+  };
+}
+
+function updateJoystickKnobPosition(deltaX, deltaY) {
+  const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  const maxDistance = joystickRadius - joystickKnobRadius;
+
+  if (distance > maxDistance) {
+    deltaX = (deltaX / distance) * maxDistance;
+    deltaY = (deltaY / distance) * maxDistance;
+  }
+
+  joystickKnob.style.transform = `translate(${
+    -joystickKnobRadius + deltaX
+  }px, ${-joystickKnobRadius + deltaY}px)`;
+}
+
+function resetJoystickInputs() {
+  inputs.up = false;
+  inputs.down = false;
+  inputs.left = false;
+  inputs.right = false;
+
+  const stillMoving = false;
+  if (!stillMoving) {
+    try {
+      walking.pause();
+      walking.currentTime = 0;
+    } catch (err) {
+      console.warn("Walking audio pause error:", err);
+    }
+  }
+  emitInputs();
+}
+
+function handleJoystickTouch(clientX, clientY) {
+  const joystickRect = joystick.getBoundingClientRect();
+  joystickCenter.x = joystickRect.left + joystickRect.width / 2;
+  joystickCenter.y = joystickRect.top + joystickRect.height / 2;
+
+  const deltaX = clientX - joystickCenter.x;
+  const deltaY = clientY - joystickCenter.y;
+
+  updateJoystickKnobPosition(deltaX, deltaY);
+
+  const joystickInput = getJoystickInput(deltaX, deltaY);
+
+  // Update inputs and check if movement started
+  const wasMoving = inputs.up || inputs.down || inputs.left || inputs.right;
+  inputs.up = joystickInput.up;
+  inputs.down = joystickInput.down;
+  inputs.left = joystickInput.left;
+  inputs.right = joystickInput.right;
+
+  const isMoving = inputs.up || inputs.down || inputs.left || inputs.right;
+
+  // Handle audio
+  if (isMoving && !wasMoving && walking.paused) {
+    try {
+      walking.currentTime = 0;
+      walking
+        .play()
+        .catch((err) => console.warn("Walking audio blocked:", err));
+    } catch (err) {
+      console.warn("Walking audio error:", err);
+    }
+  } else if (!isMoving && wasMoving) {
+    try {
+      walking.pause();
+      walking.currentTime = 0;
+    } catch (err) {
+      console.warn("Walking audio pause error:", err);
+    }
+  }
+
+  emitInputs();
+}
+
+// Touch event listeners for joystick
+function setupJoystickEvents() {
+  if (!joystick) return;
+
+  joystick.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    joystickActive = true;
+    const touch = e.touches[0];
+    handleJoystickTouch(touch.clientX, touch.clientY);
+  });
+
+  document.addEventListener("touchmove", (e) => {
+    if (!joystickActive) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    handleJoystickTouch(touch.clientX, touch.clientY);
+  });
+
+  document.addEventListener("touchend", (e) => {
+    if (!joystickActive) return;
+    e.preventDefault();
+    joystickActive = false;
+
+    // Reset knob position
+    joystickKnob.style.transform = `translate(-${joystickKnobRadius}px, -${joystickKnobRadius}px)`;
+
+    // Reset inputs
+    resetJoystickInputs();
+  });
+}
+
+// Initialize joystick immediately since game.js loads after DOM is ready
+function initializeJoystick() {
+  console.log("Initializing joystick...");
+  console.log("Screen size:", window.innerWidth, "x", window.innerHeight);
+  createJoystick();
+  setupJoystickEvents();
+}
+
+// Call immediately - DOM is already ready when game.js loads
+initializeJoystick();
+
+// Update joystick visibility on window resize
+window.addEventListener("resize", updateJoystickVisibility);
 
 // Setup background nature sound
 nature.loop = true;
@@ -403,6 +657,40 @@ window.attemptKill = function () {
     socket.emit("kill");
   }
 };
+
+// Lock orientation to landscape for better mobile gaming experience
+function lockToLandscape() {
+  if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock("landscape").catch((err) => {
+      console.log("Orientation lock failed:", err);
+      // Fallback: some browsers don't support orientation lock
+    });
+  } else if (screen.lockOrientation) {
+    // Fallback for older browsers
+    screen.lockOrientation("landscape");
+  } else if (screen.mozLockOrientation) {
+    // Firefox fallback
+    screen.mozLockOrientation("landscape");
+  } else if (screen.msLockOrientation) {
+    // IE/Edge fallback
+    screen.msLockOrientation("landscape");
+  } else {
+    console.log("Orientation lock not supported on this browser");
+  }
+}
+
+// Unlock orientation (for cleanup)
+function unlockOrientation() {
+  if (screen.orientation && screen.orientation.unlock) {
+    screen.orientation.unlock();
+  } else if (screen.unlockOrientation) {
+    screen.unlockOrientation();
+  } else if (screen.mozUnlockOrientation) {
+    screen.mozUnlockOrientation();
+  } else if (screen.msUnlockOrientation) {
+    screen.msUnlockOrientation();
+  }
+}
 
 // Automatic fullscreen management for small screens
 function handleAutoFullscreen() {
@@ -566,6 +854,7 @@ function showMeetingUI() {
   if (meetingUI) {
     meetingUI.style.display = "flex";
     startMeetingTimer();
+    isModalOpen = true; // Block movement when meeting UI is open
   }
 }
 
@@ -578,6 +867,7 @@ function showVotingUI() {
 
   createVotingOptions();
   startVotingTimer(); // Start the 60-second voting timer
+  isModalOpen = true; // Block movement when voting UI is open
 }
 
 function hideAllUI() {
@@ -592,6 +882,8 @@ function hideAllUI() {
   if (votingResultsUI) votingResultsUI.style.display = "none";
   if (gameEndUI) gameEndUI.style.display = "none";
   if (taskModal) taskModal.style.display = "none";
+
+  isModalOpen = false; // Allow movement when all UIs are hidden
 }
 
 // Task modal functions
@@ -619,6 +911,7 @@ function showTaskModal(data) {
 
   taskModal.style.display = "flex";
   console.log("Task modal shown with question:", data.question);
+  isModalOpen = true; // Block movement when task modal is open
 }
 
 function hideTaskModal() {
@@ -627,6 +920,7 @@ function hideTaskModal() {
     taskModal.style.display = "none";
   }
   gameState.currentTaskModal = null;
+  isModalOpen = false; // Allow movement when task modal is hidden
 }
 
 function submitTaskAnswer(answer) {
@@ -734,6 +1028,7 @@ function showVotingResults(data) {
 
   votingResultsContent.innerHTML = resultHTML;
   votingResultsUI.style.display = "flex";
+  isModalOpen = true; // Block movement when voting results are shown
 
   // Start 5-second countdown
   let timeLeft = 5;
@@ -747,6 +1042,7 @@ function showVotingResults(data) {
     if (timeLeft < 0) {
       clearInterval(timer);
       votingResultsUI.style.display = "none";
+      isModalOpen = false; // Allow movement when voting results are hidden
     }
   }, 1000);
 }
@@ -786,6 +1082,7 @@ function showGameEnd(data) {
   }
 
   gameEndUI.style.display = "flex";
+  isModalOpen = true; // Block movement when game end screen is shown
 
   // Set up button handlers
   setupGameEndButtons();
@@ -799,12 +1096,14 @@ function setupGameEndButtons() {
     goToLobbyButton.onclick = () => {
       // Send return to lobby request to server
       socket.emit("returnToLobby");
+      isModalOpen = false; // Allow movement when returning to lobby
     };
   }
 
   if (exitGameButton) {
     exitGameButton.onclick = () => {
       // Navigate back to home
+      isModalOpen = false; // Allow movement when exiting
       window.location.href = "/";
     };
   }
@@ -1077,10 +1376,18 @@ function renderUI() {
           canvas.fillText(fullText, 10, yOffset);
           yOffset += 20;
         } else {
-          // Wrap text for small screens
-          const wrappedLines = wrapText(fullText, maxTextWidth);
-          for (const line of wrappedLines) {
-            canvas.fillText(line, 10, yOffset);
+          // Wrap text for small screens with proper indentation
+          const statusWidth = canvas.measureText(status + " ").width;
+          const indentedMaxWidth = maxTextWidth - statusWidth;
+          const locationOnlyWrapped = wrapText(location, indentedMaxWidth);
+
+          // First line: status + first part of location
+          canvas.fillText(`${status} ${locationOnlyWrapped[0]}`, 10, yOffset);
+          yOffset += 20;
+
+          // Subsequent lines: indented to align with text after status
+          for (let i = 1; i < locationOnlyWrapped.length; i++) {
+            canvas.fillText(locationOnlyWrapped[i], 10 + statusWidth, yOffset);
             yOffset += 20;
           }
         }
@@ -1101,57 +1408,6 @@ function renderUI() {
     canvas.fillText("VOTING IN PROGRESS", canvasEl.width / 2 - 150, 50);
   }
 
-  // Instructions
-  const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
-  const maxInstructionsWidth = isSmallScreen
-    ? canvasEl.width / 3
-    : canvasEl.width * 0.6; // 1/3 on small screens, 60% on large
-
-  canvas.fillStyle = "white";
-  canvas.font = "14px Arial";
-
-  // Render "WASD: Move" instruction
-  const moveText = "WASD: Move";
-  if (canvas.measureText(moveText).width <= maxInstructionsWidth) {
-    canvas.fillText(moveText, 10, canvasEl.height - 20);
-  } else {
-    const wrappedMoveLines = wrapText(moveText, maxInstructionsWidth);
-    let yOffsetMove = canvasEl.height - 20 - (wrappedMoveLines.length - 1) * 16;
-    for (const line of wrappedMoveLines) {
-      canvas.fillText(line, 10, yOffsetMove);
-      yOffsetMove += 16;
-    }
-  }
-
-  // Render role-specific instructions
-  if (gameState.playerRole === "imposter" && gameState.isAlive) {
-    const imposterText = "Use buttons to KILL and REPORT";
-    if (canvas.measureText(imposterText).width <= maxInstructionsWidth) {
-      canvas.fillText(imposterText, 10, canvasEl.height - 40);
-    } else {
-      const wrappedImposterLines = wrapText(imposterText, maxInstructionsWidth);
-      let yOffsetImposter =
-        canvasEl.height - 40 - (wrappedImposterLines.length - 1) * 16;
-      for (const line of wrappedImposterLines) {
-        canvas.fillText(line, 10, yOffsetImposter);
-        yOffsetImposter += 16;
-      }
-    }
-  } else if (gameState.isAlive) {
-    const crewText = "Use button to REPORT dead bodies";
-    if (canvas.measureText(crewText).width <= maxInstructionsWidth) {
-      canvas.fillText(crewText, 10, canvasEl.height - 40);
-    } else {
-      const wrappedCrewLines = wrapText(crewText, maxInstructionsWidth);
-      let yOffsetCrew =
-        canvasEl.height - 40 - (wrappedCrewLines.length - 1) * 16;
-      for (const line of wrappedCrewLines) {
-        canvas.fillText(line, 10, yOffsetCrew);
-        yOffsetCrew += 16;
-      }
-    }
-  }
-
   // Render minimap
   renderMinimap();
 }
@@ -1166,8 +1422,6 @@ function renderMinimap() {
   const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
   const minimapWidth = isSmallScreen ? 100 : 200;
   const minimapHeight = isSmallScreen ? 75 : 150;
-  const minimapX = canvasEl.width - minimapWidth - 20; // 20px from right edge
-  const minimapY = 20; // 20px from top edge
 
   // Calculate scale factors
   const mapPixelWidth = groundMap[0].length * TILE_SIZE;
@@ -1179,18 +1433,33 @@ function renderMinimap() {
   const scaledWidth = mapPixelWidth * scale;
   const scaledHeight = mapPixelHeight * scale;
 
-  // Center the minimap if aspect ratios don't match
-  const offsetX = (minimapWidth - scaledWidth) / 2;
-  const offsetY = (minimapHeight - scaledHeight) / 2;
+  // Position minimap with equal spacing from top and right edges
+  const spacing = 20; // Equal spacing from edges
+  const minimapX = canvasEl.width - scaledWidth - spacing;
+  const minimapY = spacing;
 
-  // Draw minimap background
+  // No offset needed since we're positioning the actual content
+  const offsetX = 0;
+  const offsetY = 0;
+
+  // Draw minimap background - fit exactly around the map content
   canvas.fillStyle = "rgba(0, 0, 0, 0.7)";
-  canvas.fillRect(minimapX, minimapY, minimapWidth, minimapHeight);
+  canvas.fillRect(
+    minimapX + offsetX,
+    minimapY + offsetY,
+    scaledWidth,
+    scaledHeight
+  );
 
-  // Draw minimap border
+  // Draw minimap border - fit exactly around the map content
   canvas.strokeStyle = "white";
   canvas.lineWidth = 2;
-  canvas.strokeRect(minimapX, minimapY, minimapWidth, minimapHeight);
+  canvas.strokeRect(
+    minimapX + offsetX,
+    minimapY + offsetY,
+    scaledWidth,
+    scaledHeight
+  );
 
   // Draw simplified map (just a dark background for now)
   canvas.fillStyle = "rgba(40, 40, 40, 1)";

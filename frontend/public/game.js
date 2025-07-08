@@ -329,7 +329,7 @@ function createJoystick() {
     border: 4px solid rgba(255, 255, 255, 0.6);
     border-radius: 50%;
     background-color: rgba(0, 0, 0, 0.3);
-    z-index: 10000;
+    z-index: 100;
     display: none;
     touch-action: none;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);

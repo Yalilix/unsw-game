@@ -12,8 +12,8 @@ export const Intro = () => {
         </h1>
 
         <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-12 leading-relaxed">
-          Play online or over local wifi 4-10 players as you attempt to answer
-          questions to save the campus from annihilation.
+          Play online with 4-10 players as you attempt to answer questions to
+          save the campus from annihilation.
         </p>
         <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-12 leading-relaxed">
           But beware... as there may be a student imposter on campus!

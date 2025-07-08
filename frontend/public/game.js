@@ -29,27 +29,44 @@ window.addEventListener("resize", () => {
 	handleAutoFullscreen(); // Check if fullscreen should be toggled
 });
 
-// Initial fullscreen check when game loads
+// Initial setup when game loads
 setTimeout(() => {
-	handleAutoFullscreen();
+  lockToLandscape(); // Lock to landscape orientation
+  handleAutoFullscreen(); // Handle fullscreen for small screens
 }, 1000); // Small delay to ensure page is fully loaded
 
-// Trigger fullscreen on first user interaction (many browsers require this)
+// Trigger fullscreen and orientation lock on first user interaction (many browsers require this)
 let hasInteracted = false;
 function handleFirstInteraction() {
-	if (!hasInteracted) {
-		hasInteracted = true;
-		handleAutoFullscreen();
-		// Remove listeners after first interaction
-		document.removeEventListener("click", handleFirstInteraction);
-		document.removeEventListener("keydown", handleFirstInteraction);
-		document.removeEventListener("touchstart", handleFirstInteraction);
-	}
+  if (!hasInteracted) {
+    hasInteracted = true;
+    lockToLandscape(); // Ensure landscape lock on first interaction
+    handleAutoFullscreen(); // Ensure fullscreen on small screens
+    // Remove listeners after first interaction
+    document.removeEventListener("click", handleFirstInteraction);
+    document.removeEventListener("keydown", handleFirstInteraction);
+    document.removeEventListener("touchstart", handleFirstInteraction);
+  }
 }
 
 document.addEventListener("click", handleFirstInteraction);
 document.addEventListener("keydown", handleFirstInteraction);
 document.addEventListener("touchstart", handleFirstInteraction);
+
+// Cleanup orientation lock when leaving the page
+window.addEventListener("beforeunload", () => {
+  unlockOrientation();
+});
+
+// Also unlock when the page becomes hidden (user switches tabs/apps)
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    unlockOrientation();
+  } else {
+    // Re-lock when page becomes visible again
+    lockToLandscape();
+  }
+});
 
 const socket = io(window.BACKEND_URL || "http://localhost:3000");
 
@@ -148,33 +165,45 @@ socket.on("killCooldown", (data) => {
 
 // Player killed event
 socket.on("playerKilled", (data) => {
-	console.log("Player killed:", data.victimId);
+  console.log("Player killed:", data.victimId);
+
+  // If the current player was killed, close the task modal if it's open
+  if (data.victimId === socket.id) {
+    hideTaskModal();
+  }
 });
 
 // Meeting events
 socket.on("meetingStarted", (data) => {
-	gameState.meetingActive = false; // No separate meeting phase
-	gameState.votingActive = true; // Start voting immediately
-	gameState.alivePlayers = data.alivePlayers;
-	gameState.currentVote = null; // Reset current vote
+  gameState.meetingActive = false; // No separate meeting phase
+  gameState.votingActive = true; // Start voting immediately
+  gameState.alivePlayers = data.alivePlayers;
+  gameState.currentVote = null; // Reset current vote
 
-	// Handle body removal and teleportation
-	if (data.allBodiesRemoved) {
-		gameState.deadBodies = []; // Clear all dead bodies from frontend
-	}
+  // Close any open task modal when meeting starts
+  hideTaskModal();
 
-	showVotingUI(); // Show voting UI immediately
-	console.log("Meeting started by", data.reportedBy, "- voting begins now");
-	console.log("All bodies removed and players teleported to spawn");
+  // Handle body removal and teleportation
+  if (data.allBodiesRemoved) {
+    gameState.deadBodies = []; // Clear all dead bodies from frontend
+  }
+
+  showVotingUI(); // Show voting UI immediately
+  console.log("Meeting started by", data.reportedBy, "- voting begins now");
+  console.log("All bodies removed and players teleported to spawn");
 });
 
 socket.on("votingStarted", (data) => {
-	// This event may still be sent by old code, but we handle everything in meetingStarted now
-	gameState.meetingActive = false;
-	gameState.votingActive = true;
-	gameState.alivePlayers = data.alivePlayers;
-	showVotingUI();
-	console.log("Voting started");
+  // This event may still be sent by old code, but we handle everything in meetingStarted now
+  gameState.meetingActive = false;
+  gameState.votingActive = true;
+  gameState.alivePlayers = data.alivePlayers;
+
+  // Close any open task modal when voting starts
+  hideTaskModal();
+
+  showVotingUI();
+  console.log("Voting started");
 });
 
 socket.on("voteUpdate", (data) => {
@@ -201,9 +230,23 @@ socket.on("gameOver", (data) => {
 
 // Return to lobby event
 socket.on("returnToLobby", (data) => {
-	console.log("Returning to lobby for room:", data.roomId);
-	// Navigate to the room lobby page
-	window.location.href = `/room/${data.roomId}`;
+  console.log("Returning to lobby for room:", data.roomId);
+
+  // Store current player info for lobby reconnection
+  const currentPlayer = data.players.find((p) => p.id === socket.id);
+  if (currentPlayer) {
+    sessionStorage.setItem(
+      `room_${data.roomId}_playerName`,
+      currentPlayer.name
+    );
+    sessionStorage.setItem(`room_${data.roomId}_returnFromGame`, "true");
+    console.log(
+      `Stored player name "${currentPlayer.name}" for lobby reconnection`
+    );
+  }
+
+  // Navigate to the room lobby page
+  window.location.href = `/room/${data.roomId}`;
 });
 
 // Task events
@@ -234,52 +277,289 @@ const inputs = {
 	right: false,
 };
 
+// Track if any modal is currently open to prevent movement
+let isModalOpen = false;
+
+// Helper function to emit inputs only when no modal is open
+function emitInputs() {
+  if (!isModalOpen) {
+    socket.emit("inputs", inputs);
+  }
+}
+
 window.addEventListener("keydown", (e) => {
-	if (e.key === "w") {
-		inputs["up"] = true;
-	} else if (e.key === "s") {
-		inputs["down"] = true;
-	} else if (e.key === "d") {
-		inputs["right"] = true;
-	} else if (e.key === "a") {
-		inputs["left"] = true;
-	}
-	const moving = inputs.up || inputs.down || inputs.left || inputs.right;
-	if (moving && walking.paused) {
-		try {
-			walking.currentTime = 0;
-			walking
-				.play()
-				.catch((err) => console.warn("Walking audio blocked:", err));
-		} catch (err) {
-			console.warn("Walking audio error:", err);
-		}
-	}
-	// Removed spacebar functionality - now using buttons
-	socket.emit("inputs", inputs);
+  if (e.key === "w" || e.key === "ArrowUp") {
+    inputs["up"] = true;
+  } else if (e.key === "s" || e.key === "ArrowDown") {
+    inputs["down"] = true;
+  } else if (e.key === "d" || e.key === "ArrowRight") {
+    inputs["right"] = true;
+  } else if (e.key === "a" || e.key === "ArrowLeft") {
+    inputs["left"] = true;
+  }
+  const moving = inputs.up || inputs.down || inputs.left || inputs.right;
+  if (moving && walking.paused) {
+    try {
+      walking.currentTime = 0;
+      walking
+        .play()
+        .catch((err) => console.warn("Walking audio blocked:", err));
+    } catch (err) {
+      console.warn("Walking audio error:", err);
+    }
+  }
+  // Removed spacebar functionality - now using buttons
+  emitInputs();
 });
 
 window.addEventListener("keyup", (e) => {
-	if (e.key === "w") {
-		inputs["up"] = false;
-	} else if (e.key === "s") {
-		inputs["down"] = false;
-	} else if (e.key === "d") {
-		inputs["right"] = false;
-	} else if (e.key === "a") {
-		inputs["left"] = false;
-	}
-	const stillMoving = inputs.up || inputs.down || inputs.left || inputs.right;
-	if (!stillMoving) {
-		try {
-			walking.pause();
-			walking.currentTime = 0;
-		} catch (err) {
-			console.warn("Walking audio pause error:", err);
-		}
-	}
-	socket.emit("inputs", inputs);
+  if (e.key === "w" || e.key === "ArrowUp") {
+    inputs["up"] = false;
+  } else if (e.key === "s" || e.key === "ArrowDown") {
+    inputs["down"] = false;
+  } else if (e.key === "d" || e.key === "ArrowRight") {
+    inputs["right"] = false;
+  } else if (e.key === "a" || e.key === "ArrowLeft") {
+    inputs["left"] = false;
+  }
+  const stillMoving = inputs.up || inputs.down || inputs.left || inputs.right;
+  if (!stillMoving) {
+    try {
+      walking.pause();
+      walking.currentTime = 0;
+    } catch (err) {
+      console.warn("Walking audio pause error:", err);
+    }
+  }
+  emitInputs();
 });
+
+// Mobile Joystick Implementation
+let joystick = null;
+let joystickKnob = null;
+let joystickActive = false;
+let joystickCenter = { x: 0, y: 0 };
+let joystickRadius = 60;
+let joystickKnobRadius = 25;
+
+function createJoystick() {
+  // Create joystick container
+  joystick = document.createElement("div");
+  joystick.id = "mobileJoystick";
+  joystick.style.cssText = `
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    width: ${joystickRadius * 2}px;
+    height: ${joystickRadius * 2}px;
+    border: 4px solid rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    display: none;
+    touch-action: none;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  `;
+
+  // Create joystick knob
+  joystickKnob = document.createElement("div");
+  joystickKnob.style.cssText = `
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: ${joystickKnobRadius * 2}px;
+    height: ${joystickKnobRadius * 2}px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    touch-action: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  `;
+
+  joystick.appendChild(joystickKnob);
+  document.body.appendChild(joystick);
+  console.log("Joystick created and added to document");
+
+  updateJoystickVisibility();
+}
+
+function updateJoystickVisibility() {
+  if (!joystick) {
+    console.log("Joystick element not found");
+    return;
+  }
+
+  const shouldShow =
+    (window.innerWidth < 700 || window.innerHeight < 700) && !isModalOpen;
+  console.log(
+    "Should show joystick:",
+    shouldShow,
+    "Screen:",
+    window.innerWidth,
+    "x",
+    window.innerHeight,
+    "Modal open:",
+    isModalOpen
+  );
+  joystick.style.display = shouldShow ? "block" : "none";
+
+  if (shouldShow) {
+    console.log("Joystick should be visible now");
+  }
+}
+
+function getJoystickInput(deltaX, deltaY) {
+  const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  const maxDistance = joystickRadius - joystickKnobRadius;
+
+  if (distance > maxDistance) {
+    deltaX = (deltaX / distance) * maxDistance;
+    deltaY = (deltaY / distance) * maxDistance;
+  }
+
+  // Calculate input based on joystick position (with dead zone)
+  const deadZone = 0.3;
+  const normalizedX = deltaX / maxDistance;
+  const normalizedY = deltaY / maxDistance;
+
+  const magnitude = Math.sqrt(
+    normalizedX * normalizedX + normalizedY * normalizedY
+  );
+
+  if (magnitude < deadZone) {
+    return { up: false, down: false, left: false, right: false };
+  }
+
+  // Convert to directional inputs
+  const threshold = 0.5;
+  return {
+    up: normalizedY < -threshold,
+    down: normalizedY > threshold,
+    left: normalizedX < -threshold,
+    right: normalizedX > threshold,
+  };
+}
+
+function updateJoystickKnobPosition(deltaX, deltaY) {
+  const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  const maxDistance = joystickRadius - joystickKnobRadius;
+
+  if (distance > maxDistance) {
+    deltaX = (deltaX / distance) * maxDistance;
+    deltaY = (deltaY / distance) * maxDistance;
+  }
+
+  joystickKnob.style.transform = `translate(${
+    -joystickKnobRadius + deltaX
+  }px, ${-joystickKnobRadius + deltaY}px)`;
+}
+
+function resetJoystickInputs() {
+  inputs.up = false;
+  inputs.down = false;
+  inputs.left = false;
+  inputs.right = false;
+
+  const stillMoving = false;
+  if (!stillMoving) {
+    try {
+      walking.pause();
+      walking.currentTime = 0;
+    } catch (err) {
+      console.warn("Walking audio pause error:", err);
+    }
+  }
+  emitInputs();
+}
+
+function handleJoystickTouch(clientX, clientY) {
+  const joystickRect = joystick.getBoundingClientRect();
+  joystickCenter.x = joystickRect.left + joystickRect.width / 2;
+  joystickCenter.y = joystickRect.top + joystickRect.height / 2;
+
+  const deltaX = clientX - joystickCenter.x;
+  const deltaY = clientY - joystickCenter.y;
+
+  updateJoystickKnobPosition(deltaX, deltaY);
+
+  const joystickInput = getJoystickInput(deltaX, deltaY);
+
+  // Update inputs and check if movement started
+  const wasMoving = inputs.up || inputs.down || inputs.left || inputs.right;
+  inputs.up = joystickInput.up;
+  inputs.down = joystickInput.down;
+  inputs.left = joystickInput.left;
+  inputs.right = joystickInput.right;
+
+  const isMoving = inputs.up || inputs.down || inputs.left || inputs.right;
+
+  // Handle audio
+  if (isMoving && !wasMoving && walking.paused) {
+    try {
+      walking.currentTime = 0;
+      walking
+        .play()
+        .catch((err) => console.warn("Walking audio blocked:", err));
+    } catch (err) {
+      console.warn("Walking audio error:", err);
+    }
+  } else if (!isMoving && wasMoving) {
+    try {
+      walking.pause();
+      walking.currentTime = 0;
+    } catch (err) {
+      console.warn("Walking audio pause error:", err);
+    }
+  }
+
+  emitInputs();
+}
+
+// Touch event listeners for joystick
+function setupJoystickEvents() {
+  if (!joystick) return;
+
+  joystick.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    joystickActive = true;
+    const touch = e.touches[0];
+    handleJoystickTouch(touch.clientX, touch.clientY);
+  });
+
+  document.addEventListener("touchmove", (e) => {
+    if (!joystickActive) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    handleJoystickTouch(touch.clientX, touch.clientY);
+  });
+
+  document.addEventListener("touchend", (e) => {
+    if (!joystickActive) return;
+    e.preventDefault();
+    joystickActive = false;
+
+    // Reset knob position
+    joystickKnob.style.transform = `translate(-${joystickKnobRadius}px, -${joystickKnobRadius}px)`;
+
+    // Reset inputs
+    resetJoystickInputs();
+  });
+}
+
+// Initialize joystick immediately since game.js loads after DOM is ready
+function initializeJoystick() {
+  console.log("Initializing joystick...");
+  console.log("Screen size:", window.innerWidth, "x", window.innerHeight);
+  createJoystick();
+  setupJoystickEvents();
+}
+
+// Call immediately - DOM is already ready when game.js loads
+initializeJoystick();
+
+// Update joystick visibility on window resize
+window.addEventListener("resize", updateJoystickVisibility);
 
 // Setup background nature sound
 nature.loop = true;
@@ -408,6 +688,40 @@ window.attemptKill = function () {
 	}
 };
 
+// Lock orientation to landscape for better mobile gaming experience
+function lockToLandscape() {
+  if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock("landscape").catch((err) => {
+      console.log("Orientation lock failed:", err);
+      // Fallback: some browsers don't support orientation lock
+    });
+  } else if (screen.lockOrientation) {
+    // Fallback for older browsers
+    screen.lockOrientation("landscape");
+  } else if (screen.mozLockOrientation) {
+    // Firefox fallback
+    screen.mozLockOrientation("landscape");
+  } else if (screen.msLockOrientation) {
+    // IE/Edge fallback
+    screen.msLockOrientation("landscape");
+  } else {
+    console.log("Orientation lock not supported on this browser");
+  }
+}
+
+// Unlock orientation (for cleanup)
+function unlockOrientation() {
+  if (screen.orientation && screen.orientation.unlock) {
+    screen.orientation.unlock();
+  } else if (screen.unlockOrientation) {
+    screen.unlockOrientation();
+  } else if (screen.mozUnlockOrientation) {
+    screen.mozUnlockOrientation();
+  } else if (screen.msUnlockOrientation) {
+    screen.msUnlockOrientation();
+  }
+}
+
 // Automatic fullscreen management for small screens
 function handleAutoFullscreen() {
 	const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
@@ -445,147 +759,132 @@ window.attemptReport = function () {
 };
 
 window.attemptTask = function () {
-	if (
-		gameState.playerRole === "crewmate" &&
-		gameState.isAlive &&
-		!gameState.meetingActive &&
-		!gameState.votingActive
-	) {
-		const myPlayer = players.find((player) => player.id === socket.id);
-		if (myPlayer) {
-			const closestTask = findClosestTask(myPlayer);
-			if (closestTask) {
-				socket.emit("attemptTask", {
-					taskLocation: closestTask.location,
-				});
-			}
-		}
-	}
+  if (
+    gameState.playerRole === "crewmate" &&
+    !gameState.meetingActive &&
+    !gameState.votingActive
+  ) {
+    const myPlayer = players.find((player) => player.id === socket.id);
+    if (myPlayer) {
+      const closestTask = findClosestTask(myPlayer);
+      if (closestTask) {
+        socket.emit("attemptTask", { taskLocation: closestTask.location });
+      }
+    }
+  }
 };
 
 // Update button visibility and state
 function updateButtons() {
-	const killButton = document.getElementById("killButton");
-	const reportButton = document.getElementById("reportButton");
-	const taskButton = document.getElementById("taskButton");
+  const killButton = document.getElementById("killButton");
+  const reportButton = document.getElementById("reportButton");
+  const taskButton = document.getElementById("taskButton");
 
-	if (!killButton || !reportButton || !taskButton) return;
+  if (!killButton || !reportButton || !taskButton) return;
 
-	const gameActive = !gameState.meetingActive && !gameState.votingActive;
-	const myPlayer = players.find((player) => player.id === socket.id);
+  const gameActive = !gameState.meetingActive && !gameState.votingActive;
+  const myPlayer = players.find((player) => player.id === socket.id);
 
-	// Kill button - only show for living imposters during active game
-	if (
-		gameState.playerRole === "imposter" &&
-		gameState.isAlive &&
-		gameActive
-	) {
-		killButton.style.display = "block";
+  // Kill button - only show for living imposters during active game
+  if (gameState.playerRole === "imposter" && gameState.isAlive && gameActive) {
+    killButton.style.display = "block";
 
-		// Calculate cooldown based on game start time and last kill time
-		const now = Date.now();
-		let remainingCooldown = 0;
+    // Calculate cooldown based on game start time and last kill time
+    const now = Date.now();
+    let remainingCooldown = 0;
 
-		if (gameState.gameStartTime > 0) {
-			const timeSinceGameStart = now - gameState.gameStartTime;
-			const timeSinceLastKill = gameState.lastKillTime
-				? now - gameState.lastKillTime
-				: Infinity;
+    if (gameState.gameStartTime > 0) {
+      const timeSinceGameStart = now - gameState.gameStartTime;
+      const timeSinceLastKill = gameState.lastKillTime
+        ? now - gameState.lastKillTime
+        : Infinity;
 
-			// Check both initial 30s cooldown and kill cooldown
-			const initialCooldown = Math.max(0, 30000 - timeSinceGameStart);
-			const killCooldown = Math.max(0, 30000 - timeSinceLastKill);
+      // Check both initial 30s cooldown and kill cooldown
+      const initialCooldown = Math.max(0, 30000 - timeSinceGameStart);
+      const killCooldown = Math.max(0, 30000 - timeSinceLastKill);
 
-			remainingCooldown = Math.max(initialCooldown, killCooldown);
-		}
+      remainingCooldown = Math.max(initialCooldown, killCooldown);
+    }
 
-		// Fallback to server-provided cooldown if we have it
-		if (gameState.killCooldownStart > 0) {
-			const elapsed = now - gameState.killCooldownStart;
-			const serverCooldown = Math.max(
-				0,
-				gameState.killCooldown - elapsed
-			);
-			remainingCooldown = Math.max(remainingCooldown, serverCooldown);
-		}
+    // Fallback to server-provided cooldown if we have it
+    if (gameState.killCooldownStart > 0) {
+      const elapsed = now - gameState.killCooldownStart;
+      const serverCooldown = Math.max(0, gameState.killCooldown - elapsed);
+      remainingCooldown = Math.max(remainingCooldown, serverCooldown);
+    }
 
-		// Check if there's a target nearby
-		const hasNearbyTarget = myPlayer && findClosestTarget(myPlayer);
+    // Check if there's a target nearby
+    const hasNearbyTarget = myPlayer && findClosestTarget(myPlayer);
 
-		if (remainingCooldown > 0) {
-			killButton.disabled = true;
-			killButton.textContent = `KILL (${Math.ceil(
-				remainingCooldown / 1000
-			)}s)`;
-			killButton.className =
-				"px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
-		} else if (!hasNearbyTarget) {
-			killButton.disabled = true;
-			killButton.textContent = "KILL";
-			killButton.className =
-				"px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
-		} else {
-			killButton.disabled = false;
-			killButton.textContent = "KILL";
-			killButton.className =
-				"px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-lg cursor-pointer";
-		}
-	} else {
-		killButton.style.display = "none";
-	}
+    if (remainingCooldown > 0) {
+      killButton.disabled = true;
+      killButton.textContent = `KILL (${Math.ceil(remainingCooldown / 1000)}s)`;
+      killButton.className =
+        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+    } else if (!hasNearbyTarget) {
+      killButton.disabled = true;
+      killButton.textContent = "KILL";
+      killButton.className =
+        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+    } else {
+      killButton.disabled = false;
+      killButton.textContent = "KILL";
+      killButton.className =
+        "px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-lg cursor-pointer";
+    }
+  } else {
+    killButton.style.display = "none";
+  }
 
-	// Report button - show for all living players during active game
-	if (gameState.isAlive && gameActive) {
-		reportButton.style.display = "block";
+  // Report button - show for all living players during active game
+  if (gameState.isAlive && gameActive) {
+    reportButton.style.display = "block";
 
-		// Check if there's a body nearby
-		const hasNearbyBody = myPlayer && findClosestBody(myPlayer);
+    // Check if there's a body nearby
+    const hasNearbyBody = myPlayer && findClosestBody(myPlayer);
 
-		if (hasNearbyBody) {
-			reportButton.disabled = false;
-			reportButton.textContent = "REPORT";
-			reportButton.className =
-				"px-4 py-2 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-700 transition-colors shadow-lg cursor-pointer";
-		} else {
-			reportButton.disabled = true;
-			reportButton.textContent = "REPORT";
-			reportButton.className =
-				"px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
-		}
-	} else {
-		reportButton.style.display = "none";
-	}
+    if (hasNearbyBody) {
+      reportButton.disabled = false;
+      reportButton.textContent = "REPORT";
+      reportButton.className =
+        "px-4 py-2 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-700 transition-colors shadow-lg cursor-pointer";
+    } else {
+      reportButton.disabled = true;
+      reportButton.textContent = "REPORT";
+      reportButton.className =
+        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+    }
+  } else {
+    reportButton.style.display = "none";
+  }
 
-	// Task button - show for living crewmates during active game
-	if (
-		gameState.playerRole === "crewmate" &&
-		gameState.isAlive &&
-		gameActive
-	) {
-		// Check if there's a task nearby
-		const hasNearbyTask = myPlayer && findClosestTask(myPlayer);
+  // Task button - show for crewmates (both alive and dead) during active game
+  if (gameState.playerRole === "crewmate" && gameActive) {
+    // Check if there's a task nearby
+    const hasNearbyTask = myPlayer && findClosestTask(myPlayer);
 
-		if (hasNearbyTask) {
-			taskButton.style.display = "block";
-			taskButton.disabled = false;
-			taskButton.textContent = "DO TASK";
-			taskButton.className =
-				"px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg cursor-pointer";
-		} else {
-			taskButton.style.display = "none";
-		}
-	} else {
-		taskButton.style.display = "none";
-	}
+    if (hasNearbyTask) {
+      taskButton.style.display = "block";
+      taskButton.disabled = false;
+      taskButton.textContent = "DO TASK";
+      taskButton.className =
+        "px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg cursor-pointer";
+    } else {
+      taskButton.style.display = "none";
+    }
+  } else {
+    taskButton.style.display = "none";
+  }
 }
 
 // UI Management Functions
 function showMeetingUI() {
-	const meetingUI = document.getElementById("meetingUI");
-	if (meetingUI) {
-		meetingUI.style.display = "flex";
-		startMeetingTimer();
-	}
+  const meetingUI = document.getElementById("meetingUI");
+  if (meetingUI) {
+    meetingUI.style.display = "flex";
+    startMeetingTimer();
+    isModalOpen = true; // Block movement when meeting UI is open
+  }
 }
 
 function showVotingUI() {
@@ -595,22 +894,25 @@ function showVotingUI() {
 	if (meetingUI) meetingUI.style.display = "none";
 	if (votingUI) votingUI.style.display = "flex";
 
-	createVotingOptions();
-	startVotingTimer(); // Start the 60-second voting timer
+  createVotingOptions();
+  startVotingTimer(); // Start the 60-second voting timer
+  isModalOpen = true; // Block movement when voting UI is open
 }
 
 function hideAllUI() {
-	const meetingUI = document.getElementById("meetingUI");
-	const votingUI = document.getElementById("votingUI");
-	const votingResultsUI = document.getElementById("votingResultsUI");
-	const gameEndUI = document.getElementById("gameEndUI");
-	const taskModal = document.getElementById("taskModal");
+  const meetingUI = document.getElementById("meetingUI");
+  const votingUI = document.getElementById("votingUI");
+  const votingResultsUI = document.getElementById("votingResultsUI");
+  const gameEndUI = document.getElementById("gameEndUI");
+  const taskModal = document.getElementById("taskModal");
 
-	if (meetingUI) meetingUI.style.display = "none";
-	if (votingUI) votingUI.style.display = "none";
-	if (votingResultsUI) votingResultsUI.style.display = "none";
-	if (gameEndUI) gameEndUI.style.display = "none";
-	if (taskModal) taskModal.style.display = "none";
+  if (meetingUI) meetingUI.style.display = "none";
+  if (votingUI) votingUI.style.display = "none";
+  if (votingResultsUI) votingResultsUI.style.display = "none";
+  if (gameEndUI) gameEndUI.style.display = "none";
+  if (taskModal) taskModal.style.display = "none";
+
+  isModalOpen = false; // Allow movement when all UIs are hidden
 }
 
 // Task modal functions
@@ -635,17 +937,18 @@ function showTaskModal(data) {
 		button.onclick = () => submitTaskAnswer(option);
 		taskOptions.appendChild(button);
 	});
-
-	taskModal.style.display = "flex";
-	console.log("Task modal shown with question:", data.question);
+  taskModal.style.display = "flex";
+  console.log("Task modal shown with question:", data.question);
+  isModalOpen = true; // Block movement when task modal is open
 }
 
 function hideTaskModal() {
-	const taskModal = document.getElementById("taskModal");
-	if (taskModal) {
-		taskModal.style.display = "none";
-	}
-	gameState.currentTaskModal = null;
+  const taskModal = document.getElementById("taskModal");
+  if (taskModal) {
+    taskModal.style.display = "none";
+  }
+  gameState.currentTaskModal = null;
+  isModalOpen = false; // Allow movement when task modal is hidden
 }
 
 function submitTaskAnswer(answer) {
@@ -712,65 +1015,65 @@ function showTaskSuccess() {
     </div>
   `;
 
-	// Auto-close after 2 seconds
-	setTimeout(() => {
-		hideTaskModal();
-	}, 2000);
+  // Auto-close after 1 second
+  setTimeout(() => {
+    hideTaskModal();
+  }, 1000);
 }
 
 function startVotingTimer() {
-	let timeLeft = 60;
-	const timer = setInterval(() => {
-		const timerElement = document.getElementById("votingTimer");
-		if (timerElement) {
-			timerElement.textContent = timeLeft;
-		}
-		timeLeft--;
+  let timeLeft = 59;
+  const timer = setInterval(() => {
+    const timerElement = document.getElementById("votingTimer");
+    if (timerElement) {
+      timerElement.textContent = timeLeft;
+    }
+    timeLeft--;
 
-		if (timeLeft < 0 || !gameState.votingActive) {
-			clearInterval(timer);
-		}
-	}, 1000);
+    if (timeLeft < 0 || !gameState.votingActive) {
+      clearInterval(timer);
+    }
+  }, 1000);
 }
 
 function showVotingResults(data) {
-	const votingResultsUI = document.getElementById("votingResultsUI");
-	const votingResultsContent = document.getElementById(
-		"votingResultsContent"
-	);
+  const votingResultsUI = document.getElementById("votingResultsUI");
+  const votingResultsContent = document.getElementById("votingResultsContent");
 
-	if (!votingResultsUI || !votingResultsContent) return;
+  if (!votingResultsUI || !votingResultsContent) return;
 
-	// Show the results
-	let resultHTML = "";
-	if (data.ejectedPlayer) {
-		resultHTML = `<p class="text-lg font-bold text-red-400 mb-2">${data.ejectedPlayer} was ejected!</p>`;
-		if (data.ejectedRole) {
-			resultHTML += `<p class="text-sm">They were ${
-				data.ejectedRole === "imposter" ? "an Imposter" : "a Crewmate"
-			}</p>`;
-		}
-	} else {
-		resultHTML = `<p class="text-lg font-bold text-gray-300">No one was ejected</p><p class="text-sm">(Tie vote or majority skipped)</p>`;
-	}
+  // Show the results
+  let resultHTML = "";
+  if (data.ejectedPlayer) {
+    resultHTML = `<p class="text-lg font-bold text-red-400 mb-2">${data.ejectedPlayer} was ejected!</p>`;
+    if (data.ejectedRole) {
+      resultHTML += `<p class="text-sm">They were ${
+        data.ejectedRole === "imposter" ? "an Imposter" : "a Crewmate"
+      }</p>`;
+    }
+  } else {
+    resultHTML = `<p class="text-lg font-bold text-gray-300">No one was ejected</p><p class="text-sm">(Tie vote or majority skipped)</p>`;
+  }
 
-	votingResultsContent.innerHTML = resultHTML;
-	votingResultsUI.style.display = "flex";
+  votingResultsContent.innerHTML = resultHTML;
+  votingResultsUI.style.display = "flex";
+  isModalOpen = true; // Block movement when voting results are shown
 
-	// Start 5-second countdown
-	let timeLeft = 5;
-	const timer = setInterval(() => {
-		const timerElement = document.getElementById("continueTimer");
-		if (timerElement) {
-			timerElement.textContent = timeLeft;
-		}
-		timeLeft--;
+  // Start 5-second countdown
+  let timeLeft = 5;
+  const timer = setInterval(() => {
+    const timerElement = document.getElementById("continueTimer");
+    if (timerElement) {
+      timerElement.textContent = timeLeft;
+    }
+    timeLeft--;
 
-		if (timeLeft < 0) {
-			clearInterval(timer);
-			votingResultsUI.style.display = "none";
-		}
-	}, 1000);
+    if (timeLeft < 0) {
+      clearInterval(timer);
+      votingResultsUI.style.display = "none";
+      isModalOpen = false; // Allow movement when voting results are hidden
+    }
+  }, 1000);
 }
 
 function showGameEnd(data) {
@@ -808,30 +1111,32 @@ function showGameEnd(data) {
 			"text-2xl font-bold mb-4 text-center text-white";
 		gameEndContent.innerHTML = `<p class="text-lg">Game ended</p>`;
 	}
-
-	gameEndUI.style.display = "flex";
-
+  gameEndUI.style.display = "flex";
+  isModalOpen = true; // Block movement when game end screen is shown
+  
 	// Set up button handlers
 	setupGameEndButtons();
 }
 
 function setupGameEndButtons() {
-	const goToLobbyButton = document.getElementById("goToLobbyButton");
-	const exitGameButton = document.getElementById("exitGameButton");
+  const goToLobbyButton = document.getElementById("goToLobbyButton");
+  const exitGameButton = document.getElementById("exitGameButton");
 
-	if (goToLobbyButton) {
-		goToLobbyButton.onclick = () => {
-			// Send return to lobby request to server
-			socket.emit("returnToLobby");
-		};
-	}
+  if (goToLobbyButton) {
+    goToLobbyButton.onclick = () => {
+      // Send return to lobby request to server
+      socket.emit("returnToLobby");
+      isModalOpen = false; // Allow movement when returning to lobby
+    };
+  }
 
-	if (exitGameButton) {
-		exitGameButton.onclick = () => {
-			// Navigate back to home
-			window.location.href = "/";
-		};
-	}
+  if (exitGameButton) {
+    exitGameButton.onclick = () => {
+      // Navigate back to home
+      isModalOpen = false; // Allow movement when exiting
+      window.location.href = "/";
+    };
+  }
 }
 
 function createVotingOptions() {
@@ -1091,223 +1396,180 @@ function loop() {
 }
 
 function renderUI() {
-	// Role display
-	canvas.fillStyle = "white";
-	canvas.font = "20px Arial";
-	canvas.fillText(
-		`Role: ${
-			gameState.playerRole.charAt(0).toUpperCase() +
-			gameState.playerRole.slice(1)
-		}`,
-		10,
-		30
-	);
-	canvas.fillText(`Status: ${gameState.isAlive ? "Alive" : "Dead"}`, 10, 55);
+  // Role display
+  canvas.fillStyle = "white";
+  canvas.font = "20px Arial";
+  canvas.fillText(
+    `Role: ${
+      gameState.playerRole.charAt(0).toUpperCase() +
+      gameState.playerRole.slice(1)
+    }`,
+    10,
+    30
+  );
+  canvas.fillText(`Status: ${gameState.isAlive ? "Alive" : "Dead"}`, 10, 55);
 
-	// Task list for crewmates
-	if (gameState.playerRole === "crewmate") {
-		const isSmallScreen =
-			window.innerWidth < 700 || window.innerHeight < 700;
-		const maxTextWidth = isSmallScreen
-			? canvasEl.width / 3
-			: canvasEl.width * 0.6; // 1/3 on small screens, 60% on large
+  // Task list for crewmates
+  if (gameState.playerRole === "crewmate") {
+    const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
+    const maxTextWidth = isSmallScreen
+      ? canvasEl.width / 3
+      : canvasEl.width * 0.6; // 1/3 on small screens, 60% on large
 
-		canvas.font = "16px Arial";
-		canvas.fillStyle = "yellow";
-		canvas.fillText("Task Locations:", 10, 85);
+    canvas.font = "16px Arial";
+    canvas.fillStyle = "yellow";
+    canvas.fillText("Task Locations:", 10, 85);
 
-		if (gameState.playerTasks.length === 0) {
-			canvas.fillStyle = "gray";
-			canvas.fillText("No tasks assigned", 10, 105);
-		} else {
-			let yOffset = 105;
-			for (const task of gameState.playerTasks) {
-				const location =
-					task.location.name ||
-					`(${task.location.x}, ${task.location.y})`;
-				const status = task.completed ? "✓" : "○";
-				const color = task.completed ? "lightgreen" : "white";
-				const fullText = `${status} ${location}`;
+    if (gameState.playerTasks.length === 0) {
+      canvas.fillStyle = "gray";
+      canvas.fillText("No tasks assigned", 10, 105);
+    } else {
+      let yOffset = 105;
+      for (const task of gameState.playerTasks) {
+        const location =
+          task.location.name || `(${task.location.x}, ${task.location.y})`;
+        const status = task.completed ? "✓" : "○";
+        const color = task.completed ? "lightgreen" : "white";
+        const fullText = `${status} ${location}`;
 
-				canvas.fillStyle = color;
+        canvas.fillStyle = color;
 
-				// Check if text fits in one line
-				if (canvas.measureText(fullText).width <= maxTextWidth) {
-					canvas.fillText(fullText, 10, yOffset);
-					yOffset += 20;
-				} else {
-					// Wrap text for small screens
-					const wrappedLines = wrapText(fullText, maxTextWidth);
-					for (const line of wrappedLines) {
-						canvas.fillText(line, 10, yOffset);
-						yOffset += 20;
-					}
-				}
-			}
-		}
-	}
+        // Check if text fits in one line
+        if (canvas.measureText(fullText).width <= maxTextWidth) {
+          canvas.fillText(fullText, 10, yOffset);
+          yOffset += 20;
+        } else {
+          // Wrap text for small screens with proper indentation
+          const statusWidth = canvas.measureText(status + " ").width;
+          const indentedMaxWidth = maxTextWidth - statusWidth;
+          const locationOnlyWrapped = wrapText(location, indentedMaxWidth);
 
-	// Kill cooldown info removed - now shown on button
+          // First line: status + first part of location
+          canvas.fillText(`${status} ${locationOnlyWrapped[0]}`, 10, yOffset);
+          yOffset += 20;
 
-	// Meeting/Voting status
-	if (gameState.meetingActive) {
-		canvas.fillStyle = "yellow";
-		canvas.font = "24px Arial";
-		canvas.fillText("MEETING IN PROGRESS", canvasEl.width / 2 - 150, 50);
-	} else if (gameState.votingActive) {
-		canvas.fillStyle = "orange";
-		canvas.font = "24px Arial";
-		canvas.fillText("VOTING IN PROGRESS", canvasEl.width / 2 - 150, 50);
-	}
+          // Subsequent lines: indented to align with text after status
+          for (let i = 1; i < locationOnlyWrapped.length; i++) {
+            canvas.fillText(locationOnlyWrapped[i], 10 + statusWidth, yOffset);
+            yOffset += 20;
+          }
+        }
+      }
+    }
+  }
 
-	// Instructions
-	const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
-	const maxInstructionsWidth = isSmallScreen
-		? canvasEl.width / 3
-		: canvasEl.width * 0.6; // 1/3 on small screens, 60% on large
+  // Kill cooldown info removed - now shown on button
 
-	canvas.fillStyle = "white";
-	canvas.font = "14px Arial";
+  // Meeting/Voting status
+  if (gameState.meetingActive) {
+    canvas.fillStyle = "yellow";
+    canvas.font = "24px Arial";
+    canvas.fillText("MEETING IN PROGRESS", canvasEl.width / 2 - 150, 50);
+  } else if (gameState.votingActive) {
+    canvas.fillStyle = "orange";
+    canvas.font = "24px Arial";
+    canvas.fillText("VOTING IN PROGRESS", canvasEl.width / 2 - 150, 50);
+  }
 
-	// Render "WASD: Move" instruction
-	const moveText = "WASD: Move";
-	if (canvas.measureText(moveText).width <= maxInstructionsWidth) {
-		canvas.fillText(moveText, 10, canvasEl.height - 20);
-	} else {
-		const wrappedMoveLines = wrapText(moveText, maxInstructionsWidth);
-		let yOffsetMove =
-			canvasEl.height - 20 - (wrappedMoveLines.length - 1) * 16;
-		for (const line of wrappedMoveLines) {
-			canvas.fillText(line, 10, yOffsetMove);
-			yOffsetMove += 16;
-		}
-	}
-
-	// Render role-specific instructions
-	if (gameState.playerRole === "imposter" && gameState.isAlive) {
-		const imposterText = "Use buttons to KILL and REPORT";
-		if (canvas.measureText(imposterText).width <= maxInstructionsWidth) {
-			canvas.fillText(imposterText, 10, canvasEl.height - 40);
-		} else {
-			const wrappedImposterLines = wrapText(
-				imposterText,
-				maxInstructionsWidth
-			);
-			let yOffsetImposter =
-				canvasEl.height - 40 - (wrappedImposterLines.length - 1) * 16;
-			for (const line of wrappedImposterLines) {
-				canvas.fillText(line, 10, yOffsetImposter);
-				yOffsetImposter += 16;
-			}
-		}
-	} else if (gameState.isAlive) {
-		const crewText = "Use button to REPORT dead bodies";
-		if (canvas.measureText(crewText).width <= maxInstructionsWidth) {
-			canvas.fillText(crewText, 10, canvasEl.height - 40);
-		} else {
-			const wrappedCrewLines = wrapText(crewText, maxInstructionsWidth);
-			let yOffsetCrew =
-				canvasEl.height - 40 - (wrappedCrewLines.length - 1) * 16;
-			for (const line of wrappedCrewLines) {
-				canvas.fillText(line, 10, yOffsetCrew);
-				yOffsetCrew += 16;
-			}
-		}
-	}
-
-	// Render minimap
-	renderMinimap();
+  // Render minimap
+  renderMinimap();
 }
 
 function renderMinimap() {
-	if (!groundMap || !groundMap.length || !decalMap || !decalMap.length)
-		return;
+  if (!groundMap || !groundMap.length || !decalMap || !decalMap.length) return;
 
-	const myPlayer = players.find((player) => player.id === socket.id);
-	if (!myPlayer) return;
+  const myPlayer = players.find((player) => player.id === socket.id);
+  if (!myPlayer) return;
 
-	// Minimap configuration - responsive sizing for small screens
-	const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
-	const minimapWidth = isSmallScreen ? 100 : 200;
-	const minimapHeight = isSmallScreen ? 75 : 150;
-	const minimapX = canvasEl.width - minimapWidth - 20; // 20px from right edge
-	const minimapY = 20; // 20px from top edge
+  // Minimap configuration - responsive sizing for small screens
+  const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
+  const minimapWidth = isSmallScreen ? 100 : 200;
+  const minimapHeight = isSmallScreen ? 75 : 150;
 
-	// Calculate scale factors
-	const mapPixelWidth = groundMap[0].length * TILE_SIZE;
-	const mapPixelHeight = groundMap.length * TILE_SIZE;
-	const scaleX = minimapWidth / mapPixelWidth;
-	const scaleY = minimapHeight / mapPixelHeight;
-	const scale = Math.min(scaleX, scaleY); // Use smaller scale to maintain aspect ratio
+  // Calculate scale factors
+  const mapPixelWidth = groundMap[0].length * TILE_SIZE;
+  const mapPixelHeight = groundMap.length * TILE_SIZE;
+  const scaleX = minimapWidth / mapPixelWidth;
+  const scaleY = minimapHeight / mapPixelHeight;
+  const scale = Math.min(scaleX, scaleY); // Use smaller scale to maintain aspect ratio
 
-	const scaledWidth = mapPixelWidth * scale;
-	const scaledHeight = mapPixelHeight * scale;
+  const scaledWidth = mapPixelWidth * scale;
+  const scaledHeight = mapPixelHeight * scale;
 
-	// Center the minimap if aspect ratios don't match
-	const offsetX = (minimapWidth - scaledWidth) / 2;
-	const offsetY = (minimapHeight - scaledHeight) / 2;
+  // Position minimap with equal spacing from top and right edges
+  const spacing = 20; // Equal spacing from edges
+  const minimapX = canvasEl.width - scaledWidth - spacing;
+  const minimapY = spacing;
 
-	// Draw minimap background
-	canvas.fillStyle = "rgba(0, 0, 0, 0.7)";
-	canvas.fillRect(minimapX, minimapY, minimapWidth, minimapHeight);
+  // No offset needed since we're positioning the actual content
+  const offsetX = 0;
+  const offsetY = 0;
 
-	// Draw minimap border
-	canvas.strokeStyle = "white";
-	canvas.lineWidth = 2;
-	canvas.strokeRect(minimapX, minimapY, minimapWidth, minimapHeight);
+  // Draw minimap background - fit exactly around the map content
+  canvas.fillStyle = "rgba(0, 0, 0, 0.7)";
+  canvas.fillRect(
+    minimapX + offsetX,
+    minimapY + offsetY,
+    scaledWidth,
+    scaledHeight
+  );
 
-	// Draw simplified map (just a dark background for now)
-	canvas.fillStyle = "rgba(40, 40, 40, 1)";
-	canvas.fillRect(
-		minimapX + offsetX,
-		minimapY + offsetY,
-		scaledWidth,
-		scaledHeight
-	);
+  // Draw minimap border - fit exactly around the map content
+  canvas.strokeStyle = "white";
+  canvas.lineWidth = 2;
+  canvas.strokeRect(
+    minimapX + offsetX,
+    minimapY + offsetY,
+    scaledWidth,
+    scaledHeight
+  );
 
-	// Draw task locations for crewmates
-	if (gameState.playerRole === "crewmate") {
-		for (const task of gameState.playerTasks) {
-			if (!task.completed && !isTaskCompleted(task.location)) {
-				const taskMinimapX =
-					minimapX + offsetX + task.location.x * TILE_SIZE * scale;
-				const taskMinimapY =
-					minimapY + offsetY + task.location.y * TILE_SIZE * scale;
+  // Draw simplified map (just a dark background for now)
+  canvas.fillStyle = "rgba(40, 40, 40, 1)";
+  canvas.fillRect(
+    minimapX + offsetX,
+    minimapY + offsetY,
+    scaledWidth,
+    scaledHeight
+  );
 
-				// Draw yellow dot for task - smaller on small screens
-				const taskDotRadius = isSmallScreen ? 2 : 3;
-				canvas.fillStyle = "yellow";
-				canvas.beginPath();
-				canvas.arc(
-					taskMinimapX,
-					taskMinimapY,
-					taskDotRadius,
-					0,
-					2 * Math.PI
-				);
-				canvas.fill();
-			}
-		}
-	}
+  // Draw task locations for crewmates
+  if (gameState.playerRole === "crewmate") {
+    for (const task of gameState.playerTasks) {
+      if (!task.completed && !isTaskCompleted(task.location)) {
+        const taskMinimapX =
+          minimapX + offsetX + task.location.x * TILE_SIZE * scale;
+        const taskMinimapY =
+          minimapY + offsetY + task.location.y * TILE_SIZE * scale;
 
-	// Draw player position
-	const playerMinimapX = minimapX + offsetX + myPlayer.x * scale;
-	const playerMinimapY = minimapY + offsetY + myPlayer.y * scale;
+        // Draw yellow dot for task - smaller on small screens
+        const taskDotRadius = isSmallScreen ? 2 : 3;
+        canvas.fillStyle = "yellow";
+        canvas.beginPath();
+        canvas.arc(taskMinimapX, taskMinimapY, taskDotRadius, 0, 2 * Math.PI);
+        canvas.fill();
+      }
+    }
+  }
 
-	// Draw player dot - smaller on small screens
-	const playerDotRadius = isSmallScreen ? 3 : 4;
-	const playerColor = gameState.playerRole === "imposter" ? "red" : "cyan";
-	canvas.fillStyle = playerColor;
-	canvas.beginPath();
-	canvas.arc(playerMinimapX, playerMinimapY, playerDotRadius, 0, 2 * Math.PI);
-	canvas.fill();
+  // Draw player position
+  const playerMinimapX = minimapX + offsetX + myPlayer.x * scale;
+  const playerMinimapY = minimapY + offsetY + myPlayer.y * scale;
 
-	// Add white outline to player dot for visibility
-	canvas.strokeStyle = "white";
-	canvas.lineWidth = 1;
-	canvas.beginPath();
-	canvas.arc(playerMinimapX, playerMinimapY, playerDotRadius, 0, 2 * Math.PI);
-	canvas.stroke();
+  // Draw player dot - smaller on small screens
+  const playerDotRadius = isSmallScreen ? 3 : 4;
+  const playerColor = gameState.playerRole === "imposter" ? "red" : "cyan";
+  canvas.fillStyle = playerColor;
+  canvas.beginPath();
+  canvas.arc(playerMinimapX, playerMinimapY, playerDotRadius, 0, 2 * Math.PI);
+  canvas.fill();
+
+  // Add white outline to player dot for visibility
+  canvas.strokeStyle = "white";
+  canvas.lineWidth = 1;
+  canvas.beginPath();
+  canvas.arc(playerMinimapX, playerMinimapY, playerDotRadius, 0, 2 * Math.PI);
+  canvas.stroke();
 }
 
 function renderFogOfWar(player, cameraX, cameraY) {

@@ -166,6 +166,11 @@ socket.on("killCooldown", (data) => {
 // Player killed event
 socket.on("playerKilled", (data) => {
   console.log("Player killed:", data.victimId);
+
+  // If the current player was killed, close the task modal if it's open
+  if (data.victimId === socket.id) {
+    hideTaskModal();
+  }
 });
 
 // Meeting events
@@ -174,6 +179,9 @@ socket.on("meetingStarted", (data) => {
   gameState.votingActive = true; // Start voting immediately
   gameState.alivePlayers = data.alivePlayers;
   gameState.currentVote = null; // Reset current vote
+
+  // Close any open task modal when meeting starts
+  hideTaskModal();
 
   // Handle body removal and teleportation
   if (data.allBodiesRemoved) {
@@ -190,6 +198,10 @@ socket.on("votingStarted", (data) => {
   gameState.meetingActive = false;
   gameState.votingActive = true;
   gameState.alivePlayers = data.alivePlayers;
+
+  // Close any open task modal when voting starts
+  hideTaskModal();
+
   showVotingUI();
   console.log("Voting started");
 });
@@ -731,7 +743,6 @@ window.attemptReport = function () {
 window.attemptTask = function () {
   if (
     gameState.playerRole === "crewmate" &&
-    gameState.isAlive &&
     !gameState.meetingActive &&
     !gameState.votingActive
   ) {
@@ -829,8 +840,8 @@ function updateButtons() {
     reportButton.style.display = "none";
   }
 
-  // Task button - show for living crewmates during active game
-  if (gameState.playerRole === "crewmate" && gameState.isAlive && gameActive) {
+  // Task button - show for crewmates (both alive and dead) during active game
+  if (gameState.playerRole === "crewmate" && gameActive) {
     // Check if there's a task nearby
     const hasNearbyTask = myPlayer && findClosestTask(myPlayer);
 
@@ -986,10 +997,10 @@ function showTaskSuccess() {
     </div>
   `;
 
-  // Auto-close after 2 seconds
+  // Auto-close after 1 second
   setTimeout(() => {
     hideTaskModal();
-  }, 2000);
+  }, 1000);
 }
 
 function startVotingTimer() {

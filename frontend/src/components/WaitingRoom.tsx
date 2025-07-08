@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 function isDefaultPlayerName(name: string) {
   return /^Player \d+$/.test(name);
 }
-const USERNAME_MIN_LENGTH = 3;
+const USERNAME_MIN_LENGTH = 1;
 const USERNAME_MAX_LENGTH = 14;
 const USERNAME_REGEX = /^[a-zA-Z0-9 ]+$/;
 const PLAYER_NAME_KEY = "playerName";

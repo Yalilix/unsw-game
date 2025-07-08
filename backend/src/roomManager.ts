@@ -23,6 +23,8 @@ export interface GamePlayer {
   role: "crewmate" | "imposter";
   isAlive: boolean;
   lastKillTime?: number;
+  killCooldownPausedAt?: number; // When voting started while cooldown was active
+  pausedCooldownRemaining?: number; // How much cooldown was left when paused
 }
 
 export interface DeadBody {

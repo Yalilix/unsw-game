@@ -990,20 +990,9 @@ function loop() {
 		);
 	}
 
-	// Use blob.png sprite sheet for animation
-	const blobSpriteSheet = new Image();
-	blobSpriteSheet.src = "/src/assets/blob.png";
-	const BLOB_FRAME_COUNT = 4;
-	const BLOB_ANIM_SPEED = 8; // frames per second
-
-	function getBlobFrame() {
-		// Use time to animate
-		const now = Date.now();
-		return Math.floor((now / (1000 / BLOB_ANIM_SPEED)) % BLOB_FRAME_COUNT);
-	}
-
+	const BLOB_SIZE = 48; // new size for the blob
 	for (const [i, player] of players.entries()) {
-		// Draw colored aura (halo) so it touches the bottom of the blob
+		// Draw colored aura (halo) so it overlaps more with the bottom of the blob
 		const auraColors = [
 			"#FF4B4B", // red
 			"#4B8BFF", // blue
@@ -1018,13 +1007,13 @@ function loop() {
 		];
 		const auraColor = auraColors[i % auraColors.length];
 		const auraX = player.x - cameraX + TILE_SIZE / 2;
-		const auraY = player.y - cameraY + BLOB_SIZE; // exactly at the bottom of the blob
+		const auraY = player.y - cameraY + BLOB_SIZE - 8; // move up by 8px
 		canvas.save();
 		canvas.globalAlpha = 0.55;
 		canvas.beginPath();
-		canvas.ellipse(auraX, auraY, 18, 8, 0, 0, 2 * Math.PI);
+		canvas.ellipse(auraX, auraY, 26, 14, 0, 0, 2 * Math.PI); // larger halo
 		canvas.shadowColor = auraColor;
-		canvas.shadowBlur = 18;
+		canvas.shadowBlur = 24;
 		canvas.fillStyle = auraColor;
 		canvas.fill();
 		canvas.restore();
@@ -1036,14 +1025,9 @@ function loop() {
 				: 1.0;
 		canvas.globalAlpha = playerOpacity;
 
-		// Draw animated blob sprite
-		const frame = getBlobFrame();
+		// Draw larger blob.gif, keeping feet in same place
 		canvas.drawImage(
-			blobSpriteSheet,
-			frame * BLOB_SIZE,
-			0, // source x, y
-			BLOB_SIZE,
-			BLOB_SIZE, // source w, h
+			blobGifImage,
 			player.x - cameraX - (BLOB_SIZE - TILE_SIZE) / 2,
 			player.y - cameraY - (BLOB_SIZE - TILE_SIZE),
 			BLOB_SIZE,

@@ -5,8 +5,6 @@ import { useSocket } from '../SocketContext';
 interface Player {
   id: string;
   name: string;
-  id: string;
-  name: string;
 }
 
 interface RoomData {
@@ -30,6 +28,7 @@ const RoomPage = () => {
   const [currentPlayerName, setCurrentPlayerName] = useState('');
 
   const PLAYER_NAME_KEY = 'playerName';
+
   // Set max name length
   const USERNAME_MAX_LENGTH = 14;
 
@@ -50,7 +49,6 @@ const RoomPage = () => {
     }
 
     if (!socket) return;
-    if (!socket) return;
 
     // Check if this user created this room
     const isCreator =
@@ -70,33 +68,17 @@ const RoomPage = () => {
       if (currentPlayer) {
         setCurrentPlayerName(currentPlayer.name);
         setNewName(currentPlayer.name);
-
-        // Check if returning from game and restore original name
-        const returnFromGame = sessionStorage.getItem(
-          `room_${roomId}_returnFromGame`
-        );
-        const storedName = sessionStorage.getItem(`room_${roomId}_playerName`);
-
-        if (returnFromGame === "true" && storedName) {
-          console.log(`Restoring player name from game: "${storedName}"`);
-          socket.emit("updatePlayerName", { name: storedName });
-          localStorage.setItem(PLAYER_NAME_KEY, storedName);
-          // Clear the session storage flags
-          sessionStorage.removeItem(`room_${roomId}_returnFromGame`);
-          sessionStorage.removeItem(`room_${roomId}_playerName`);
-        } else {
-          // Normal logic - check localStorage for saved name
-          const savedName = localStorage.getItem(PLAYER_NAME_KEY);
-          if (savedName && savedName !== currentPlayer.name) {
-            socket.emit("updatePlayerName", { name: savedName });
-          }
+        // If we have a saved name and it's different, update it on the backend
+        const savedName = localStorage.getItem(PLAYER_NAME_KEY);
+        if (savedName && savedName !== currentPlayer.name) {
+          socket.emit('updatePlayerName', { name: savedName });
         }
       }
     });
 
     // Player joined room
     socket.on(
-      "playerJoined",
+      'playerJoined',
       (data: { playerId: string; playerCount: number }) => {
         setRoomData((prev) => {
           if (!prev) return prev;
@@ -126,16 +108,6 @@ const RoomPage = () => {
           };
         });
 
-        // Update current player name if it changed
-        const currentPlayer = data.players.find((p) => p.id === socket.id);
-        if (currentPlayer) {
-          setCurrentPlayerName(currentPlayer.name);
-          if (!editingName) {
-            setNewName(currentPlayer.name);
-          }
-        }
-      }
-    );
         // Update current player name if it changed
         const currentPlayer = data.players.find((p) => p.id === socket.id);
         if (currentPlayer) {
@@ -221,10 +193,6 @@ const RoomPage = () => {
     setNewName(currentPlayerName);
     setEditingName(false);
   };
-  const cancelNameEdit = () => {
-    setNewName(currentPlayerName);
-    setEditingName(false);
-  };
 
   const leaveRoom = () => {
     if (socket) {
@@ -242,30 +210,7 @@ const RoomPage = () => {
       </div>
     );
   }
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-space flex items-center justify-center">
-        <div className="text-white text-xl">Joining room...</div>
-      </div>
-    );
-  }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-space flex items-center justify-center">
-        <div className="bg-card p-8 rounded-lg shadow-lg max-w-lg w-full mx-4">
-          <h2 className="text-xl font-bold text-red-400 mb-4">Error</h2>
-          <p className="text-foreground mb-6">{error}</p>
-          <button
-            onClick={leaveRoom}
-            className="w-full bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 transition-colors"
-          >
-            Back to Home
-          </button>
-        </div>
-      </div>
-    );
-  }
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-space flex items-center justify-center">
@@ -290,16 +235,7 @@ const RoomPage = () => {
       </div>
     );
   }
-  if (!roomData) {
-    return (
-      <div className="min-h-screen bg-gradient-space flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
-    );
-  }
 
-  const canStartGame = roomData.players.length >= 4 && roomData.isHost;
-  const minPlayersNeeded = Math.max(0, 4 - roomData.players.length);
   const canStartGame = roomData.players.length >= 4 && roomData.isHost;
   const minPlayersNeeded = Math.max(0, 4 - roomData.players.length);
 
@@ -339,16 +275,6 @@ const RoomPage = () => {
           </div>
         </div>
 
-        {/* Players List - Kahoot Style Grid */}
-        <div className="bg-card p-6 rounded-lg shadow-lg mb-6">
-          <h2 className="text-xl font-bold text-foreground mb-4">Players</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 justify-items-center">
-            {Array.from({ length: 10 }).map((_, i) => {
-              const player = roomData.players[i];
-              return (
-                <div
-                  key={player ? player.id : i}
-                  className={`relative w-40 h-20 flex items-center justify-center rounded-2xl text-xl font-bold transition-all duration-200
         {/* Players List - Kahoot Style Grid */}
         <div className="bg-card p-6 rounded-lg shadow-lg mb-6">
           <h2 className="text-xl font-bold text-foreground mb-4">Players</h2>
@@ -422,18 +348,6 @@ const RoomPage = () => {
           )}
         </div>
 
-        {/* Leave Room */}
-        <div className="text-center">
-          <button
-            onClick={leaveRoom}
-            className="bg-destructive text-destructive-foreground px-6 py-2 rounded hover:bg-destructive/90 transition-colors"
-          >
-            Leave Room
-          </button>
-        </div>
-      </div>
-    </div>
-  );
         {/* Leave Room */}
         <div className="text-center">
           <button

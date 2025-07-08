@@ -676,8 +676,7 @@ function showGameEnd(data) {
     gameEndTitle.className =
       "text-2xl font-bold mb-4 text-center text-blue-400";
     gameEndContent.innerHTML = `
-      <p class="text-lg mb-2">All imposters have been ejected!</p>
-      <p class="text-sm text-gray-400">Justice has been served!</p>
+      <p class="text-lg mb-2">Justice has been served</p>
     `;
   } else {
     gameEndTitle.textContent = "Game Over";

@@ -574,7 +574,6 @@ function showTaskSuccess() {
     <div class="text-center text-green-400 mb-4">
       <p class="text-xl font-bold">🎉 Congratulations!</p>
       <p class="text-lg">Task completed successfully!</p>
-      <p class="text-sm text-gray-300">Closing automatically...</p>
     </div>
   `;
 
@@ -891,7 +890,7 @@ function renderUI() {
   if (gameState.playerRole === "crewmate") {
     canvas.font = "16px Arial";
     canvas.fillStyle = "yellow";
-    canvas.fillText("Tasks:", 10, 85);
+    canvas.fillText("Task Locations:", 10, 85);
 
     if (gameState.playerTasks.length === 0) {
       canvas.fillStyle = "gray";
@@ -899,12 +898,13 @@ function renderUI() {
     } else {
       let yOffset = 105;
       for (const task of gameState.playerTasks) {
-        const location = `(${task.location.x}, ${task.location.y})`;
+        const location =
+          task.location.name || `(${task.location.x}, ${task.location.y})`;
         const status = task.completed ? "✓" : "○";
         const color = task.completed ? "lightgreen" : "white";
 
         canvas.fillStyle = color;
-        canvas.fillText(`${status} Task at ${location}`, 10, yOffset);
+        canvas.fillText(`${status} ${location}`, 10, yOffset);
         yOffset += 20;
       }
     }

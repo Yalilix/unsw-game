@@ -19,6 +19,7 @@ let decalMap = [[]];
 let players = [];
 
 const TILE_SIZE = 32;
+const VISION_RADIUS = 10 * TILE_SIZE; // 10 tiles vision radius (must match backend)
 let TILES_IN_ROW = 8; // will be overwritten when image loads
 
 mapImage.onload = () => {
@@ -154,6 +155,11 @@ function loop() {
   }
 
   for (const player of players) {
+    // Set player opacity if provided
+    if (player.opacity !== undefined && player.opacity < 1.0) {
+      canvas.globalAlpha = player.opacity;
+    }
+
     canvas.drawImage(
       personImage,
       player.x - cameraX,
@@ -161,9 +167,49 @@ function loop() {
       TILE_SIZE,
       TILE_SIZE
     );
+
+    // Reset opacity
+    canvas.globalAlpha = 1.0;
+  }
+
+  // Render fog of war
+  if (myPlayer) {
+    renderFogOfWar(myPlayer, cameraX, cameraY);
   }
 
   window.requestAnimationFrame(loop);
+}
+
+function renderFogOfWar(player, cameraX, cameraY) {
+  // Create radial gradient for fog of war
+  const playerScreenX = player.x - cameraX + TILE_SIZE / 2;
+  const playerScreenY = player.y - cameraY + TILE_SIZE / 2;
+
+  // Slightly larger visual fog radius with smoother transitions
+  const visualFogRadius = VISION_RADIUS * 1.1;
+  const gradient = canvas.createRadialGradient(
+    playerScreenX,
+    playerScreenY,
+    0,
+    playerScreenX,
+    playerScreenY,
+    visualFogRadius
+  );
+
+  // Smoother gradient with more gradual transitions
+  gradient.addColorStop(0, "rgba(0, 0, 0, 0)"); // Center: fully visible
+  gradient.addColorStop(0.45, "rgba(0, 0, 0, 0)"); // 45%: still fully visible
+  gradient.addColorStop(0.6, "rgba(0, 0, 0, 0.05)"); // 60%: barely visible dimming
+  gradient.addColorStop(0.7, "rgba(0, 0, 0, 0.15)"); // 70%: very light dimming
+  gradient.addColorStop(0.8, "rgba(0, 0, 0, 0.3)"); // 80%: light dimming
+  gradient.addColorStop(0.87, "rgba(0, 0, 0, 0.5)"); // 87%: moderate dimming
+  gradient.addColorStop(0.93, "rgba(0, 0, 0, 0.65)"); // 93%: heavy dimming
+  gradient.addColorStop(0.97, "rgba(0, 0, 0, 0.78)"); // 97%: very heavy dimming
+  gradient.addColorStop(1.0, "rgba(0, 0, 0, 0.85)"); // Edge: almost black
+
+  // Fill the entire screen with the gradient
+  canvas.fillStyle = gradient;
+  canvas.fillRect(0, 0, canvasEl.width, canvasEl.height);
 }
 
 window.requestAnimationFrame(loop);

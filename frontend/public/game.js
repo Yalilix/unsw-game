@@ -21,6 +21,12 @@ canvasEl.width = window.innerWidth;
 canvasEl.height = window.innerHeight;
 const canvas = canvasEl.getContext("2d");
 
+// Handle window resize
+window.addEventListener("resize", () => {
+  canvasEl.width = window.innerWidth;
+  canvasEl.height = window.innerHeight;
+});
+
 const socket = io(window.BACKEND_URL || "http://localhost:3000");
 
 let groundMap = [[]];

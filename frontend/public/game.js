@@ -144,6 +144,9 @@ let gameState = {
   playerTasks: [],
   completedTasks: [],
   currentTaskModal: null,
+  sabotageActive: false,
+  lastSabotageTime: null,
+  repairLocation: null,
 };
 
 socket.on("gameState", (data) => {
@@ -155,6 +158,9 @@ socket.on("gameState", (data) => {
   gameState.lastKillTime = data.lastKillTime;
   gameState.playerTasks = data.playerTasks || [];
   gameState.completedTasks = data.completedTasks || [];
+  gameState.sabotageActive = data.sabotageActive || false;
+  gameState.lastSabotageTime = data.lastSabotageTime;
+  gameState.repairLocation = data.repairLocation;
 });
 
 // Kill cooldown updates
@@ -268,6 +274,28 @@ socket.on("taskCompletedByPlayer", (data) => {
     `Player completed task at (${data.taskLocation.x},${data.taskLocation.y})`
   );
   // Task completion is handled by updated gameState
+});
+
+// Sabotage events
+socket.on("sabotageQuestion", (data) => {
+  gameState.currentSabotageModal = data;
+  showSabotageModal(data);
+});
+
+socket.on("sabotageActivated", (data) => {
+  console.log("Sabotage activated - lights out!");
+  hideSabotageModal();
+});
+
+// Repair events
+socket.on("repairQuestion", (data) => {
+  gameState.currentRepairModal = data;
+  showRepairModal(data);
+});
+
+socket.on("sabotageFixed", (data) => {
+  console.log("Sabotage fixed - lights restored!");
+  hideRepairModal();
 });
 
 const inputs = {
@@ -770,13 +798,45 @@ window.attemptTask = function () {
   }
 };
 
+window.attemptSabotage = function () {
+  if (
+    gameState.playerRole === "imposter" &&
+    gameState.isAlive &&
+    !gameState.meetingActive &&
+    !gameState.votingActive
+  ) {
+    socket.emit("sabotage");
+  }
+};
+
+window.attemptRepair = function () {
+  if (
+    gameState.isAlive &&
+    !gameState.meetingActive &&
+    !gameState.votingActive &&
+    gameState.sabotageActive &&
+    gameState.repairLocation
+  ) {
+    const myPlayer = players.find((player) => player.id === socket.id);
+    if (myPlayer) {
+      const dx = Math.abs(myPlayer.x / TILE_SIZE - gameState.repairLocation.x);
+      const dy = Math.abs(myPlayer.y / TILE_SIZE - gameState.repairLocation.y);
+
+      if (dx <= 1 && dy <= 1) {
+        socket.emit("attemptRepair", { location: gameState.repairLocation });
+      }
+    }
+  }
+};
+
 // Update button visibility and state
 function updateButtons() {
   const killButton = document.getElementById("killButton");
+  const sabotageButton = document.getElementById("sabotageButton");
   const reportButton = document.getElementById("reportButton");
   const taskButton = document.getElementById("taskButton");
 
-  if (!killButton || !reportButton || !taskButton) return;
+  if (!killButton || !sabotageButton || !reportButton || !taskButton) return;
 
   const gameActive = !gameState.meetingActive && !gameState.votingActive;
   const myPlayer = players.find((player) => player.id === socket.id);
@@ -832,6 +892,52 @@ function updateButtons() {
     killButton.style.display = "none";
   }
 
+  // Sabotage button - only show for living imposters during active game
+  if (gameState.playerRole === "imposter" && gameState.isAlive && gameActive) {
+    sabotageButton.style.display = "block";
+
+    // Calculate sabotage cooldown
+    const now = Date.now();
+    let remainingSabotageCooldown = 0;
+
+    if (gameState.gameStartTime > 0) {
+      const timeSinceGameStart = now - gameState.gameStartTime;
+      const timeSinceLastSabotage = gameState.lastSabotageTime
+        ? now - gameState.lastSabotageTime
+        : Infinity;
+
+      // Check both initial 30s cooldown and sabotage cooldown (60s)
+      const initialCooldown = Math.max(0, 30000 - timeSinceGameStart);
+      const sabotageCooldown = Math.max(0, 60000 - timeSinceLastSabotage);
+
+      remainingSabotageCooldown = Math.max(initialCooldown, sabotageCooldown);
+    }
+
+    // Check if sabotage is already active
+    const sabotageAlreadyActive = gameState.sabotageActive;
+
+    if (remainingSabotageCooldown > 0) {
+      sabotageButton.disabled = true;
+      sabotageButton.textContent = `SABOTAGE (${Math.ceil(
+        remainingSabotageCooldown / 1000
+      )}s)`;
+      sabotageButton.className =
+        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+    } else if (sabotageAlreadyActive) {
+      sabotageButton.disabled = true;
+      sabotageButton.textContent = "SABOTAGE (ACTIVE)";
+      sabotageButton.className =
+        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+    } else {
+      sabotageButton.disabled = false;
+      sabotageButton.textContent = "SABOTAGE";
+      sabotageButton.className =
+        "px-4 py-2 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 transition-colors shadow-lg cursor-pointer";
+    }
+  } else {
+    sabotageButton.style.display = "none";
+  }
+
   // Report button - show for all living players during active game
   if (gameState.isAlive && gameActive) {
     reportButton.style.display = "block";
@@ -854,17 +960,50 @@ function updateButtons() {
     reportButton.style.display = "none";
   }
 
-  // Task button - show for crewmates (both alive and dead) during active game
-  if (gameState.playerRole === "crewmate" && gameActive) {
-    // Check if there's a task nearby
-    const hasNearbyTask = myPlayer && findClosestTask(myPlayer);
+  // Task/Repair button - show for crewmates and all players during sabotage
+  if (gameActive && gameState.isAlive) {
+    let buttonVisible = false;
+    let buttonText = "DO TASK";
+    let buttonClass =
+      "px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg cursor-pointer";
+    let buttonAction = "task";
 
-    if (hasNearbyTask) {
+    // Check for repair opportunity during sabotage
+    if (gameState.sabotageActive && gameState.repairLocation && myPlayer) {
+      const dx = Math.abs(myPlayer.x / TILE_SIZE - gameState.repairLocation.x);
+      const dy = Math.abs(myPlayer.y / TILE_SIZE - gameState.repairLocation.y);
+
+      if (dx <= 1 && dy <= 1) {
+        buttonVisible = true;
+        buttonText = "FIX LIGHTS";
+        buttonClass =
+          "px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-lg cursor-pointer";
+        buttonAction = "repair";
+      }
+    }
+
+    // Check for regular tasks (only for crewmates when no repair available)
+    if (!buttonVisible && gameState.playerRole === "crewmate") {
+      const hasNearbyTask = myPlayer && findClosestTask(myPlayer);
+      if (hasNearbyTask) {
+        buttonVisible = true;
+        buttonText = "DO TASK";
+        buttonAction = "task";
+      }
+    }
+
+    if (buttonVisible) {
       taskButton.style.display = "block";
       taskButton.disabled = false;
-      taskButton.textContent = "DO TASK";
-      taskButton.className =
-        "px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg cursor-pointer";
+      taskButton.textContent = buttonText;
+      taskButton.className = buttonClass;
+
+      // Update the onclick handler based on action
+      if (buttonAction === "repair") {
+        taskButton.onclick = () => window.attemptRepair();
+      } else {
+        taskButton.onclick = () => window.attemptTask();
+      }
     } else {
       taskButton.style.display = "none";
     }
@@ -901,12 +1040,21 @@ function hideAllUI() {
   const votingResultsUI = document.getElementById("votingResultsUI");
   const gameEndUI = document.getElementById("gameEndUI");
   const taskModal = document.getElementById("taskModal");
+  const sabotageModal = document.getElementById("sabotageModal");
+  const repairModal = document.getElementById("repairModal");
 
   if (meetingUI) meetingUI.style.display = "none";
   if (votingUI) votingUI.style.display = "none";
   if (votingResultsUI) votingResultsUI.style.display = "none";
   if (gameEndUI) gameEndUI.style.display = "none";
   if (taskModal) taskModal.style.display = "none";
+  if (sabotageModal) sabotageModal.style.display = "none";
+  if (repairModal) repairModal.style.display = "none";
+
+  // Reset modal states
+  gameState.currentTaskModal = null;
+  gameState.currentSabotageModal = null;
+  gameState.currentRepairModal = null;
 
   isModalOpen = false; // Allow movement when all UIs are hidden
 }
@@ -946,6 +1094,82 @@ function hideTaskModal() {
   }
   gameState.currentTaskModal = null;
   isModalOpen = false; // Allow movement when task modal is hidden
+}
+
+function showSabotageModal(data) {
+  console.log("Showing sabotage modal:", data);
+
+  const sabotageModal = document.getElementById("sabotageModal");
+  const sabotageQuestion = document.getElementById("sabotageQuestion");
+  const sabotageOptions = document.getElementById("sabotageOptions");
+
+  if (!sabotageModal || !sabotageQuestion || !sabotageOptions) return;
+
+  sabotageQuestion.textContent = data.question;
+  sabotageOptions.innerHTML = "";
+
+  data.options.forEach((option, index) => {
+    const button = document.createElement("button");
+    button.textContent = option;
+    button.className =
+      "w-full py-2 px-4 bg-red-800 hover:bg-red-900 text-white rounded font-bold transition-colors";
+    button.onclick = () => submitSabotageAnswer(option);
+    sabotageOptions.appendChild(button);
+  });
+
+  sabotageModal.style.display = "flex";
+  isModalOpen = true;
+}
+
+function hideSabotageModal() {
+  const sabotageModal = document.getElementById("sabotageModal");
+  if (sabotageModal) {
+    sabotageModal.style.display = "none";
+  }
+  gameState.currentSabotageModal = null;
+  isModalOpen = false;
+}
+
+function submitSabotageAnswer(answer) {
+  socket.emit("completeSabotage", { answer: answer });
+}
+
+function showRepairModal(data) {
+  console.log("Showing repair modal:", data);
+
+  const repairModal = document.getElementById("repairModal");
+  const repairQuestion = document.getElementById("repairQuestion");
+  const repairOptions = document.getElementById("repairOptions");
+
+  if (!repairModal || !repairQuestion || !repairOptions) return;
+
+  repairQuestion.textContent = data.question;
+  repairOptions.innerHTML = "";
+
+  data.options.forEach((option, index) => {
+    const button = document.createElement("button");
+    button.textContent = option;
+    button.className =
+      "w-full py-2 px-4 bg-blue-800 hover:bg-blue-900 text-white rounded font-bold transition-colors";
+    button.onclick = () => submitRepairAnswer(option);
+    repairOptions.appendChild(button);
+  });
+
+  repairModal.style.display = "flex";
+  isModalOpen = true;
+}
+
+function hideRepairModal() {
+  const repairModal = document.getElementById("repairModal");
+  if (repairModal) {
+    repairModal.style.display = "none";
+  }
+  gameState.currentRepairModal = null;
+  isModalOpen = false;
+}
+
+function submitRepairAnswer(answer) {
+  socket.emit("completeRepair", { answer: answer });
 }
 
 function submitTaskAnswer(answer) {
@@ -1279,6 +1503,23 @@ function loop() {
     }
   }
 
+  // Render repair location (red highlighting when sabotage is active)
+  if (gameState.sabotageActive && gameState.repairLocation) {
+    const repairX = gameState.repairLocation.x * TILE_SIZE - cameraX;
+    const repairY = gameState.repairLocation.y * TILE_SIZE - cameraY;
+
+    // Render pulsing red overlay with animation
+    const time = Date.now() * 0.005; // Adjust speed of pulsing
+    const alpha = 0.3 + 0.2 * Math.sin(time); // Pulsing between 0.3 and 0.5 alpha
+    canvas.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+    canvas.fillRect(repairX, repairY, TILE_SIZE, TILE_SIZE);
+
+    // Add bright red border
+    canvas.strokeStyle = "rgba(255, 0, 0, 0.9)";
+    canvas.lineWidth = 3;
+    canvas.strokeRect(repairX, repairY, TILE_SIZE, TILE_SIZE);
+  }
+
   // Render dead bodies
   for (const body of gameState.deadBodies) {
     canvas.fillStyle = "red";
@@ -1435,6 +1676,40 @@ function renderUI() {
 
   // Render minimap
   renderMinimap();
+
+  // Show sabotage status message under minimap
+  if (gameState.sabotageActive) {
+    const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
+    const minimapWidth = isSmallScreen ? 100 : 200;
+    const minimapHeight = isSmallScreen ? 75 : 150;
+    const spacing = 20;
+    const minimapX = canvasEl.width - minimapWidth - spacing;
+    const minimapY = spacing;
+
+    // Position text closer to minimap with reduced gap
+    const statusX = minimapX;
+    const statusY = minimapY + minimapHeight + 10; // Reduced from 25 to 10
+
+    canvas.fillStyle = "red";
+    canvas.font = "bold 12px Arial";
+
+    const statusText = "Night Mode: Fix Lights Upper Campus Entrance";
+    const textWidth = canvas.measureText(statusText).width;
+
+    // Check if text needs wrapping
+    if (textWidth > minimapWidth) {
+      // Split text into multiple lines
+      const line1 = "Night Mode:";
+      const line2 = "Fix Lights";
+      const line3 = "Upper Campus Entrance";
+
+      canvas.fillText(line1, statusX, statusY);
+      canvas.fillText(line2, statusX, statusY + 14); // 14px line spacing
+      canvas.fillText(line3, statusX, statusY + 28); // 28px total spacing
+    } else {
+      canvas.fillText(statusText, statusX, statusY);
+    }
+  }
 }
 
 function renderMinimap() {
@@ -1514,6 +1789,30 @@ function renderMinimap() {
     }
   }
 
+  // Draw repair location when sabotage is active
+  if (gameState.sabotageActive && gameState.repairLocation) {
+    const repairMinimapX =
+      minimapX + offsetX + gameState.repairLocation.x * TILE_SIZE * scale;
+    const repairMinimapY =
+      minimapY + offsetY + gameState.repairLocation.y * TILE_SIZE * scale;
+
+    // Draw pulsing red dot for repair location
+    const time = Date.now() * 0.005;
+    const pulseAlpha = 0.7 + 0.3 * Math.sin(time); // Pulsing between 0.7 and 1.0 alpha
+    const repairDotRadius = isSmallScreen ? 3 : 4;
+    canvas.fillStyle = `rgba(255, 0, 0, ${pulseAlpha})`;
+    canvas.beginPath();
+    canvas.arc(repairMinimapX, repairMinimapY, repairDotRadius, 0, 2 * Math.PI);
+    canvas.fill();
+
+    // Add white outline for visibility
+    canvas.strokeStyle = "white";
+    canvas.lineWidth = 1;
+    canvas.beginPath();
+    canvas.arc(repairMinimapX, repairMinimapY, repairDotRadius, 0, 2 * Math.PI);
+    canvas.stroke();
+  }
+
   // Draw player position
   const playerMinimapX = minimapX + offsetX + myPlayer.x * scale;
   const playerMinimapY = minimapY + offsetY + myPlayer.y * scale;
@@ -1539,11 +1838,16 @@ function renderFogOfWar(player, cameraX, cameraY) {
   const playerScreenX = player.x - cameraX + TILE_SIZE / 2;
   const playerScreenY = player.y - cameraY + TILE_SIZE / 2;
 
-  // Slightly larger visual fog radius with smoother transitions - use role-specific vision
-  const visionRadius =
-    gameState.playerRole === "imposter"
-      ? IMPOSTER_VISION_RADIUS
+  // Determine vision radius based on role and sabotage state
+  let visionRadius;
+  if (gameState.playerRole === "imposter") {
+    visionRadius = IMPOSTER_VISION_RADIUS;
+  } else {
+    // Crewmate vision - reduce to quarter during sabotage
+    visionRadius = gameState.sabotageActive
+      ? CREWMATE_VISION_RADIUS / 4
       : CREWMATE_VISION_RADIUS;
+  }
   const visualFogRadius = visionRadius * 1.1;
   const gradient = canvas.createRadialGradient(
     playerScreenX,

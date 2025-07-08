@@ -57,6 +57,13 @@ export const TASK_LOCATIONS: TaskLocation[] = [
   { x: 83, y: 14, name: "Main Library" },
 ];
 
+// Repair location for sabotage (lights)
+export const REPAIR_LOCATION: TaskLocation = {
+  x: 77,
+  y: 0,
+  name: "Upper Campus Entrance",
+};
+
 export interface GameInstance {
   roomId: string;
   players: GamePlayer[];
@@ -77,6 +84,10 @@ export interface GameInstance {
   playerTasks: Record<string, PlayerTask[]>; // playerId -> assigned tasks
   completedTasks: Set<string>; // completed task location keys "x,y"
   currentQuestions: Record<string, any>; // playerId -> current question object
+  sabotageActive: boolean; // whether lights are sabotaged
+  lastSabotageTime?: number; // when last sabotage was triggered
+  sabotageCooldownPausedAt?: number; // when sabotage cooldown was paused (voting)
+  pausedSabotageCooldownRemaining?: number; // how much cooldown was left when paused
 }
 
 class RoomManager {
@@ -284,6 +295,10 @@ class RoomManager {
       playerTasks: playerTasks,
       completedTasks: new Set<string>(),
       currentQuestions: {},
+      sabotageActive: false,
+      lastSabotageTime: undefined,
+      sabotageCooldownPausedAt: undefined,
+      pausedSabotageCooldownRemaining: undefined,
     };
 
     // Initialize inputs for all players

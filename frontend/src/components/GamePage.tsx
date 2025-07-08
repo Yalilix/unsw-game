@@ -64,6 +64,16 @@ export function GamePage() {
         className="absolute bottom-4 right-4 flex gap-3"
         style={{ zIndex: 100 }}
       >
+        {/* Sabotage Button (only for imposters) */}
+        <button
+          id="sabotageButton"
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 transition-colors shadow-lg cursor-pointer"
+          style={{ display: "none" }}
+          onClick={() => (window as any).attemptSabotage?.()}
+        >
+          SABOTAGE
+        </button>
+
         {/* Kill Button (only for imposters) */}
         <button
           id="killButton"
@@ -224,6 +234,50 @@ export function GamePage() {
             {/* Question will be populated by JavaScript */}
           </div>
           <div id="taskOptions" className="space-y-2">
+            {/* Options will be populated by JavaScript */}
+          </div>
+        </div>
+      </div>
+
+      {/* Sabotage Modal */}
+      <div
+        id="sabotageModal"
+        className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
+        style={{ display: "none", zIndex: 1000 }}
+      >
+        <div className="bg-red-900 p-6 rounded-lg max-w-lg w-full mx-4 border-2 border-red-600 max-h-[90vh] overflow-y-auto">
+          <h2 className="text-xl font-bold mb-4 text-center text-white">
+            🔥 Sabotage Systems
+          </h2>
+          <div
+            id="sabotageQuestion"
+            className="text-center text-gray-200 mb-6 text-lg"
+          >
+            {/* Question will be populated by JavaScript */}
+          </div>
+          <div id="sabotageOptions" className="space-y-2">
+            {/* Options will be populated by JavaScript */}
+          </div>
+        </div>
+      </div>
+
+      {/* Repair Modal */}
+      <div
+        id="repairModal"
+        className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
+        style={{ display: "none", zIndex: 1000 }}
+      >
+        <div className="bg-blue-900 p-6 rounded-lg max-w-lg w-full mx-4 border-2 border-blue-600 max-h-[90vh] overflow-y-auto">
+          <h2 className="text-xl font-bold mb-4 text-center text-white">
+            ⚡ Fix Lights
+          </h2>
+          <div
+            id="repairQuestion"
+            className="text-center text-gray-200 mb-6 text-lg"
+          >
+            {/* Question will be populated by JavaScript */}
+          </div>
+          <div id="repairOptions" className="space-y-2">
             {/* Options will be populated by JavaScript */}
           </div>
         </div>

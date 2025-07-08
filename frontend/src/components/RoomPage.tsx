@@ -23,13 +23,8 @@ const RoomPage = () => {
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [editingName, setEditingName] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [currentPlayerName, setCurrentPlayerName] = useState("");
 
   const PLAYER_NAME_KEY = "playerName";
-  // Set max name length
-  const USERNAME_MAX_LENGTH = 14;
 
   useEffect(() => {
     if (!roomId || !socket) return;
@@ -61,31 +56,25 @@ const RoomPage = () => {
       setRoomData(data);
       setLoading(false);
 
-      // Find current player's name
-      const currentPlayer = data.players.find((p) => p.id === socket.id);
-      if (currentPlayer) {
-        setCurrentPlayerName(currentPlayer.name);
-        setNewName(currentPlayer.name);
+      // Check if returning from game and restore original name
+      const returnFromGame = sessionStorage.getItem(
+        `room_${roomId}_returnFromGame`
+      );
+      const storedName = sessionStorage.getItem(`room_${roomId}_playerName`);
 
-        // Check if returning from game and restore original name
-        const returnFromGame = sessionStorage.getItem(
-          `room_${roomId}_returnFromGame`
-        );
-        const storedName = sessionStorage.getItem(`room_${roomId}_playerName`);
-
-        if (returnFromGame === "true" && storedName) {
-          console.log(`Restoring player name from game: "${storedName}"`);
-          socket.emit("updatePlayerName", { name: storedName });
-          localStorage.setItem(PLAYER_NAME_KEY, storedName);
-          // Clear the session storage flags
-          sessionStorage.removeItem(`room_${roomId}_returnFromGame`);
-          sessionStorage.removeItem(`room_${roomId}_playerName`);
-        } else {
-          // Normal logic - check localStorage for saved name
-          const savedName = localStorage.getItem(PLAYER_NAME_KEY);
-          if (savedName && savedName !== currentPlayer.name) {
-            socket.emit("updatePlayerName", { name: savedName });
-          }
+      if (returnFromGame === "true" && storedName) {
+        console.log(`Restoring player name from game: "${storedName}"`);
+        socket.emit("updatePlayerName", { name: storedName });
+        localStorage.setItem(PLAYER_NAME_KEY, storedName);
+        // Clear the session storage flags
+        sessionStorage.removeItem(`room_${roomId}_returnFromGame`);
+        sessionStorage.removeItem(`room_${roomId}_playerName`);
+      } else {
+        // Normal logic - check localStorage for saved name
+        const currentPlayer = data.players.find((p) => p.id === socket.id);
+        const savedName = localStorage.getItem(PLAYER_NAME_KEY);
+        if (currentPlayer && savedName && savedName !== currentPlayer.name) {
+          socket.emit("updatePlayerName", { name: savedName });
         }
       }
     });
@@ -121,15 +110,6 @@ const RoomPage = () => {
             players: data.players,
           };
         });
-
-        // Update current player name if it changed
-        const currentPlayer = data.players.find((p) => p.id === socket.id);
-        if (currentPlayer) {
-          setCurrentPlayerName(currentPlayer.name);
-          if (!editingName) {
-            setNewName(currentPlayer.name);
-          }
-        }
       }
     );
 
@@ -194,19 +174,6 @@ const RoomPage = () => {
     }
   };
 
-  const updatePlayerName = () => {
-    if (socket && newName.trim() && newName.trim() !== currentPlayerName) {
-      socket.emit("updatePlayerName", { name: newName.trim() });
-      localStorage.setItem(PLAYER_NAME_KEY, newName.trim());
-    }
-    setEditingName(false);
-  };
-
-  const cancelNameEdit = () => {
-    setNewName(currentPlayerName);
-    setEditingName(false);
-  };
-
   const leaveRoom = () => {
     if (socket) {
       socket.emit("leaveRoom");
@@ -247,7 +214,6 @@ const RoomPage = () => {
     );
   }
 
-  const canStartGame = roomData.players.length >= 4 && roomData.isHost;
   const minPlayersNeeded = Math.max(0, 4 - roomData.players.length);
 
   return (

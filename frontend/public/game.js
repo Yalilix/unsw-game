@@ -1920,13 +1920,22 @@ function renderUI() {
     const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
     const minimapWidth = isSmallScreen ? 100 : 200;
     const minimapHeight = isSmallScreen ? 75 : 150;
+
+    // Calculate the same scaled dimensions as the minimap
+    const mapPixelWidth = groundMap[0].length * TILE_SIZE;
+    const mapPixelHeight = groundMap.length * TILE_SIZE;
+    const scaleX = minimapWidth / mapPixelWidth;
+    const scaleY = minimapHeight / mapPixelHeight;
+    const scale = Math.min(scaleX, scaleY);
+    const scaledHeight = mapPixelHeight * scale;
+
     const spacing = 20;
     const minimapX = canvasEl.width - minimapWidth - spacing;
     const minimapY = spacing;
 
-    // Position text closer to minimap with minimal gap
+    // Position text closer to minimap using actual scaled height with minimal gap
     const statusX = minimapX;
-    const statusY = minimapY + minimapHeight + 3; // Minimal gap of 3px
+    const statusY = minimapY + scaledHeight + 17;
 
     canvas.fillStyle = "red";
     canvas.font = "bold 12px Arial";

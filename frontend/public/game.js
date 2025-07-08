@@ -347,6 +347,15 @@ socket.on("sabotageQuestion", (data) => {
   showSabotageModal(data);
 });
 
+socket.on("sabotageCompleted", (data) => {
+  if (data.correct) {
+    console.log("Sabotage activated - lights out!");
+    showSabotageSuccess();
+  } else {
+    showSabotageFailure(data.correctAnswer);
+  }
+});
+
 socket.on("sabotageActivated", (data) => {
   console.log("Sabotage activated - lights out!");
   hideSabotageModal();
@@ -356,6 +365,15 @@ socket.on("sabotageActivated", (data) => {
 socket.on("repairQuestion", (data) => {
   gameState.currentRepairModal = data;
   showRepairModal(data);
+});
+
+socket.on("repairCompleted", (data) => {
+  if (data.correct) {
+    console.log("Sabotage fixed - lights restored!");
+    showRepairSuccess();
+  } else {
+    showRepairFailure(data.correctAnswer);
+  }
 });
 
 socket.on("sabotageFixed", (data) => {
@@ -1302,6 +1320,124 @@ function showTaskSuccess() {
   // Auto-close after 1 second
   setTimeout(() => {
     hideTaskModal();
+  }, 1000);
+}
+
+function showSabotageFailure(correctAnswer) {
+  const sabotageOptions = document.getElementById("sabotageOptions");
+  if (!sabotageOptions) return;
+
+  // Show failure message and correct answer
+  sabotageOptions.innerHTML = `
+    <div class="text-center text-red-400 mb-4">
+      <p class="text-lg font-bold">Incorrect!</p>
+      <p class="text-sm">${correctAnswer}</p>
+    </div>
+    <button id="sabotageRetryButton" class="w-full p-3 bg-red-600 text-white rounded cursor-pointer hover:bg-red-700" disabled>
+      Try Again (5s)
+    </button>
+  `;
+
+  // 5 second cooldown
+  let timeLeft = 5;
+  const retryButton = document.getElementById("sabotageRetryButton");
+
+  const timer = setInterval(() => {
+    timeLeft--;
+    if (retryButton) {
+      retryButton.textContent = `Try Again (${timeLeft}s)`;
+    }
+
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      if (retryButton) {
+        retryButton.disabled = false;
+        retryButton.textContent = "Try Again";
+        retryButton.onclick = () => {
+          if (gameState.currentSabotageModal) {
+            socket.emit("sabotage");
+          }
+        };
+      }
+    }
+  }, 1000);
+}
+
+function showSabotageSuccess() {
+  const sabotageOptions = document.getElementById("sabotageOptions");
+  if (!sabotageOptions) return;
+
+  // Show success message
+  sabotageOptions.innerHTML = `
+    <div class="text-center text-green-400 mb-4">
+      <p class="text-xl font-bold">💥 Sabotage Activated!</p>
+      <p class="text-lg">Lights are out!</p>
+    </div>
+  `;
+
+  // Auto-close after 1 second
+  setTimeout(() => {
+    hideSabotageModal();
+  }, 1000);
+}
+
+function showRepairFailure(correctAnswer) {
+  const repairOptions = document.getElementById("repairOptions");
+  if (!repairOptions) return;
+
+  // Show failure message and correct answer
+  repairOptions.innerHTML = `
+    <div class="text-center text-red-400 mb-4">
+      <p class="text-lg font-bold">Incorrect!</p>
+      <p class="text-sm">${correctAnswer}</p>
+    </div>
+    <button id="repairRetryButton" class="w-full p-3 bg-blue-600 text-white rounded cursor-pointer hover:bg-blue-700" disabled>
+      Try Again (5s)
+    </button>
+  `;
+
+  // 5 second cooldown
+  let timeLeft = 5;
+  const retryButton = document.getElementById("repairRetryButton");
+
+  const timer = setInterval(() => {
+    timeLeft--;
+    if (retryButton) {
+      retryButton.textContent = `Try Again (${timeLeft}s)`;
+    }
+
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      if (retryButton) {
+        retryButton.disabled = false;
+        retryButton.textContent = "Try Again";
+        retryButton.onclick = () => {
+          if (gameState.currentRepairModal && gameState.repairLocation) {
+            socket.emit("attemptRepair", {
+              location: gameState.repairLocation,
+            });
+          }
+        };
+      }
+    }
+  }, 1000);
+}
+
+function showRepairSuccess() {
+  const repairOptions = document.getElementById("repairOptions");
+  if (!repairOptions) return;
+
+  // Show success message
+  repairOptions.innerHTML = `
+    <div class="text-center text-green-400 mb-4">
+      <p class="text-xl font-bold">🔧 Repair Complete!</p>
+      <p class="text-lg">Lights restored!</p>
+    </div>
+  `;
+
+  // Auto-close after 1 second
+  setTimeout(() => {
+    hideRepairModal();
   }, 1000);
 }
 

@@ -313,6 +313,35 @@ function findClosestTask(player) {
   return closest;
 }
 
+// Helper function to find closest killable target (living crewmate)
+function findClosestTarget(player) {
+  if (gameState.playerRole !== "imposter") return null;
+
+  let closest = null;
+  let closestDist = Infinity;
+  const KILL_RADIUS = TILE_SIZE * 3; // Same as report radius
+
+  for (const target of players) {
+    // Only target living crewmates (not imposters, not dead players, not self)
+    if (
+      target.id === player.id ||
+      !target.isAlive ||
+      target.role === "imposter"
+    ) {
+      continue;
+    }
+
+    const dist = Math.sqrt(
+      (target.x - player.x) ** 2 + (target.y - player.y) ** 2
+    );
+    if (dist < closestDist && dist <= KILL_RADIUS) {
+      closestDist = dist;
+      closest = target;
+    }
+  }
+  return closest;
+}
+
 // Helper function to check if a task location is completed
 function isTaskCompleted(location) {
   const locationKey = `${location.x},${location.y}`;
@@ -403,9 +432,17 @@ function updateButtons() {
       remainingCooldown = Math.max(remainingCooldown, serverCooldown);
     }
 
+    // Check if there's a target nearby
+    const hasNearbyTarget = myPlayer && findClosestTarget(myPlayer);
+
     if (remainingCooldown > 0) {
       killButton.disabled = true;
       killButton.textContent = `KILL (${Math.ceil(remainingCooldown / 1000)}s)`;
+      killButton.className =
+        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+    } else if (!hasNearbyTarget) {
+      killButton.disabled = true;
+      killButton.textContent = "KILL";
       killButton.className =
         "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
     } else {
@@ -668,7 +705,7 @@ function showGameEnd(data) {
 
     gameEndContent.innerHTML = `
       <p class="text-lg mb-2">The imposters have won!</p>
-      <p class="text-md mb-2 text-red-300">Imposters were: ${imposterNames}</p>
+      <p class="text-md mb-2 text-red-300">The imposter(s) were: ${imposterNames}</p>
       <p class="text-sm text-gray-400">Evil triumphs this time...</p>
     `;
   } else if (data.winner === "crewmates") {

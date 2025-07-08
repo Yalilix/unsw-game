@@ -41,6 +41,19 @@ function isColliding(
   );
 }
 
+function isOutOfBounds(player: { x: number; y: number }): boolean {
+  const mapWidth = decal2D[0]?.length * TILE_SIZE || 0;
+  const mapHeight = decal2D.length * TILE_SIZE || 0;
+
+  // Check if player is outside map boundaries
+  return (
+    player.x < 0 ||
+    player.y < 0 ||
+    player.x + PLAYER_SIZE > mapWidth ||
+    player.y + PLAYER_SIZE > mapHeight
+  );
+}
+
 function isCollidingWithMap(player: { x: number; y: number }): boolean {
   // Use a rectangular collision box at the bottom: 100% width, 20% height
   const footWidth = PLAYER_SIZE; // 100% of player width
@@ -138,14 +151,14 @@ function tick(delta: number, io: IOServer): void {
 
     // Try moving in X direction first
     player.x += dx;
-    if (isCollidingWithMap(player)) {
-      player.x = previousX; // Revert X movement if collision
+    if (isCollidingWithMap(player) || isOutOfBounds(player)) {
+      player.x = previousX; // Revert X movement if collision or out of bounds
     }
 
     // Try moving in Y direction
     player.y += dy;
-    if (isCollidingWithMap(player)) {
-      player.y = previousY; // Revert Y movement if collision
+    if (isCollidingWithMap(player) || isOutOfBounds(player)) {
+      player.y = previousY; // Revert Y movement if collision or out of bounds
     }
   }
 

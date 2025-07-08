@@ -21,6 +21,36 @@ canvasEl.width = window.innerWidth;
 canvasEl.height = window.innerHeight;
 const canvas = canvasEl.getContext("2d");
 
+// Handle window resize
+window.addEventListener("resize", () => {
+  canvasEl.width = window.innerWidth;
+  canvasEl.height = window.innerHeight;
+  updateButtons(); // Update button visibility when screen size changes
+  handleAutoFullscreen(); // Check if fullscreen should be toggled
+});
+
+// Initial fullscreen check when game loads
+setTimeout(() => {
+  handleAutoFullscreen();
+}, 1000); // Small delay to ensure page is fully loaded
+
+// Trigger fullscreen on first user interaction (many browsers require this)
+let hasInteracted = false;
+function handleFirstInteraction() {
+  if (!hasInteracted) {
+    hasInteracted = true;
+    handleAutoFullscreen();
+    // Remove listeners after first interaction
+    document.removeEventListener("click", handleFirstInteraction);
+    document.removeEventListener("keydown", handleFirstInteraction);
+    document.removeEventListener("touchstart", handleFirstInteraction);
+  }
+}
+
+document.addEventListener("click", handleFirstInteraction);
+document.addEventListener("keydown", handleFirstInteraction);
+document.addEventListener("touchstart", handleFirstInteraction);
+
 const socket = io(window.BACKEND_URL || "http://localhost:3000");
 
 let groundMap = [[]];
@@ -29,7 +59,8 @@ let players = [];
 let gameStarted = false;
 
 const TILE_SIZE = 32;
-const VISION_RADIUS = 10 * TILE_SIZE; // 10 tiles vision radius (must match backend)
+const IMPOSTER_VISION_RADIUS = 10 * TILE_SIZE; // 10 tiles vision radius for imposters
+const CREWMATE_VISION_RADIUS = Math.round((10 * TILE_SIZE * 2) / 3); // ~6.67 tiles vision radius for crewmates (2/3 of imposter vision)
 let TILES_IN_ROW = 8; // will be overwritten when image loads
 
 mapImage.onload = () => {
@@ -71,6 +102,13 @@ socket.on("error", (data) => {
 
 socket.on("players", (serverPlayers) => {
   players = serverPlayers;
+});
+
+// Player left game event
+socket.on("playerLeftGame", (data) => {
+  console.log("Player left game:", data.playerId);
+  // Remove the player from the players array
+  players = players.filter((player) => player.id !== data.playerId);
 });
 
 // Game state updates
@@ -299,10 +337,59 @@ function findClosestTask(player) {
   return closest;
 }
 
+// Helper function to find closest killable target (living crewmate)
+function findClosestTarget(player) {
+  if (gameState.playerRole !== "imposter") return null;
+
+  let closest = null;
+  let closestDist = Infinity;
+  const KILL_RADIUS = TILE_SIZE * 3; // Same as report radius
+
+  for (const target of players) {
+    // Only target living crewmates (not imposters, not dead players, not self)
+    if (
+      target.id === player.id ||
+      !target.isAlive ||
+      target.role === "imposter"
+    ) {
+      continue;
+    }
+
+    const dist = Math.sqrt(
+      (target.x - player.x) ** 2 + (target.y - player.y) ** 2
+    );
+    if (dist < closestDist && dist <= KILL_RADIUS) {
+      closestDist = dist;
+      closest = target;
+    }
+  }
+  return closest;
+}
+
 // Helper function to check if a task location is completed
 function isTaskCompleted(location) {
   const locationKey = `${location.x},${location.y}`;
   return gameState.completedTasks.includes(locationKey);
+}
+
+// Helper function to wrap text within a given width
+function wrapText(text, maxWidth) {
+  const words = text.split(" ");
+  const lines = [];
+  let currentLine = words[0];
+
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i];
+    const width = canvas.measureText(currentLine + " " + word).width;
+    if (width < maxWidth) {
+      currentLine += " " + word;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  lines.push(currentLine);
+  return lines;
 }
 
 // Button Functions
@@ -316,6 +403,26 @@ window.attemptKill = function () {
     socket.emit("kill");
   }
 };
+
+// Automatic fullscreen management for small screens
+function handleAutoFullscreen() {
+  const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
+  const isCurrentlyFullscreen = !!document.fullscreenElement;
+
+  if (isSmallScreen && !isCurrentlyFullscreen) {
+    // Enter fullscreen on small screens
+    document.documentElement.requestFullscreen().catch((err) => {
+      console.log("Auto-fullscreen failed:", err);
+      // Fullscreen might fail on some browsers without user interaction
+      // This is expected behavior and not an error
+    });
+  } else if (!isSmallScreen && isCurrentlyFullscreen) {
+    // Exit fullscreen on large screens
+    document.exitFullscreen().catch((err) => {
+      console.log("Auto-exit fullscreen failed:", err);
+    });
+  }
+}
 
 window.attemptReport = function () {
   if (
@@ -389,9 +496,17 @@ function updateButtons() {
       remainingCooldown = Math.max(remainingCooldown, serverCooldown);
     }
 
+    // Check if there's a target nearby
+    const hasNearbyTarget = myPlayer && findClosestTarget(myPlayer);
+
     if (remainingCooldown > 0) {
       killButton.disabled = true;
       killButton.textContent = `KILL (${Math.ceil(remainingCooldown / 1000)}s)`;
+      killButton.className =
+        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+    } else if (!hasNearbyTarget) {
+      killButton.disabled = true;
+      killButton.textContent = "KILL";
       killButton.className =
         "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
     } else {
@@ -574,7 +689,6 @@ function showTaskSuccess() {
     <div class="text-center text-green-400 mb-4">
       <p class="text-xl font-bold">🎉 Congratulations!</p>
       <p class="text-lg">Task completed successfully!</p>
-      <p class="text-sm text-gray-300">Closing automatically...</p>
     </div>
   `;
 
@@ -655,7 +769,7 @@ function showGameEnd(data) {
 
     gameEndContent.innerHTML = `
       <p class="text-lg mb-2">The imposters have won!</p>
-      <p class="text-md mb-2 text-red-300">Imposters were: ${imposterNames}</p>
+      <p class="text-md mb-2 text-red-300">The imposter(s) were: ${imposterNames}</p>
       <p class="text-sm text-gray-400">Evil triumphs this time...</p>
     `;
   } else if (data.winner === "crewmates") {
@@ -663,8 +777,7 @@ function showGameEnd(data) {
     gameEndTitle.className =
       "text-2xl font-bold mb-4 text-center text-blue-400";
     gameEndContent.innerHTML = `
-      <p class="text-lg mb-2">All imposters have been ejected!</p>
-      <p class="text-sm text-gray-400">Justice has been served!</p>
+      <p class="text-lg mb-2">Justice has been served</p>
     `;
   } else {
     gameEndTitle.textContent = "Game Over";
@@ -850,9 +963,11 @@ function loop() {
 
   for (const player of players) {
     // Set player opacity if provided
-    if (player.opacity !== undefined && player.opacity < 1.0) {
-      canvas.globalAlpha = player.opacity;
-    }
+    const playerOpacity =
+      player.opacity !== undefined && player.opacity < 1.0
+        ? player.opacity
+        : 1.0;
+    canvas.globalAlpha = playerOpacity;
 
     canvas.drawImage(
       personImage,
@@ -861,6 +976,44 @@ function loop() {
       TILE_SIZE,
       TILE_SIZE
     );
+
+    // Draw player name underneath
+    if (player.name || player.id) {
+      const displayName = player.name || player.id;
+      // Truncate name if longer than 16 characters
+      const truncatedName =
+        displayName.length > 16
+          ? displayName.substring(0, 16) + "..."
+          : displayName;
+
+      // Make names more opaque - minimum 0.7 opacity, maximum 1.0
+      const nameOpacity = Math.max(0.7, playerOpacity);
+      canvas.globalAlpha = nameOpacity;
+
+      canvas.font = "12px Arial";
+      canvas.textAlign = "center";
+
+      // Position name below the player sprite
+      const nameX = player.x - cameraX + TILE_SIZE / 2;
+      const nameY = player.y - cameraY + TILE_SIZE + 14; // 14px below sprite
+
+      // Draw strong black outline by drawing text multiple times with offsets
+      canvas.fillStyle = "black";
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          if (dx !== 0 || dy !== 0) {
+            canvas.fillText(truncatedName, nameX + dx, nameY + dy);
+          }
+        }
+      }
+
+      // Draw the main white text
+      canvas.fillStyle = "white";
+      canvas.fillText(truncatedName, nameX, nameY);
+
+      // Reset text alignment
+      canvas.textAlign = "start";
+    }
 
     // Reset opacity
     canvas.globalAlpha = 1.0;
@@ -884,14 +1037,26 @@ function renderUI() {
   // Role display
   canvas.fillStyle = "white";
   canvas.font = "20px Arial";
-  canvas.fillText(`Role: ${gameState.playerRole}`, 10, 30);
+  canvas.fillText(
+    `Role: ${
+      gameState.playerRole.charAt(0).toUpperCase() +
+      gameState.playerRole.slice(1)
+    }`,
+    10,
+    30
+  );
   canvas.fillText(`Status: ${gameState.isAlive ? "Alive" : "Dead"}`, 10, 55);
 
   // Task list for crewmates
   if (gameState.playerRole === "crewmate") {
+    const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
+    const maxTextWidth = isSmallScreen
+      ? canvasEl.width / 3
+      : canvasEl.width * 0.6; // 1/3 on small screens, 60% on large
+
     canvas.font = "16px Arial";
     canvas.fillStyle = "yellow";
-    canvas.fillText("Tasks:", 10, 85);
+    canvas.fillText("Task Locations:", 10, 85);
 
     if (gameState.playerTasks.length === 0) {
       canvas.fillStyle = "gray";
@@ -899,13 +1064,26 @@ function renderUI() {
     } else {
       let yOffset = 105;
       for (const task of gameState.playerTasks) {
-        const location = `(${task.location.x}, ${task.location.y})`;
+        const location =
+          task.location.name || `(${task.location.x}, ${task.location.y})`;
         const status = task.completed ? "✓" : "○";
         const color = task.completed ? "lightgreen" : "white";
+        const fullText = `${status} ${location}`;
 
         canvas.fillStyle = color;
-        canvas.fillText(`${status} Task at ${location}`, 10, yOffset);
-        yOffset += 20;
+
+        // Check if text fits in one line
+        if (canvas.measureText(fullText).width <= maxTextWidth) {
+          canvas.fillText(fullText, 10, yOffset);
+          yOffset += 20;
+        } else {
+          // Wrap text for small screens
+          const wrappedLines = wrapText(fullText, maxTextWidth);
+          for (const line of wrappedLines) {
+            canvas.fillText(line, 10, yOffset);
+            yOffset += 20;
+          }
+        }
       }
     }
   }
@@ -924,18 +1102,142 @@ function renderUI() {
   }
 
   // Instructions
+  const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
+  const maxInstructionsWidth = isSmallScreen
+    ? canvasEl.width / 3
+    : canvasEl.width * 0.6; // 1/3 on small screens, 60% on large
+
   canvas.fillStyle = "white";
   canvas.font = "14px Arial";
-  canvas.fillText("WASD: Move", 10, canvasEl.height - 20);
-  if (gameState.playerRole === "imposter" && gameState.isAlive) {
-    canvas.fillText("Use buttons to KILL and REPORT", 10, canvasEl.height - 40);
-  } else if (gameState.isAlive) {
-    canvas.fillText(
-      "Use button to REPORT dead bodies",
-      10,
-      canvasEl.height - 40
-    );
+
+  // Render "WASD: Move" instruction
+  const moveText = "WASD: Move";
+  if (canvas.measureText(moveText).width <= maxInstructionsWidth) {
+    canvas.fillText(moveText, 10, canvasEl.height - 20);
+  } else {
+    const wrappedMoveLines = wrapText(moveText, maxInstructionsWidth);
+    let yOffsetMove = canvasEl.height - 20 - (wrappedMoveLines.length - 1) * 16;
+    for (const line of wrappedMoveLines) {
+      canvas.fillText(line, 10, yOffsetMove);
+      yOffsetMove += 16;
+    }
   }
+
+  // Render role-specific instructions
+  if (gameState.playerRole === "imposter" && gameState.isAlive) {
+    const imposterText = "Use buttons to KILL and REPORT";
+    if (canvas.measureText(imposterText).width <= maxInstructionsWidth) {
+      canvas.fillText(imposterText, 10, canvasEl.height - 40);
+    } else {
+      const wrappedImposterLines = wrapText(imposterText, maxInstructionsWidth);
+      let yOffsetImposter =
+        canvasEl.height - 40 - (wrappedImposterLines.length - 1) * 16;
+      for (const line of wrappedImposterLines) {
+        canvas.fillText(line, 10, yOffsetImposter);
+        yOffsetImposter += 16;
+      }
+    }
+  } else if (gameState.isAlive) {
+    const crewText = "Use button to REPORT dead bodies";
+    if (canvas.measureText(crewText).width <= maxInstructionsWidth) {
+      canvas.fillText(crewText, 10, canvasEl.height - 40);
+    } else {
+      const wrappedCrewLines = wrapText(crewText, maxInstructionsWidth);
+      let yOffsetCrew =
+        canvasEl.height - 40 - (wrappedCrewLines.length - 1) * 16;
+      for (const line of wrappedCrewLines) {
+        canvas.fillText(line, 10, yOffsetCrew);
+        yOffsetCrew += 16;
+      }
+    }
+  }
+
+  // Render minimap
+  renderMinimap();
+}
+
+function renderMinimap() {
+  if (!groundMap || !groundMap.length || !decalMap || !decalMap.length) return;
+
+  const myPlayer = players.find((player) => player.id === socket.id);
+  if (!myPlayer) return;
+
+  // Minimap configuration - responsive sizing for small screens
+  const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
+  const minimapWidth = isSmallScreen ? 100 : 200;
+  const minimapHeight = isSmallScreen ? 75 : 150;
+  const minimapX = canvasEl.width - minimapWidth - 20; // 20px from right edge
+  const minimapY = 20; // 20px from top edge
+
+  // Calculate scale factors
+  const mapPixelWidth = groundMap[0].length * TILE_SIZE;
+  const mapPixelHeight = groundMap.length * TILE_SIZE;
+  const scaleX = minimapWidth / mapPixelWidth;
+  const scaleY = minimapHeight / mapPixelHeight;
+  const scale = Math.min(scaleX, scaleY); // Use smaller scale to maintain aspect ratio
+
+  const scaledWidth = mapPixelWidth * scale;
+  const scaledHeight = mapPixelHeight * scale;
+
+  // Center the minimap if aspect ratios don't match
+  const offsetX = (minimapWidth - scaledWidth) / 2;
+  const offsetY = (minimapHeight - scaledHeight) / 2;
+
+  // Draw minimap background
+  canvas.fillStyle = "rgba(0, 0, 0, 0.7)";
+  canvas.fillRect(minimapX, minimapY, minimapWidth, minimapHeight);
+
+  // Draw minimap border
+  canvas.strokeStyle = "white";
+  canvas.lineWidth = 2;
+  canvas.strokeRect(minimapX, minimapY, minimapWidth, minimapHeight);
+
+  // Draw simplified map (just a dark background for now)
+  canvas.fillStyle = "rgba(40, 40, 40, 1)";
+  canvas.fillRect(
+    minimapX + offsetX,
+    minimapY + offsetY,
+    scaledWidth,
+    scaledHeight
+  );
+
+  // Draw task locations for crewmates
+  if (gameState.playerRole === "crewmate") {
+    for (const task of gameState.playerTasks) {
+      if (!task.completed && !isTaskCompleted(task.location)) {
+        const taskMinimapX =
+          minimapX + offsetX + task.location.x * TILE_SIZE * scale;
+        const taskMinimapY =
+          minimapY + offsetY + task.location.y * TILE_SIZE * scale;
+
+        // Draw yellow dot for task - smaller on small screens
+        const taskDotRadius = isSmallScreen ? 2 : 3;
+        canvas.fillStyle = "yellow";
+        canvas.beginPath();
+        canvas.arc(taskMinimapX, taskMinimapY, taskDotRadius, 0, 2 * Math.PI);
+        canvas.fill();
+      }
+    }
+  }
+
+  // Draw player position
+  const playerMinimapX = minimapX + offsetX + myPlayer.x * scale;
+  const playerMinimapY = minimapY + offsetY + myPlayer.y * scale;
+
+  // Draw player dot - smaller on small screens
+  const playerDotRadius = isSmallScreen ? 3 : 4;
+  const playerColor = gameState.playerRole === "imposter" ? "red" : "cyan";
+  canvas.fillStyle = playerColor;
+  canvas.beginPath();
+  canvas.arc(playerMinimapX, playerMinimapY, playerDotRadius, 0, 2 * Math.PI);
+  canvas.fill();
+
+  // Add white outline to player dot for visibility
+  canvas.strokeStyle = "white";
+  canvas.lineWidth = 1;
+  canvas.beginPath();
+  canvas.arc(playerMinimapX, playerMinimapY, playerDotRadius, 0, 2 * Math.PI);
+  canvas.stroke();
 }
 
 function renderFogOfWar(player, cameraX, cameraY) {
@@ -943,8 +1245,12 @@ function renderFogOfWar(player, cameraX, cameraY) {
   const playerScreenX = player.x - cameraX + TILE_SIZE / 2;
   const playerScreenY = player.y - cameraY + TILE_SIZE / 2;
 
-  // Slightly larger visual fog radius with smoother transitions
-  const visualFogRadius = VISION_RADIUS * 1.1;
+  // Slightly larger visual fog radius with smoother transitions - use role-specific vision
+  const visionRadius =
+    gameState.playerRole === "imposter"
+      ? IMPOSTER_VISION_RADIUS
+      : CREWMATE_VISION_RADIUS;
+  const visualFogRadius = visionRadius * 1.1;
   const gradient = canvas.createRadialGradient(
     playerScreenX,
     playerScreenY,

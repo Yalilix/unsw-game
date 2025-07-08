@@ -33,7 +33,8 @@ const PLAYER_SIZE = 32; // Visual size remains 32
 const TILE_SIZE = 32;
 const TILE_COLLISION_SIZE = 32; // Smaller collision box for tiles (4px padding each side)
 const KILL_RADIUS = PLAYER_SIZE * 3; // larger proximity for teleport
-const VISION_RADIUS = 10 * TILE_SIZE; // 10 tiles vision radius
+const IMPOSTER_VISION_RADIUS = 10 * TILE_SIZE; // 10 tiles vision radius for imposters
+const CREWMATE_VISION_RADIUS = Math.round((10 * TILE_SIZE * 2) / 3); // ~6.67 tiles vision radius for crewmates (2/3 of imposter vision)
 
 let ground2D: MapData["ground2D"]; // will be set after map loads
 let decal2D: MapData["decal2D"];
@@ -131,9 +132,13 @@ function getVisiblePlayers(
         (player.x - viewer.x) ** 2 + (player.y - viewer.y) ** 2
       );
 
-      // Extended vision radius for gradual fading
-      const fadeStartRadius = VISION_RADIUS * 0.7; // Start fading at 70%
-      const fadeEndRadius = VISION_RADIUS * 1.2; // Completely hidden at 120%
+      // Extended vision radius for gradual fading - use role-specific vision
+      const visionRadius =
+        viewer.role === "imposter"
+          ? IMPOSTER_VISION_RADIUS
+          : CREWMATE_VISION_RADIUS;
+      const fadeStartRadius = visionRadius * 0.7; // Start fading at 70%
+      const fadeEndRadius = visionRadius * 1.2; // Completely hidden at 120%
 
       if (distance <= fadeStartRadius) {
         // Fully visible
@@ -359,7 +364,20 @@ function tickRoom(roomId: string, delta: number, io: IOServer): void {
     const socket = io.sockets.sockets.get(player.id);
     if (socket) {
       const visiblePlayers = getVisiblePlayers(player, gameInstance.players);
-      socket.emit("players", visiblePlayers);
+
+      // Add player names from room data
+      const room = roomManager.getRoom(roomId);
+      const playersWithNames = visiblePlayers.map((visiblePlayer) => {
+        const roomPlayer = room?.players.find(
+          (rp) => rp.socketId === visiblePlayer.id
+        );
+        return {
+          ...visiblePlayer,
+          name: roomPlayer?.name || `Player (${visiblePlayer.id.slice(-4)})`,
+        };
+      });
+
+      socket.emit("players", playersWithNames);
 
       // Send game state info including tasks
       socket.emit("gameState", {
@@ -528,7 +546,7 @@ export async function initGameServer(
                 () => Math.random() - 0.5
               );
               const assignedTasks = shuffledTasks
-                .slice(0, 5)
+                .slice(0, 4)
                 .map((location) => ({
                   location,
                   completed: false,
@@ -623,12 +641,12 @@ export async function initGameServer(
                   isAlive: true,
                 });
 
-                // Assign tasks to new crewmate (5 random tasks from available locations)
+                // Assign tasks to new crewmate (4 random tasks from available locations)
                 const shuffledTasks = [...TASK_LOCATIONS].sort(
                   () => Math.random() - 0.5
                 );
                 const assignedTasks = shuffledTasks
-                  .slice(0, 5)
+                  .slice(0, 4)
                   .map((location) => ({
                     location,
                     completed: false,
@@ -1182,18 +1200,52 @@ export async function initGameServer(
       console.log(
         `[DEBUG] Player ${socketId} leaving, room status: ${
           room?.status || "no room"
-        }`
+        }, room id: ${room?.id || "none"}`
       );
 
-      // IMPORTANT: During active games, don't remove players from room data
-      // They might just be navigating from waiting room to game page
+      // Handle active games differently - actually remove the player
+      // BUT only if the game has been running for more than 5 seconds to avoid race conditions during room creation
       if (room && room.status === "playing") {
+        const gameInstance = roomManager.getGameInstance(room.id);
+        const gameRunningTime = gameInstance
+          ? Date.now() - gameInstance.gameStartTime
+          : 0;
+
         console.log(
-          `[DEBUG] Game in progress, keeping player ${socketId} in room data for reconnection`
+          `[DEBUG] Game in progress for ${gameRunningTime}ms, removing player ${socketId} from active game`
         );
-        // Just remove from playerToRoom mapping, but keep room player data intact
-        roomManager.removePlayerMapping(socketId);
-        return;
+
+        // Only remove if game has been running for at least 5 seconds
+        // This prevents issues during game start/room transition
+        if (gameRunningTime > 5000) {
+          const result = roomManager.removePlayerFromGame(socketId);
+
+          if (result.success) {
+            // Notify remaining players that this player left the game
+            io.to(`game_${room.id}`).emit("playerLeftGame", {
+              playerId: socketId,
+            });
+
+            console.log(`[DEBUG] Player ${socketId} removed from active game`);
+
+            // Check if all players have left and end the game
+            if (result.shouldEndGame) {
+              console.log(
+                `[DEBUG] All players left room ${room.id}, ending game`
+              );
+              roomManager.endGameAllPlayersLeft(room.id);
+              // No need to notify anyone since no one is left
+            }
+          }
+          return;
+        } else {
+          console.log(
+            `[DEBUG] Game too new (${gameRunningTime}ms), treating as normal disconnect for potential reconnection`
+          );
+          // Just remove from mapping for potential reconnection, but keep room data
+          roomManager.removePlayerMapping(socketId);
+          return;
+        }
       }
 
       // Only remove from room if it's a waiting room (not during active game)

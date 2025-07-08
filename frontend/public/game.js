@@ -80,6 +80,13 @@ socket.on("players", (serverPlayers) => {
   players = serverPlayers;
 });
 
+// Player left game event
+socket.on("playerLeftGame", (data) => {
+  console.log("Player left game:", data.playerId);
+  // Remove the player from the players array
+  players = players.filter((player) => player.id !== data.playerId);
+});
+
 // Game state updates
 let gameState = {
   state: "playing",

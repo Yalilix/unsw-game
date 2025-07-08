@@ -1200,18 +1200,52 @@ export async function initGameServer(
       console.log(
         `[DEBUG] Player ${socketId} leaving, room status: ${
           room?.status || "no room"
-        }`
+        }, room id: ${room?.id || "none"}`
       );
 
-      // IMPORTANT: During active games, don't remove players from room data
-      // They might just be navigating from waiting room to game page
+      // Handle active games differently - actually remove the player
+      // BUT only if the game has been running for more than 5 seconds to avoid race conditions during room creation
       if (room && room.status === "playing") {
+        const gameInstance = roomManager.getGameInstance(room.id);
+        const gameRunningTime = gameInstance
+          ? Date.now() - gameInstance.gameStartTime
+          : 0;
+
         console.log(
-          `[DEBUG] Game in progress, keeping player ${socketId} in room data for reconnection`
+          `[DEBUG] Game in progress for ${gameRunningTime}ms, removing player ${socketId} from active game`
         );
-        // Just remove from playerToRoom mapping, but keep room player data intact
-        roomManager.removePlayerMapping(socketId);
-        return;
+
+        // Only remove if game has been running for at least 5 seconds
+        // This prevents issues during game start/room transition
+        if (gameRunningTime > 5000) {
+          const result = roomManager.removePlayerFromGame(socketId);
+
+          if (result.success) {
+            // Notify remaining players that this player left the game
+            io.to(`game_${room.id}`).emit("playerLeftGame", {
+              playerId: socketId,
+            });
+
+            console.log(`[DEBUG] Player ${socketId} removed from active game`);
+
+            // Check if all players have left and end the game
+            if (result.shouldEndGame) {
+              console.log(
+                `[DEBUG] All players left room ${room.id}, ending game`
+              );
+              roomManager.endGameAllPlayersLeft(room.id);
+              // No need to notify anyone since no one is left
+            }
+          }
+          return;
+        } else {
+          console.log(
+            `[DEBUG] Game too new (${gameRunningTime}ms), treating as normal disconnect for potential reconnection`
+          );
+          // Just remove from mapping for potential reconnection, but keep room data
+          roomManager.removePlayerMapping(socketId);
+          return;
+        }
       }
 
       // Only remove from room if it's a waiting room (not during active game)

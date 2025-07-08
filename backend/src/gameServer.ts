@@ -1,6 +1,8 @@
 import express from "express";
 import { Server as IOServer } from "socket.io";
 import { Server as HTTPServer } from "http";
+import { promises as fs } from "fs";
+import path from "path";
 import loadMap, { MapData } from "./mapLoader";
 import {
   roomManager,
@@ -8,6 +10,8 @@ import {
   GameInstance,
   GamePlayer,
   DeadBody,
+  TaskLocation,
+  TASK_LOCATIONS,
 } from "./roomManager";
 
 interface Player {
@@ -250,8 +254,16 @@ function checkWinConditions(
   let gameOver = false;
   let winner: "imposters" | "crewmates" | null = null;
 
+  // Crewmates win if all tasks are completed
+  if (roomManager.areAllTasksCompleted(roomId)) {
+    gameOver = true;
+    winner = "crewmates";
+    console.log(
+      `[DEBUG] Crewmates win by completing all tasks in room ${roomId}`
+    );
+  }
   // Imposters win if they equal or outnumber crewmates
-  if (
+  else if (
     aliveImposters.length >= aliveCrewmates.length &&
     aliveImposters.length > 0
   ) {
@@ -265,14 +277,28 @@ function checkWinConditions(
   }
 
   if (gameOver) {
+    // Get the room to access player names
+    const room = roomManager.getRoom(roomId);
+
     io.to(`game_${roomId}`).emit("gameOver", {
       winner: winner,
-      alivePlayers: alivePlayers.map((p) => ({ id: p.id, role: p.role })),
-      allPlayers: gameInstance.players.map((p) => ({
-        id: p.id,
-        role: p.role,
-        isAlive: p.isAlive,
-      })),
+      alivePlayers: alivePlayers.map((p) => {
+        const roomPlayer = room?.players.find((rp) => rp.socketId === p.id);
+        return {
+          id: p.id,
+          role: p.role,
+          name: roomPlayer?.name || `Player (${p.id.slice(-4)})`,
+        };
+      }),
+      allPlayers: gameInstance.players.map((p) => {
+        const roomPlayer = room?.players.find((rp) => rp.socketId === p.id);
+        return {
+          id: p.id,
+          role: p.role,
+          isAlive: p.isAlive,
+          name: roomPlayer?.name || `Player (${p.id.slice(-4)})`,
+        };
+      }),
     });
   }
 }
@@ -335,7 +361,7 @@ function tickRoom(roomId: string, delta: number, io: IOServer): void {
       const visiblePlayers = getVisiblePlayers(player, gameInstance.players);
       socket.emit("players", visiblePlayers);
 
-      // Send game state info
+      // Send game state info including tasks
       socket.emit("gameState", {
         state: gameInstance.gameState,
         playerRole: player.role,
@@ -343,6 +369,8 @@ function tickRoom(roomId: string, delta: number, io: IOServer): void {
         deadBodies: gameInstance.deadBodies,
         gameStartTime: gameInstance.gameStartTime,
         lastKillTime: player.lastKillTime,
+        playerTasks: gameInstance.playerTasks[player.id] || [],
+        completedTasks: Array.from(gameInstance.completedTasks),
       });
     }
   }
@@ -366,6 +394,7 @@ export async function initGameServer(
 
   io.on("connect", (socket) => {
     console.log("[game] user connected", socket.id);
+    console.log(`[game] Total connections: ${io.engine.clientsCount}`);
 
     // Join room event
     socket.on(
@@ -494,6 +523,21 @@ export async function initGameServer(
                 isAlive: true,
               });
 
+              // Assign tasks to new crewmate (5 random tasks from available locations)
+              const shuffledTasks = [...TASK_LOCATIONS].sort(
+                () => Math.random() - 0.5
+              );
+              const assignedTasks = shuffledTasks
+                .slice(0, 5)
+                .map((location) => ({
+                  location,
+                  completed: false,
+                }));
+              gameInstance.playerTasks[socket.id] = assignedTasks;
+              console.log(
+                `[DEBUG] Assigned ${assignedTasks.length} tasks to new mid-game player ${socket.id}`
+              );
+
               // Initialize inputs for new player
               gameInstance.inputsMap[socket.id] = {
                 up: false,
@@ -506,6 +550,26 @@ export async function initGameServer(
 
           socket.emit("gameJoined", { roomId });
           socket.emit("map", { ground: ground2D, decal: decal2D });
+
+          // Send current game state with tasks to the joining player
+          const player = gameInstance.players.find((p) => p.id === socket.id);
+          if (player) {
+            socket.emit("gameState", {
+              state: gameInstance.gameState,
+              playerRole: player.role,
+              isAlive: player.isAlive,
+              deadBodies: gameInstance.deadBodies,
+              gameStartTime: gameInstance.gameStartTime,
+              lastKillTime: player.lastKillTime,
+              playerTasks: gameInstance.playerTasks[player.id] || [],
+              completedTasks: Array.from(gameInstance.completedTasks),
+            });
+            console.log(
+              `[DEBUG] Sent game state with ${
+                gameInstance.playerTasks[player.id]?.length || 0
+              } tasks to ${socket.id}`
+            );
+          }
           return;
         }
 
@@ -559,6 +623,21 @@ export async function initGameServer(
                   isAlive: true,
                 });
 
+                // Assign tasks to new crewmate (5 random tasks from available locations)
+                const shuffledTasks = [...TASK_LOCATIONS].sort(
+                  () => Math.random() - 0.5
+                );
+                const assignedTasks = shuffledTasks
+                  .slice(0, 5)
+                  .map((location) => ({
+                    location,
+                    completed: false,
+                  }));
+                gameInstance.playerTasks[socket.id] = assignedTasks;
+                console.log(
+                  `[DEBUG] Assigned ${assignedTasks.length} tasks to new mid-game player (no room) ${socket.id}`
+                );
+
                 // Initialize inputs for new player
                 gameInstance.inputsMap[socket.id] = {
                   up: false,
@@ -571,6 +650,26 @@ export async function initGameServer(
 
             socket.emit("gameJoined", { roomId });
             socket.emit("map", { ground: ground2D, decal: decal2D });
+
+            // Send current game state with tasks to the joining player
+            const player = gameInstance.players.find((p) => p.id === socket.id);
+            if (player) {
+              socket.emit("gameState", {
+                state: gameInstance.gameState,
+                playerRole: player.role,
+                isAlive: player.isAlive,
+                deadBodies: gameInstance.deadBodies,
+                gameStartTime: gameInstance.gameStartTime,
+                lastKillTime: player.lastKillTime,
+                playerTasks: gameInstance.playerTasks[player.id] || [],
+                completedTasks: Array.from(gameInstance.completedTasks),
+              });
+              console.log(
+                `[DEBUG] Sent game state (no room) with ${
+                  gameInstance.playerTasks[player.id]?.length || 0
+                } tasks to ${socket.id}`
+              );
+            }
             return;
           }
         }
@@ -613,20 +712,38 @@ export async function initGameServer(
             decal: decal2D,
           });
 
-          // Send initial game state to each player with their role
+          // Send initial game state to each player with their role and tasks
           const gameInstance = roomManager.getGameInstance(roomId);
           if (gameInstance) {
+            console.log(
+              `[DEBUG] Sending gameState to ${gameInstance.players.length} players after game start`
+            );
             gameInstance.players.forEach((player) => {
               const socket = io.sockets.sockets.get(player.id);
+              const playerTasks = gameInstance.playerTasks[player.id] || [];
+              console.log(
+                `[DEBUG] Player ${player.id} (${
+                  player.role
+                }): socket found=${!!socket}, tasks=${playerTasks.length}`
+              );
+
               if (socket) {
-                socket.emit("gameState", {
+                const gameStateData = {
                   state: gameInstance.gameState,
                   playerRole: player.role,
                   isAlive: player.isAlive,
                   deadBodies: gameInstance.deadBodies,
                   gameStartTime: gameInstance.gameStartTime,
                   lastKillTime: player.lastKillTime,
-                });
+                  playerTasks: playerTasks,
+                  completedTasks: Array.from(gameInstance.completedTasks),
+                };
+                console.log(
+                  `[DEBUG] Emitting gameState to ${player.id} with ${gameStateData.playerTasks.length} tasks`
+                );
+                socket.emit("gameState", gameStateData);
+              } else {
+                console.log(`[DEBUG] Socket not found for player ${player.id}`);
               }
             });
           }
@@ -867,6 +984,155 @@ export async function initGameServer(
       }
     });
 
+    // Task attempt event (get a random question)
+    socket.on("attemptTask", async (data: { taskLocation: TaskLocation }) => {
+      const room = roomManager.getRoomByPlayer(socket.id);
+      if (!room || room.status !== "playing") return;
+
+      const gameInstance = roomManager.getGameInstance(room.id);
+      if (!gameInstance || gameInstance.gameState !== "playing") return;
+
+      const player = gameInstance.players.find((p) => p.id === socket.id);
+      if (!player || !player.isAlive || player.role !== "crewmate") return;
+
+      // Check if player is at the task location (within reasonable distance)
+      const TILE_SIZE = 32;
+      const taskPixelX = data.taskLocation.x * TILE_SIZE;
+      const taskPixelY = data.taskLocation.y * TILE_SIZE;
+      const distance = Math.sqrt(
+        (player.x - taskPixelX) ** 2 + (player.y - taskPixelY) ** 2
+      );
+
+      if (distance > TILE_SIZE * 1.5) {
+        socket.emit("error", { message: "Too far from task location" });
+        return;
+      }
+
+      // Check if player has this task assigned and it's not completed
+      const playerTasks = gameInstance.playerTasks[socket.id] || [];
+      const assignedTask = playerTasks.find(
+        (task) =>
+          task.location.x === data.taskLocation.x &&
+          task.location.y === data.taskLocation.y &&
+          !task.completed
+      );
+
+      if (!assignedTask) {
+        socket.emit("error", { message: "No task assigned at this location" });
+        return;
+      }
+
+      try {
+        // Load questions from questions.json
+        const questionsPath = path.join(
+          __dirname,
+          "../../frontend/src/questions.json"
+        );
+        const questionsData = await fs.readFile(questionsPath, "utf-8");
+        const questions = JSON.parse(questionsData);
+
+        // Get all questions from all weeks and lectures
+        const allQuestions: any[] = [];
+        for (const week of Object.values(questions.weeks)) {
+          for (const lecture of Object.values(week as any)) {
+            allQuestions.push(...(lecture as any[]));
+          }
+        }
+
+        // Pick a random question
+        const randomQuestion =
+          allQuestions[Math.floor(Math.random() * allQuestions.length)];
+
+        // Store the current question for this player
+        gameInstance.currentQuestions[socket.id] = randomQuestion;
+
+        socket.emit("taskQuestion", {
+          taskLocation: data.taskLocation,
+          question: randomQuestion.question,
+          options: randomQuestion.options,
+          // Don't send the correct answer to the client
+        });
+
+        console.log(
+          `[DEBUG] Sent task question to ${socket.id} at (${data.taskLocation.x},${data.taskLocation.y})`
+        );
+      } catch (error) {
+        console.error("[DEBUG] Error loading questions:", error);
+        socket.emit("error", { message: "Failed to load task question" });
+      }
+    });
+
+    // Task completion event (submit answer)
+    socket.on(
+      "completeTask",
+      async (data: { taskLocation: TaskLocation; answer: string }) => {
+        const room = roomManager.getRoomByPlayer(socket.id);
+        if (!room || room.status !== "playing") return;
+
+        const gameInstance = roomManager.getGameInstance(room.id);
+        if (!gameInstance || gameInstance.gameState !== "playing") return;
+
+        const player = gameInstance.players.find((p) => p.id === socket.id);
+        if (!player || !player.isAlive || player.role !== "crewmate") return;
+
+        try {
+          // Get the current question for this player
+          const currentQuestion = gameInstance.currentQuestions[socket.id];
+
+          if (!currentQuestion) {
+            socket.emit("error", { message: "No active question found" });
+            return;
+          }
+
+          // Check if the submitted answer matches the correct answer for this question
+          if (data.answer === currentQuestion.answer) {
+            // Correct answer! Complete the task
+            const result = roomManager.completeTask(
+              socket.id,
+              data.taskLocation
+            );
+
+            if (result.success) {
+              socket.emit("taskCompleted", {
+                taskLocation: data.taskLocation,
+                correct: true,
+              });
+
+              // Clear the current question for this player
+              delete gameInstance.currentQuestions[socket.id];
+
+              // Notify all players about task completion
+              io.to(`game_${room.id}`).emit("taskCompletedByPlayer", {
+                playerId: socket.id,
+                taskLocation: data.taskLocation,
+              });
+
+              console.log(
+                `[DEBUG] Task completed by ${socket.id} at (${data.taskLocation.x},${data.taskLocation.y})`
+              );
+
+              // Check if all tasks are completed (win condition)
+              if (result.allTasksCompleted) {
+                checkWinConditions(gameInstance, io, room.id);
+              }
+            } else {
+              socket.emit("error", { message: result.error });
+            }
+          } else {
+            // Wrong answer - send the correct answer for this specific question
+            socket.emit("taskCompleted", {
+              taskLocation: data.taskLocation,
+              correct: false,
+              correctAnswer: `Correct answer: ${currentQuestion.answer}`,
+            });
+          }
+        } catch (error) {
+          console.error("[DEBUG] Error validating task answer:", error);
+          socket.emit("error", { message: "Failed to validate answer" });
+        }
+      }
+    );
+
     // Return to lobby functionality
     socket.on("returnToLobby", () => {
       const room = roomManager.getRoomByPlayer(socket.id);
@@ -963,6 +1229,7 @@ export async function initGameServer(
     socket.on("disconnect", () => {
       handlePlayerLeave(socket.id);
       console.log("[game] user disconnected", socket.id);
+      console.log(`[game] Total connections: ${io.engine.clientsCount}`);
     });
   });
 

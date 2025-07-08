@@ -86,6 +86,9 @@ let gameState = {
   meetingActive: false,
   votingActive: false,
   currentVote: null,
+  playerTasks: [],
+  completedTasks: [],
+  currentTaskModal: null,
 };
 
 socket.on("gameState", (data) => {
@@ -95,6 +98,8 @@ socket.on("gameState", (data) => {
   gameState.deadBodies = data.deadBodies;
   gameState.gameStartTime = data.gameStartTime;
   gameState.lastKillTime = data.lastKillTime;
+  gameState.playerTasks = data.playerTasks || [];
+  gameState.completedTasks = data.completedTasks || [];
 });
 
 // Kill cooldown updates
@@ -161,6 +166,27 @@ socket.on("returnToLobby", (data) => {
   console.log("Returning to lobby for room:", data.roomId);
   // Navigate to the room lobby page
   window.location.href = `/room/${data.roomId}`;
+});
+
+// Task events
+socket.on("taskQuestion", (data) => {
+  showTaskModal(data);
+});
+
+socket.on("taskCompleted", (data) => {
+  if (data.correct) {
+    console.log("Task completed successfully!");
+    showTaskSuccess();
+  } else {
+    showTaskFailure(data.correctAnswer);
+  }
+});
+
+socket.on("taskCompletedByPlayer", (data) => {
+  console.log(
+    `Player completed task at (${data.taskLocation.x},${data.taskLocation.y})`
+  );
+  // Task completion is handled by updated gameState
 });
 
 const inputs = {
@@ -248,6 +274,37 @@ function findClosestBody(player) {
   return closest;
 }
 
+// Helper function to find closest incomplete task
+function findClosestTask(player) {
+  if (gameState.playerRole !== "crewmate") return null;
+
+  let closest = null;
+  let closestDist = Infinity;
+  const TASK_RADIUS = TILE_SIZE * 1.5; // How close player needs to be to interact with task
+
+  for (const task of gameState.playerTasks) {
+    if (task.completed) continue; // Skip completed tasks
+
+    const taskPixelX = task.location.x * TILE_SIZE;
+    const taskPixelY = task.location.y * TILE_SIZE;
+    const dist = Math.sqrt(
+      (taskPixelX - player.x) ** 2 + (taskPixelY - player.y) ** 2
+    );
+
+    if (dist < closestDist && dist <= TASK_RADIUS) {
+      closestDist = dist;
+      closest = task;
+    }
+  }
+  return closest;
+}
+
+// Helper function to check if a task location is completed
+function isTaskCompleted(location) {
+  const locationKey = `${location.x},${location.y}`;
+  return gameState.completedTasks.includes(locationKey);
+}
+
 // Button Functions
 window.attemptKill = function () {
   if (
@@ -276,12 +333,30 @@ window.attemptReport = function () {
   }
 };
 
+window.attemptTask = function () {
+  if (
+    gameState.playerRole === "crewmate" &&
+    gameState.isAlive &&
+    !gameState.meetingActive &&
+    !gameState.votingActive
+  ) {
+    const myPlayer = players.find((player) => player.id === socket.id);
+    if (myPlayer) {
+      const closestTask = findClosestTask(myPlayer);
+      if (closestTask) {
+        socket.emit("attemptTask", { taskLocation: closestTask.location });
+      }
+    }
+  }
+};
+
 // Update button visibility and state
 function updateButtons() {
   const killButton = document.getElementById("killButton");
   const reportButton = document.getElementById("reportButton");
+  const taskButton = document.getElementById("taskButton");
 
-  if (!killButton || !reportButton) return;
+  if (!killButton || !reportButton || !taskButton) return;
 
   const gameActive = !gameState.meetingActive && !gameState.votingActive;
   const myPlayer = players.find((player) => player.id === socket.id);
@@ -350,6 +425,24 @@ function updateButtons() {
   } else {
     reportButton.style.display = "none";
   }
+
+  // Task button - show for living crewmates during active game
+  if (gameState.playerRole === "crewmate" && gameState.isAlive && gameActive) {
+    // Check if there's a task nearby
+    const hasNearbyTask = myPlayer && findClosestTask(myPlayer);
+
+    if (hasNearbyTask) {
+      taskButton.style.display = "block";
+      taskButton.disabled = false;
+      taskButton.textContent = "DO TASK";
+      taskButton.className =
+        "px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg cursor-pointer";
+    } else {
+      taskButton.style.display = "none";
+    }
+  } else {
+    taskButton.style.display = "none";
+  }
 }
 
 // UI Management Functions
@@ -377,11 +470,118 @@ function hideAllUI() {
   const votingUI = document.getElementById("votingUI");
   const votingResultsUI = document.getElementById("votingResultsUI");
   const gameEndUI = document.getElementById("gameEndUI");
+  const taskModal = document.getElementById("taskModal");
 
   if (meetingUI) meetingUI.style.display = "none";
   if (votingUI) votingUI.style.display = "none";
   if (votingResultsUI) votingResultsUI.style.display = "none";
   if (gameEndUI) gameEndUI.style.display = "none";
+  if (taskModal) taskModal.style.display = "none";
+}
+
+// Task modal functions
+function showTaskModal(data) {
+  const taskModal = document.getElementById("taskModal");
+  const taskQuestion = document.getElementById("taskQuestion");
+  const taskOptions = document.getElementById("taskOptions");
+
+  if (!taskModal || !taskQuestion || !taskOptions) return;
+
+  gameState.currentTaskModal = data;
+
+  taskQuestion.textContent = data.question;
+  taskOptions.innerHTML = "";
+
+  // Create option buttons
+  data.options.forEach((option, index) => {
+    const button = document.createElement("button");
+    button.className =
+      "w-full p-3 bg-gray-600 text-white rounded mb-2 cursor-pointer hover:bg-gray-500 text-left";
+    button.textContent = option;
+    button.onclick = () => submitTaskAnswer(option);
+    taskOptions.appendChild(button);
+  });
+
+  taskModal.style.display = "flex";
+  console.log("Task modal shown with question:", data.question);
+}
+
+function hideTaskModal() {
+  const taskModal = document.getElementById("taskModal");
+  if (taskModal) {
+    taskModal.style.display = "none";
+  }
+  gameState.currentTaskModal = null;
+}
+
+function submitTaskAnswer(answer) {
+  if (gameState.currentTaskModal) {
+    socket.emit("completeTask", {
+      taskLocation: gameState.currentTaskModal.taskLocation,
+      answer: answer,
+    });
+  }
+}
+
+function showTaskFailure(correctAnswer) {
+  const taskOptions = document.getElementById("taskOptions");
+  if (!taskOptions) return;
+
+  // Show failure message and correct answer
+  taskOptions.innerHTML = `
+    <div class="text-center text-red-400 mb-4">
+      <p class="text-lg font-bold">Incorrect!</p>
+      <p class="text-sm">${correctAnswer}</p>
+    </div>
+    <button id="tryAgainButton" class="w-full p-3 bg-blue-600 text-white rounded cursor-pointer hover:bg-blue-700" disabled>
+      Try Again (5s)
+    </button>
+  `;
+
+  // 5 second cooldown
+  let timeLeft = 5;
+  const tryAgainButton = document.getElementById("tryAgainButton");
+
+  const timer = setInterval(() => {
+    timeLeft--;
+    if (tryAgainButton) {
+      tryAgainButton.textContent = `Try Again (${timeLeft}s)`;
+    }
+
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      if (tryAgainButton) {
+        tryAgainButton.disabled = false;
+        tryAgainButton.textContent = "Try Again";
+        tryAgainButton.onclick = () => {
+          if (gameState.currentTaskModal) {
+            socket.emit("attemptTask", {
+              taskLocation: gameState.currentTaskModal.taskLocation,
+            });
+          }
+        };
+      }
+    }
+  }, 1000);
+}
+
+function showTaskSuccess() {
+  const taskOptions = document.getElementById("taskOptions");
+  if (!taskOptions) return;
+
+  // Show success message
+  taskOptions.innerHTML = `
+    <div class="text-center text-green-400 mb-4">
+      <p class="text-xl font-bold">🎉 Congratulations!</p>
+      <p class="text-lg">Task completed successfully!</p>
+      <p class="text-sm text-gray-300">Closing automatically...</p>
+    </div>
+  `;
+
+  // Auto-close after 2 seconds
+  setTimeout(() => {
+    hideTaskModal();
+  }, 2000);
 }
 
 function startVotingTimer() {
@@ -448,8 +648,14 @@ function showGameEnd(data) {
   if (data.winner === "imposters") {
     gameEndTitle.textContent = "Imposters Win!";
     gameEndTitle.className = "text-2xl font-bold mb-4 text-center text-red-400";
+
+    // Find all imposters and their names
+    const imposters = data.allPlayers.filter((p) => p.role === "imposter");
+    const imposterNames = imposters.map((p) => p.name).join(", ");
+
     gameEndContent.innerHTML = `
-      <p class="text-lg mb-2">The imposters have eliminated all crewmates!</p>
+      <p class="text-lg mb-2">The imposters have won!</p>
+      <p class="text-md mb-2 text-red-300">Imposters were: ${imposterNames}</p>
       <p class="text-sm text-gray-400">Evil triumphs this time...</p>
     `;
   } else if (data.winner === "crewmates") {
@@ -617,6 +823,25 @@ function loop() {
     }
   }
 
+  // Render task tiles (yellow overlay for crewmates)
+  if (gameState.playerRole === "crewmate") {
+    for (const task of gameState.playerTasks) {
+      if (!task.completed && !isTaskCompleted(task.location)) {
+        const taskX = task.location.x * TILE_SIZE - cameraX;
+        const taskY = task.location.y * TILE_SIZE - cameraY;
+
+        // Render transparent yellow overlay
+        canvas.fillStyle = "rgba(255, 255, 0, 0.4)";
+        canvas.fillRect(taskX, taskY, TILE_SIZE, TILE_SIZE);
+
+        // Add subtle border
+        canvas.strokeStyle = "rgba(255, 255, 0, 0.8)";
+        canvas.lineWidth = 2;
+        canvas.strokeRect(taskX, taskY, TILE_SIZE, TILE_SIZE);
+      }
+    }
+  }
+
   // Render dead bodies
   for (const body of gameState.deadBodies) {
     canvas.fillStyle = "red";
@@ -661,6 +886,29 @@ function renderUI() {
   canvas.font = "20px Arial";
   canvas.fillText(`Role: ${gameState.playerRole}`, 10, 30);
   canvas.fillText(`Status: ${gameState.isAlive ? "Alive" : "Dead"}`, 10, 55);
+
+  // Task list for crewmates
+  if (gameState.playerRole === "crewmate") {
+    canvas.font = "16px Arial";
+    canvas.fillStyle = "yellow";
+    canvas.fillText("Tasks:", 10, 85);
+
+    if (gameState.playerTasks.length === 0) {
+      canvas.fillStyle = "gray";
+      canvas.fillText("No tasks assigned", 10, 105);
+    } else {
+      let yOffset = 105;
+      for (const task of gameState.playerTasks) {
+        const location = `(${task.location.x}, ${task.location.y})`;
+        const status = task.completed ? "✓" : "○";
+        const color = task.completed ? "lightgreen" : "white";
+
+        canvas.fillStyle = color;
+        canvas.fillText(`${status} Task at ${location}`, 10, yOffset);
+        yOffset += 20;
+      }
+    }
+  }
 
   // Kill cooldown info removed - now shown on button
 

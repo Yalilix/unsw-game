@@ -74,6 +74,16 @@ export function GamePage() {
           KILL
         </button>
 
+        {/* Task Button (only for crewmates) */}
+        <button
+          id="taskButton"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg cursor-pointer"
+          style={{ display: "none" }}
+          onClick={() => (window as any).attemptTask?.()}
+        >
+          DO TASK
+        </button>
+
         {/* Report Button (for all players) */}
         <button
           id="reportButton"
@@ -193,6 +203,28 @@ export function GamePage() {
             >
               Exit Game
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Task Modal */}
+      <div
+        id="taskModal"
+        className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
+        style={{ display: "none", zIndex: 1000 }}
+      >
+        <div className="bg-gray-800 p-6 rounded-lg max-w-lg w-full mx-4 border-2 border-gray-600">
+          <h2 className="text-xl font-bold mb-4 text-center text-white">
+            Complete Task
+          </h2>
+          <div
+            id="taskQuestion"
+            className="text-center text-gray-200 mb-6 text-lg"
+          >
+            {/* Question will be populated by JavaScript */}
+          </div>
+          <div id="taskOptions" className="space-y-2">
+            {/* Options will be populated by JavaScript */}
           </div>
         </div>
       </div>

@@ -884,7 +884,14 @@ function renderUI() {
   // Role display
   canvas.fillStyle = "white";
   canvas.font = "20px Arial";
-  canvas.fillText(`Role: ${gameState.playerRole}`, 10, 30);
+  canvas.fillText(
+    `Role: ${
+      gameState.playerRole.charAt(0).toUpperCase() +
+      gameState.playerRole.slice(1)
+    }`,
+    10,
+    30
+  );
   canvas.fillText(`Status: ${gameState.isAlive ? "Alive" : "Dead"}`, 10, 55);
 
   // Task list for crewmates

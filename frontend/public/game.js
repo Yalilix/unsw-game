@@ -950,6 +950,90 @@ function renderUI() {
       canvasEl.height - 40
     );
   }
+
+  // Render minimap
+  renderMinimap();
+}
+
+function renderMinimap() {
+  if (!groundMap || !groundMap.length || !decalMap || !decalMap.length) return;
+
+  const myPlayer = players.find((player) => player.id === socket.id);
+  if (!myPlayer) return;
+
+  // Minimap configuration
+  const minimapWidth = 200;
+  const minimapHeight = 150;
+  const minimapX = canvasEl.width - minimapWidth - 20; // 20px from right edge
+  const minimapY = 20; // 20px from top edge
+
+  // Calculate scale factors
+  const mapPixelWidth = groundMap[0].length * TILE_SIZE;
+  const mapPixelHeight = groundMap.length * TILE_SIZE;
+  const scaleX = minimapWidth / mapPixelWidth;
+  const scaleY = minimapHeight / mapPixelHeight;
+  const scale = Math.min(scaleX, scaleY); // Use smaller scale to maintain aspect ratio
+
+  const scaledWidth = mapPixelWidth * scale;
+  const scaledHeight = mapPixelHeight * scale;
+
+  // Center the minimap if aspect ratios don't match
+  const offsetX = (minimapWidth - scaledWidth) / 2;
+  const offsetY = (minimapHeight - scaledHeight) / 2;
+
+  // Draw minimap background
+  canvas.fillStyle = "rgba(0, 0, 0, 0.7)";
+  canvas.fillRect(minimapX, minimapY, minimapWidth, minimapHeight);
+
+  // Draw minimap border
+  canvas.strokeStyle = "white";
+  canvas.lineWidth = 2;
+  canvas.strokeRect(minimapX, minimapY, minimapWidth, minimapHeight);
+
+  // Draw simplified map (just a dark background for now)
+  canvas.fillStyle = "rgba(40, 40, 40, 1)";
+  canvas.fillRect(
+    minimapX + offsetX,
+    minimapY + offsetY,
+    scaledWidth,
+    scaledHeight
+  );
+
+  // Draw task locations for crewmates
+  if (gameState.playerRole === "crewmate") {
+    for (const task of gameState.playerTasks) {
+      if (!task.completed && !isTaskCompleted(task.location)) {
+        const taskMinimapX =
+          minimapX + offsetX + task.location.x * TILE_SIZE * scale;
+        const taskMinimapY =
+          minimapY + offsetY + task.location.y * TILE_SIZE * scale;
+
+        // Draw yellow dot for task
+        canvas.fillStyle = "yellow";
+        canvas.beginPath();
+        canvas.arc(taskMinimapX, taskMinimapY, 3, 0, 2 * Math.PI);
+        canvas.fill();
+      }
+    }
+  }
+
+  // Draw player position
+  const playerMinimapX = minimapX + offsetX + myPlayer.x * scale;
+  const playerMinimapY = minimapY + offsetY + myPlayer.y * scale;
+
+  // Draw player dot
+  const playerColor = gameState.playerRole === "imposter" ? "red" : "cyan";
+  canvas.fillStyle = playerColor;
+  canvas.beginPath();
+  canvas.arc(playerMinimapX, playerMinimapY, 4, 0, 2 * Math.PI);
+  canvas.fill();
+
+  // Add white outline to player dot for visibility
+  canvas.strokeStyle = "white";
+  canvas.lineWidth = 1;
+  canvas.beginPath();
+  canvas.arc(playerMinimapX, playerMinimapY, 4, 0, 2 * Math.PI);
+  canvas.stroke();
 }
 
 function renderFogOfWar(player, cameraX, cameraY) {

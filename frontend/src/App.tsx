@@ -1,9 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { WaitingRoom } from './components/WaitingRoom';
 import { GamePage } from './components/GamePage';
-import RoomPage from './components/RoomPage';
 import { GameLanding } from './pages/GameLanding';
 import { SocketProvider } from './SocketContext';
+import RoomPage from './components/RoomPage';
+// import VoiceChatRoom from './pages/VoiceChatRoom';
 
 function App() {
   return (

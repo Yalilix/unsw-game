@@ -1,36 +1,36 @@
 import { Server as IOServer, Socket } from "socket.io";
 
 export interface RoomPlayer {
-  id: string;
-  socketId: string;
-  name: string;
+	id: string;
+	socketId: string;
+	name: string;
 }
 
 export interface Room {
-  id: string;
-  players: RoomPlayer[];
-  host: string; // socket id of host
-  status: "waiting" | "playing";
-  maxPlayers: number;
-  minPlayers: number;
-  createdAt: Date;
+	id: string;
+	players: RoomPlayer[];
+	host: string; // socket id of host
+	status: "waiting" | "playing";
+	maxPlayers: number;
+	minPlayers: number;
+	createdAt: Date;
 }
 
 export interface GamePlayer {
-  id: string;
-  x: number;
-  y: number;
-  role: "crewmate" | "imposter";
-  isAlive: boolean;
-  lastKillTime?: number;
+	id: string;
+	x: number;
+	y: number;
+	role: "crewmate" | "imposter";
+	isAlive: boolean;
+	lastKillTime?: number;
 }
 
 export interface DeadBody {
-  id: string;
-  x: number;
-  y: number;
-  playerId: string;
-  reportedBy?: string;
+	id: string;
+	x: number;
+	y: number;
+	playerId: string;
+	reportedBy?: string;
 }
 
 export interface TaskLocation {
@@ -40,8 +40,8 @@ export interface TaskLocation {
 }
 
 export interface PlayerTask {
-  location: TaskLocation;
-  completed: boolean;
+	location: TaskLocation;
+	completed: boolean;
 }
 
 // Task locations in tile coordinates
@@ -56,25 +56,25 @@ export const TASK_LOCATIONS: TaskLocation[] = [
 ];
 
 export interface GameInstance {
-  roomId: string;
-  players: GamePlayer[];
-  deadBodies: DeadBody[];
-  gameState: "playing" | "meeting" | "voting";
-  meetingStartTime?: number;
-  votes: Record<string, string>; // playerId -> targetId ("skip" for skip vote)
-  gameStartTime: number;
-  inputsMap: Record<
-    string,
-    {
-      up: boolean;
-      down: boolean;
-      left: boolean;
-      right: boolean;
-    }
-  >;
-  playerTasks: Record<string, PlayerTask[]>; // playerId -> assigned tasks
-  completedTasks: Set<string>; // completed task location keys "x,y"
-  currentQuestions: Record<string, any>; // playerId -> current question object
+	roomId: string;
+	players: GamePlayer[];
+	deadBodies: DeadBody[];
+	gameState: "playing" | "meeting" | "voting";
+	meetingStartTime?: number;
+	votes: Record<string, string>; // playerId -> targetId ("skip" for skip vote)
+	gameStartTime: number;
+	inputsMap: Record<
+		string,
+		{
+			up: boolean;
+			down: boolean;
+			left: boolean;
+			right: boolean;
+		}
+	>;
+	playerTasks: Record<string, PlayerTask[]>; // playerId -> assigned tasks
+	completedTasks: Set<string>; // completed task location keys "x,y"
+	currentQuestions: Record<string, any>; // playerId -> current question object
 }
 
 class RoomManager {

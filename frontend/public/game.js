@@ -1,8 +1,18 @@
 const mapImage = new Image();
 mapImage.src = "/Modern_Exteriors_Complete_Tileset_32x32.png";
 
-const personImage = new Image();
-personImage.src = "/person.png";
+const blobGifImage = new Image();
+blobGifImage.src = "/blob.gif";
+
+// Add error handlers for blob gif
+blobGifImage.addEventListener("load", () => {
+  console.log("Blob GIF loaded successfully");
+});
+
+blobGifImage.addEventListener("error", (e) => {
+  console.warn("Blob GIF failed to load:", e);
+  console.warn("Falling back to simple colored rectangle for players");
+});
 
 const walking = new Audio("/walking.mp3");
 const nature = new Audio("/nature.mp3");
@@ -82,6 +92,25 @@ let TILES_IN_ROW = 8; // will be overwritten when image loads
 
 mapImage.onload = () => {
   TILES_IN_ROW = Math.floor(mapImage.width / TILE_SIZE);
+};
+
+// Animation system for blob characters
+let blobGifLoaded = false;
+let animationFrame = 0;
+let lastAnimationTime = 0;
+const ANIMATION_SPEED = 200; // milliseconds per frame
+const BOUNCE_INTENSITY = 1; // pixels of bounce (reduced for gentler effect)
+
+// Trail effect system for moving players
+const playerTrails = new Map(); // Store trail particles for each player
+
+blobGifImage.onload = () => {
+  console.log("Blob GIF loaded and ready for animation");
+  console.log("🎭 Enhanced blob animation system activated!");
+  console.log(
+    "Features: bouncing, breathing, rotation, squash/stretch, trails, and color tinting"
+  );
+  blobGifLoaded = true;
 };
 
 socket.on("connect", () => {
@@ -1081,7 +1110,6 @@ function showTaskModal(data) {
     button.onclick = () => submitTaskAnswer(option);
     taskOptions.appendChild(button);
   });
-
   taskModal.style.display = "flex";
   console.log("Task modal shown with question:", data.question);
   isModalOpen = true; // Block movement when task modal is open
@@ -1329,7 +1357,6 @@ function showGameEnd(data) {
     gameEndTitle.className = "text-2xl font-bold mb-4 text-center text-white";
     gameEndContent.innerHTML = `<p class="text-lg">Game ended</p>`;
   }
-
   gameEndUI.style.display = "flex";
   isModalOpen = true; // Block movement when game end screen is shown
 
@@ -1526,7 +1553,34 @@ function loop() {
     canvas.fillRect(body.x - cameraX, body.y - cameraY, TILE_SIZE, TILE_SIZE);
   }
 
-  for (const player of players) {
+  const BLOB_SIZE = 34; // reduced size for the blob
+  for (const [i, player] of players.entries()) {
+    // Draw colored aura (halo) so it overlaps more with the bottom of the blob
+    const auraColors = [
+      "#FF4B4B", // red
+      "#4B8BFF", // blue
+      "#FFD93D", // yellow
+      "#4BFF4B", // green
+      "#FF4BFF", // magenta
+      "#FF914B", // orange
+      "#4BFFD9", // cyan
+      "#B84BFF", // purple
+      "#A0FF4B", // lime
+      "#FF4B8B", // pink
+    ];
+    const auraColor = auraColors[i % auraColors.length];
+    const auraX = player.x - cameraX + TILE_SIZE / 2;
+    const auraY = player.y - cameraY + BLOB_SIZE - 8; // move up by 8px
+    canvas.save();
+    canvas.globalAlpha = 0.55;
+    canvas.beginPath();
+    canvas.ellipse(auraX, auraY, 26, 14, 0, 0, 2 * Math.PI); // larger halo
+    canvas.shadowColor = auraColor;
+    canvas.shadowBlur = 24;
+    canvas.fillStyle = auraColor;
+    canvas.fill();
+    canvas.restore();
+
     // Set player opacity if provided
     const playerOpacity =
       player.opacity !== undefined && player.opacity < 1.0
@@ -1534,13 +1588,153 @@ function loop() {
         : 1.0;
     canvas.globalAlpha = playerOpacity;
 
-    canvas.drawImage(
-      personImage,
-      player.x - cameraX,
-      player.y - cameraY,
-      TILE_SIZE,
-      TILE_SIZE
-    );
+    // Draw smaller blob.gif, keeping feet in same place
+    // Calculate animation effects for blob character
+    const currentTime = Date.now();
+    if (currentTime - lastAnimationTime > ANIMATION_SPEED) {
+      animationFrame = (animationFrame + 1) % 8; // 8 frame cycle for smooth animation
+      lastAnimationTime = currentTime;
+    }
+
+    // Check if player is moving for enhanced animation (with tolerance for floating point precision)
+    const isMoving = Math.abs(player.vx) > 0.1 || Math.abs(player.vy) > 0.1;
+    const movementMultiplier = isMoving ? 2.0 : 1.0;
+    const speedMultiplier = isMoving ? 1.5 : 1.0;
+
+    // Create vertical bouncing effects (enhanced when moving)
+    const bounceOffset =
+      Math.sin(currentTime * 0.005 * speedMultiplier + i * 0.8) *
+      BOUNCE_INTENSITY *
+      movementMultiplier;
+    const scaleEffect =
+      1 +
+      Math.sin(currentTime * 0.006 * speedMultiplier + i * 0.3) *
+        0.02 *
+        movementMultiplier; // breathing effect (reduced for subtle effect)
+
+    // Add slight color tint variation per player for uniqueness
+    const colorPhase = currentTime * 0.002 + i * 2.1;
+    const tintAmount = 0.1 + Math.sin(colorPhase) * 0.05;
+
+    // Trail effect for moving players
+    if (isMoving) {
+      // Initialize trail array for this player if it doesn't exist
+      if (!playerTrails.has(player.id)) {
+        playerTrails.set(player.id, []);
+      }
+
+      const trail = playerTrails.get(player.id);
+      // Add new trail particle every few frames
+      if (animationFrame % 3 === 0) {
+        trail.push({
+          x: player.x,
+          y: player.y,
+          life: 1.0,
+          color: auraColor,
+        });
+      }
+
+      // Update and draw trail particles
+      for (let j = trail.length - 1; j >= 0; j--) {
+        const particle = trail[j];
+        particle.life -= 0.08;
+
+        if (particle.life <= 0) {
+          trail.splice(j, 1);
+        } else {
+          // Draw fading trail particle
+          canvas.save();
+          canvas.globalAlpha = particle.life * 0.4;
+          canvas.fillStyle = particle.color;
+          const size = TILE_SIZE * 0.4 * particle.life;
+          canvas.fillRect(
+            particle.x - cameraX - size / 2,
+            particle.y - cameraY - size / 2,
+            size,
+            size
+          );
+          canvas.restore();
+        }
+      }
+
+      // Limit trail length for performance
+      if (trail.length > 8) {
+        trail.splice(0, trail.length - 8);
+      }
+    } else {
+      // Gradually fade trail when not moving
+      if (playerTrails.has(player.id)) {
+        const trail = playerTrails.get(player.id);
+        for (let j = trail.length - 1; j >= 0; j--) {
+          trail[j].life -= 0.15;
+          if (trail[j].life <= 0) {
+            trail.splice(j, 1);
+          }
+        }
+      }
+    }
+
+    if (
+      blobGifLoaded &&
+      blobGifImage.complete &&
+      blobGifImage.naturalWidth > 0
+    ) {
+      // Save canvas state for transformations
+      canvas.save();
+
+      // Calculate animated position (vertical bounce only)
+      const baseX = player.x - cameraX - (BLOB_SIZE - TILE_SIZE) / 2;
+      const baseY = player.y - cameraY - (BLOB_SIZE - TILE_SIZE);
+      const drawX = baseX;
+      const drawY = baseY + bounceOffset;
+
+      // Apply scale and rotation for more life-like movement
+      const centerX = drawX + BLOB_SIZE / 2;
+      const centerY = drawY + BLOB_SIZE / 2;
+      canvas.translate(centerX, centerY);
+
+      // Add subtle rotation only when moving
+      if (isMoving) {
+        const rotationAngle =
+          Math.sin(currentTime * 0.004 * speedMultiplier + i * 0.4) * 0.08;
+        canvas.rotate(rotationAngle);
+      }
+
+      // Squash and stretch effect for bouncing
+      const squashY =
+        1 +
+        Math.sin(currentTime * 0.01 * speedMultiplier + i * 1.2) *
+          0.01 *
+          movementMultiplier;
+      const stretchX = 1 / squashY; // maintain area
+
+      // Scale breathing effect with squash/stretch
+      canvas.scale(scaleEffect * stretchX, scaleEffect * squashY);
+      canvas.translate(-BLOB_SIZE / 2, -BLOB_SIZE / 2);
+
+      // Add color tinting for variety
+      canvas.globalCompositeOperation = "multiply";
+      canvas.fillStyle = `rgba(${255 - tintAmount * 50}, ${
+        255 - tintAmount * 30
+      }, ${255 - tintAmount * 20}, ${0.1 + tintAmount * 0.1})`;
+      canvas.fillRect(0, 0, BLOB_SIZE, BLOB_SIZE);
+      canvas.globalCompositeOperation = "source-over";
+
+      // Draw the blob with all animation effects
+      canvas.drawImage(blobGifImage, 0, 0, BLOB_SIZE, BLOB_SIZE);
+
+      // Restore canvas state
+      canvas.restore();
+    } else {
+      // Fallback: draw animated colored rectangle while blob loads or if it fails
+      canvas.fillStyle = auraColor;
+      canvas.fillRect(
+        player.x - cameraX,
+        player.y - cameraY + bounceOffset,
+        TILE_SIZE * scaleEffect,
+        TILE_SIZE * scaleEffect
+      );
+    }
 
     // Draw player name underneath
     if (player.name || player.id) {
@@ -1686,9 +1880,9 @@ function renderUI() {
     const minimapX = canvasEl.width - minimapWidth - spacing;
     const minimapY = spacing;
 
-    // Position text closer to minimap with reduced gap
+    // Position text closer to minimap with minimal gap
     const statusX = minimapX;
-    const statusY = minimapY + minimapHeight + 10; // Reduced from 25 to 10
+    const statusY = minimapY + minimapHeight + 3; // Minimal gap of 3px
 
     canvas.fillStyle = "red";
     canvas.font = "bold 12px Arial";

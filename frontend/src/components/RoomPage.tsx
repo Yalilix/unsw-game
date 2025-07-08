@@ -26,6 +26,9 @@ const RoomPage = () => {
 
   const PLAYER_NAME_KEY = "playerName";
 
+  // Set max name length
+  const USERNAME_MAX_LENGTH = 14;
+
   useEffect(() => {
     if (!roomId || !socket) return;
     const params = new URLSearchParams(location.search);
@@ -47,6 +50,7 @@ const RoomPage = () => {
     // Check if this user created this room
     const isCreator =
       sessionStorage.getItem(`room_${roomId}_creator`) === "true";
+    sessionStorage.getItem(`room_${roomId}_creator`) === "true";
 
     // Join room
     socket.emit("joinRoom", { roomId, isCreator });
@@ -79,26 +83,6 @@ const RoomPage = () => {
       }
     });
 
-    // Player joined room
-    socket.on(
-      "playerJoined",
-      (data: { playerId: string; playerCount: number }) => {
-        setRoomData((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            players: [
-              ...prev.players,
-              {
-                id: data.playerId,
-                name: `Player ${prev.players.length + 1}`,
-              },
-            ],
-          };
-        });
-      }
-    );
-
     // Room update event
     socket.on(
       "roomUpdate",
@@ -108,20 +92,6 @@ const RoomPage = () => {
           return {
             ...prev,
             players: data.players,
-          };
-        });
-      }
-    );
-
-    // Player left room
-    socket.on(
-      "playerLeft",
-      (data: { playerId: string; playerCount: number }) => {
-        setRoomData((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            players: prev.players.filter((p) => p.id !== data.playerId),
           };
         });
       }
@@ -158,6 +128,7 @@ const RoomPage = () => {
 
   const startGame = () => {
     if (socket && roomId) {
+      socket.emit("startGame", { roomId });
       socket.emit("startGame", { roomId });
     }
   };
@@ -214,10 +185,14 @@ const RoomPage = () => {
     );
   }
 
+  const canStartGame = roomData.players.length >= 4 && roomData.isHost;
   const minPlayersNeeded = Math.max(0, 4 - roomData.players.length);
 
   return (
-    <div className="min-h-screen bg-gradient-space p-4">
+    <div
+      className="min-h-screen bg-gradient-space p-4"
+      style={{ fontFamily: "DragonHunter" }}
+    >
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="bg-card p-4 rounded-lg shadow-lg mb-4 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -228,14 +203,17 @@ const RoomPage = () => {
             {/* Room ID */}
             <div className="flex items-center gap-3 mb-4">
               <span className="text-muted-foreground">Room ID:</span>
-              <code className="bg-muted px-3 py-1 rounded text-foreground font-mono text-lg">
+              <code
+                className="bg-muted px-3 py-1 rounded text-foreground font-mono text-lg tracking-[.1em]"
+                style={{ fontFamily: "DragonHunter" }}
+              >
                 {roomId}
               </code>
               <button
                 onClick={copyRoomId}
                 className="bg-secondary text-secondary-foreground px-3 py-1 rounded hover:bg-secondary/80 transition-colors"
               >
-                {copySuccess ? "Copied!" : "Copy"}
+                {copySuccess ? "Copied ID!" : "Copy ID"}
               </button>
             </div>
             {/* Status */}
@@ -272,9 +250,9 @@ const RoomPage = () => {
                   {player ? (
                     <>
                       <span
-                        className={`text-center block max-w-[8.5rem] whitespace-nowrap overflow-hidden ${
-                          player.name.length > 13
-                            ? "text-base"
+                        className={`text-center block max-w-[8.5rem] whitespace-nowrap overflow-hidden  tracking-[.1em] ${
+                          player.name.length > 10
+                            ? "text-sm"
                             : player.name.length > 10
                             ? "text-lg"
                             : "text-xl"
@@ -283,12 +261,12 @@ const RoomPage = () => {
                         {player.name}
                       </span>
                       {player.id === socket?.id && (
-                        <span className="absolute top-2 right-2 bg-accent text-accent-foreground px-2 py-1 rounded text-xs font-semibold shadow">
+                        <span className="absolute top-2 right-2 bg-accent text-accent-foreground px-1.5 py-0.5 rounded text-[10px] font-semibold shadow">
                           YOU
                         </span>
                       )}
                       {i === 0 && (
-                        <span className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-semibold shadow">
+                        <span className="absolute top-2 left-2 bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[10px] font-semibold shadow">
                           HOST
                         </span>
                       )}

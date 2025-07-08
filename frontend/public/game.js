@@ -104,6 +104,31 @@ const BOUNCE_INTENSITY = 1; // pixels of bounce (reduced for gentler effect)
 // Trail effect system for moving players
 const playerTrails = new Map(); // Store trail particles for each player
 
+// Stable color assignment system - assigns colors sequentially to guarantee uniqueness
+const playerColorAssignments = new Map(); // Maps player ID to color index
+let nextColorIndex = 0; // Next available color index
+
+function getStablePlayerColor(playerId, auraColors) {
+  // Check if we already have a color assigned to this player
+  if (playerColorAssignments.has(playerId)) {
+    const colorIndex = playerColorAssignments.get(playerId);
+    return auraColors[colorIndex];
+  }
+
+  // Assign the next available color sequentially
+  const colorIndex = nextColorIndex % auraColors.length;
+  const color = auraColors[colorIndex];
+
+  // Store the assignment
+  playerColorAssignments.set(playerId, colorIndex);
+  nextColorIndex++;
+
+  console.log(
+    `🎨 Assigned stable color ${color} to player ${playerId} (index ${colorIndex})`
+  );
+  return color;
+}
+
 blobGifImage.onload = () => {
   console.log("Blob GIF loaded and ready for animation");
   console.log("🎭 Enhanced blob animation system activated!");
@@ -148,6 +173,17 @@ socket.on("error", (data) => {
 
 socket.on("players", (serverPlayers) => {
   players = serverPlayers;
+
+  // Clean up color assignments for disconnected players
+  const activePlayerIds = new Set(players.map((p) => p.id));
+  for (const [playerId, _] of playerColorAssignments) {
+    if (!activePlayerIds.has(playerId)) {
+      playerColorAssignments.delete(playerId);
+      console.log(
+        `🗑️ Cleaned up color assignment for disconnected player ${playerId}`
+      );
+    }
+  }
 });
 
 // Player left game event
@@ -1554,21 +1590,27 @@ function loop() {
   }
 
   const BLOB_SIZE = 34; // reduced size for the blob
+  // Define aura colors outside the loop for better performance
+  const auraColors = [
+    "#FF4B4B", // red
+    "#4B8BFF", // blue
+    "#FFD93D", // yellow
+    "#4BFF4B", // green
+    "#FF4BFF", // magenta
+    "#FF914B", // orange
+    "#4BFFD9", // cyan
+    "#B84BFF", // purple
+    "#A0FF4B", // lime
+    "#FF4B8B", // pink
+  ];
+
   for (const [i, player] of players.entries()) {
-    // Draw colored aura (halo) so it overlaps more with the bottom of the blob
-    const auraColors = [
-      "#FF4B4B", // red
-      "#4B8BFF", // blue
-      "#FFD93D", // yellow
-      "#4BFF4B", // green
-      "#FF4BFF", // magenta
-      "#FF914B", // orange
-      "#4BFFD9", // cyan
-      "#B84BFF", // purple
-      "#A0FF4B", // lime
-      "#FF4B8B", // pink
-    ];
-    const auraColor = auraColors[i % auraColors.length];
+    // Get stable color assignment based on player ID, not array position
+    const auraColor = getStablePlayerColor(player.id, auraColors);
+
+    // Use the assigned color index for stable animation timing
+    const colorIndex = playerColorAssignments.get(player.id);
+    const stableIndex = colorIndex * 100; // Scale up for animation variation
     const auraX = player.x - cameraX + TILE_SIZE / 2;
     const auraY = player.y - cameraY + BLOB_SIZE - 8; // move up by 8px
     canvas.save();
@@ -1601,19 +1643,19 @@ function loop() {
     const movementMultiplier = isMoving ? 2.0 : 1.0;
     const speedMultiplier = isMoving ? 1.5 : 1.0;
 
-    // Create vertical bouncing effects (enhanced when moving)
+    // Create vertical bouncing effects (enhanced when moving) - using stable index
     const bounceOffset =
-      Math.sin(currentTime * 0.005 * speedMultiplier + i * 0.8) *
+      Math.sin(currentTime * 0.005 * speedMultiplier + stableIndex * 0.008) *
       BOUNCE_INTENSITY *
       movementMultiplier;
     const scaleEffect =
       1 +
-      Math.sin(currentTime * 0.006 * speedMultiplier + i * 0.3) *
+      Math.sin(currentTime * 0.006 * speedMultiplier + stableIndex * 0.003) *
         0.02 *
         movementMultiplier; // breathing effect (reduced for subtle effect)
 
-    // Add slight color tint variation per player for uniqueness
-    const colorPhase = currentTime * 0.002 + i * 2.1;
+    // Add slight color tint variation per player for uniqueness - using stable index
+    const colorPhase = currentTime * 0.002 + stableIndex * 0.021;
     const tintAmount = 0.1 + Math.sin(colorPhase) * 0.05;
 
     // Trail effect for moving players
@@ -1693,17 +1735,19 @@ function loop() {
       const centerY = drawY + BLOB_SIZE / 2;
       canvas.translate(centerX, centerY);
 
-      // Add subtle rotation only when moving
+      // Add subtle rotation only when moving - using stable index
       if (isMoving) {
         const rotationAngle =
-          Math.sin(currentTime * 0.004 * speedMultiplier + i * 0.4) * 0.08;
+          Math.sin(
+            currentTime * 0.004 * speedMultiplier + stableIndex * 0.004
+          ) * 0.08;
         canvas.rotate(rotationAngle);
       }
 
-      // Squash and stretch effect for bouncing
+      // Squash and stretch effect for bouncing - using stable index
       const squashY =
         1 +
-        Math.sin(currentTime * 0.01 * speedMultiplier + i * 1.2) *
+        Math.sin(currentTime * 0.01 * speedMultiplier + stableIndex * 0.012) *
           0.01 *
           movementMultiplier;
       const stretchX = 1 / squashY; // maintain area
@@ -1876,13 +1920,22 @@ function renderUI() {
     const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
     const minimapWidth = isSmallScreen ? 100 : 200;
     const minimapHeight = isSmallScreen ? 75 : 150;
+
+    // Calculate the same scaled dimensions as the minimap
+    const mapPixelWidth = groundMap[0].length * TILE_SIZE;
+    const mapPixelHeight = groundMap.length * TILE_SIZE;
+    const scaleX = minimapWidth / mapPixelWidth;
+    const scaleY = minimapHeight / mapPixelHeight;
+    const scale = Math.min(scaleX, scaleY);
+    const scaledHeight = mapPixelHeight * scale;
+
     const spacing = 20;
     const minimapX = canvasEl.width - minimapWidth - spacing;
     const minimapY = spacing;
 
-    // Position text closer to minimap with minimal gap
+    // Position text closer to minimap using actual scaled height with minimal gap
     const statusX = minimapX;
-    const statusY = minimapY + minimapHeight + 3; // Minimal gap of 3px
+    const statusY = minimapY + scaledHeight + 17;
 
     canvas.fillStyle = "red";
     canvas.font = "bold 12px Arial";

@@ -231,6 +231,20 @@ socket.on("gameOver", (data) => {
 // Return to lobby event
 socket.on("returnToLobby", (data) => {
   console.log("Returning to lobby for room:", data.roomId);
+
+  // Store current player info for lobby reconnection
+  const currentPlayer = data.players.find((p) => p.id === socket.id);
+  if (currentPlayer) {
+    sessionStorage.setItem(
+      `room_${data.roomId}_playerName`,
+      currentPlayer.name
+    );
+    sessionStorage.setItem(`room_${data.roomId}_returnFromGame`, "true");
+    console.log(
+      `Stored player name "${currentPlayer.name}" for lobby reconnection`
+    );
+  }
+
   // Navigate to the room lobby page
   window.location.href = `/room/${data.roomId}`;
 });

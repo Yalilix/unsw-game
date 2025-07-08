@@ -586,8 +586,11 @@ class RoomManager {
       return { success: false, error: "Name must be 1-20 characters" };
     }
 
+    const oldName = player.name;
     player.name = trimmedName;
-    console.log(`[DEBUG] Player name updated: ${socketId} -> "${trimmedName}"`);
+    console.log(
+      `[DEBUG] Player name updated: ${socketId} "${oldName}" -> "${trimmedName}"`
+    );
     console.log(
       `[DEBUG] Room ${roomId} players after name update: ${room.players
         .map((p) => `${p.socketId}:"${p.name}"`)

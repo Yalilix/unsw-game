@@ -25,7 +25,31 @@ const canvas = canvasEl.getContext("2d");
 window.addEventListener("resize", () => {
   canvasEl.width = window.innerWidth;
   canvasEl.height = window.innerHeight;
+  updateButtons(); // Update button visibility when screen size changes
+  handleAutoFullscreen(); // Check if fullscreen should be toggled
 });
+
+// Initial fullscreen check when game loads
+setTimeout(() => {
+  handleAutoFullscreen();
+}, 1000); // Small delay to ensure page is fully loaded
+
+// Trigger fullscreen on first user interaction (many browsers require this)
+let hasInteracted = false;
+function handleFirstInteraction() {
+  if (!hasInteracted) {
+    hasInteracted = true;
+    handleAutoFullscreen();
+    // Remove listeners after first interaction
+    document.removeEventListener("click", handleFirstInteraction);
+    document.removeEventListener("keydown", handleFirstInteraction);
+    document.removeEventListener("touchstart", handleFirstInteraction);
+  }
+}
+
+document.addEventListener("click", handleFirstInteraction);
+document.addEventListener("keydown", handleFirstInteraction);
+document.addEventListener("touchstart", handleFirstInteraction);
 
 const socket = io(window.BACKEND_URL || "http://localhost:3000");
 
@@ -348,6 +372,26 @@ function isTaskCompleted(location) {
   return gameState.completedTasks.includes(locationKey);
 }
 
+// Helper function to wrap text within a given width
+function wrapText(text, maxWidth) {
+  const words = text.split(" ");
+  const lines = [];
+  let currentLine = words[0];
+
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i];
+    const width = canvas.measureText(currentLine + " " + word).width;
+    if (width < maxWidth) {
+      currentLine += " " + word;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  lines.push(currentLine);
+  return lines;
+}
+
 // Button Functions
 window.attemptKill = function () {
   if (
@@ -359,6 +403,26 @@ window.attemptKill = function () {
     socket.emit("kill");
   }
 };
+
+// Automatic fullscreen management for small screens
+function handleAutoFullscreen() {
+  const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
+  const isCurrentlyFullscreen = !!document.fullscreenElement;
+
+  if (isSmallScreen && !isCurrentlyFullscreen) {
+    // Enter fullscreen on small screens
+    document.documentElement.requestFullscreen().catch((err) => {
+      console.log("Auto-fullscreen failed:", err);
+      // Fullscreen might fail on some browsers without user interaction
+      // This is expected behavior and not an error
+    });
+  } else if (!isSmallScreen && isCurrentlyFullscreen) {
+    // Exit fullscreen on large screens
+    document.exitFullscreen().catch((err) => {
+      console.log("Auto-exit fullscreen failed:", err);
+    });
+  }
+}
 
 window.attemptReport = function () {
   if (
@@ -985,6 +1049,11 @@ function renderUI() {
 
   // Task list for crewmates
   if (gameState.playerRole === "crewmate") {
+    const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
+    const maxTextWidth = isSmallScreen
+      ? canvasEl.width / 3
+      : canvasEl.width * 0.6; // 1/3 on small screens, 60% on large
+
     canvas.font = "16px Arial";
     canvas.fillStyle = "yellow";
     canvas.fillText("Task Locations:", 10, 85);
@@ -999,10 +1068,22 @@ function renderUI() {
           task.location.name || `(${task.location.x}, ${task.location.y})`;
         const status = task.completed ? "✓" : "○";
         const color = task.completed ? "lightgreen" : "white";
+        const fullText = `${status} ${location}`;
 
         canvas.fillStyle = color;
-        canvas.fillText(`${status} ${location}`, 10, yOffset);
-        yOffset += 20;
+
+        // Check if text fits in one line
+        if (canvas.measureText(fullText).width <= maxTextWidth) {
+          canvas.fillText(fullText, 10, yOffset);
+          yOffset += 20;
+        } else {
+          // Wrap text for small screens
+          const wrappedLines = wrapText(fullText, maxTextWidth);
+          for (const line of wrappedLines) {
+            canvas.fillText(line, 10, yOffset);
+            yOffset += 20;
+          }
+        }
       }
     }
   }
@@ -1021,17 +1102,54 @@ function renderUI() {
   }
 
   // Instructions
+  const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
+  const maxInstructionsWidth = isSmallScreen
+    ? canvasEl.width / 3
+    : canvasEl.width * 0.6; // 1/3 on small screens, 60% on large
+
   canvas.fillStyle = "white";
   canvas.font = "14px Arial";
-  canvas.fillText("WASD: Move", 10, canvasEl.height - 20);
+
+  // Render "WASD: Move" instruction
+  const moveText = "WASD: Move";
+  if (canvas.measureText(moveText).width <= maxInstructionsWidth) {
+    canvas.fillText(moveText, 10, canvasEl.height - 20);
+  } else {
+    const wrappedMoveLines = wrapText(moveText, maxInstructionsWidth);
+    let yOffsetMove = canvasEl.height - 20 - (wrappedMoveLines.length - 1) * 16;
+    for (const line of wrappedMoveLines) {
+      canvas.fillText(line, 10, yOffsetMove);
+      yOffsetMove += 16;
+    }
+  }
+
+  // Render role-specific instructions
   if (gameState.playerRole === "imposter" && gameState.isAlive) {
-    canvas.fillText("Use buttons to KILL and REPORT", 10, canvasEl.height - 40);
+    const imposterText = "Use buttons to KILL and REPORT";
+    if (canvas.measureText(imposterText).width <= maxInstructionsWidth) {
+      canvas.fillText(imposterText, 10, canvasEl.height - 40);
+    } else {
+      const wrappedImposterLines = wrapText(imposterText, maxInstructionsWidth);
+      let yOffsetImposter =
+        canvasEl.height - 40 - (wrappedImposterLines.length - 1) * 16;
+      for (const line of wrappedImposterLines) {
+        canvas.fillText(line, 10, yOffsetImposter);
+        yOffsetImposter += 16;
+      }
+    }
   } else if (gameState.isAlive) {
-    canvas.fillText(
-      "Use button to REPORT dead bodies",
-      10,
-      canvasEl.height - 40
-    );
+    const crewText = "Use button to REPORT dead bodies";
+    if (canvas.measureText(crewText).width <= maxInstructionsWidth) {
+      canvas.fillText(crewText, 10, canvasEl.height - 40);
+    } else {
+      const wrappedCrewLines = wrapText(crewText, maxInstructionsWidth);
+      let yOffsetCrew =
+        canvasEl.height - 40 - (wrappedCrewLines.length - 1) * 16;
+      for (const line of wrappedCrewLines) {
+        canvas.fillText(line, 10, yOffsetCrew);
+        yOffsetCrew += 16;
+      }
+    }
   }
 
   // Render minimap

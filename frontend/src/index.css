@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Space-themed design system for Among Us inspired landing page
 All colors MUST be HSL.
@@ -206,4 +206,29 @@ All colors MUST be HSL.
   .focus\:ring-ring:focus {
     box-shadow: 0 0 0 2px hsl(var(--ring));
   }
+}
+
+@font-face {
+  font-family: 'bye';
+  src: url('../fonts/RebellionSquad-ZpprZ.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'hi';
+  src: url('../fonts/MightySouly-lxggD.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'hi2';
+  src: url('../fonts/DragonHunter-9Ynxj.otf') format('truetype');
+  font-weight: 100;
+  font-style: normal;
+}
+
+body {
+  font-family: 'hi2', sans-serif;
 }

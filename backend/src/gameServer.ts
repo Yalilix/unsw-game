@@ -27,7 +27,7 @@ interface InputsState {
   right: boolean;
 }
 
-const SPEED = 5;
+const SPEED = 4.2;
 const TICK_RATE = 30;
 const PLAYER_SIZE = 32; // Visual size remains 32
 const TILE_SIZE = 32;

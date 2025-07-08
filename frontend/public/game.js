@@ -251,6 +251,16 @@ const inputs = {
   right: false,
 };
 
+// Track if any modal is currently open to prevent movement
+let isModalOpen = false;
+
+// Helper function to emit inputs only when no modal is open
+function emitInputs() {
+  if (!isModalOpen) {
+    socket.emit("inputs", inputs);
+  }
+}
+
 window.addEventListener("keydown", (e) => {
   if (e.key === "w" || e.key === "ArrowUp") {
     inputs["up"] = true;
@@ -273,7 +283,7 @@ window.addEventListener("keydown", (e) => {
     }
   }
   // Removed spacebar functionality - now using buttons
-  socket.emit("inputs", inputs);
+  emitInputs();
 });
 
 window.addEventListener("keyup", (e) => {
@@ -295,7 +305,7 @@ window.addEventListener("keyup", (e) => {
       console.warn("Walking audio pause error:", err);
     }
   }
-  socket.emit("inputs", inputs);
+  emitInputs();
 });
 
 // Mobile Joystick Implementation
@@ -346,12 +356,6 @@ function createJoystick() {
   console.log("Joystick created and added to document");
 
   updateJoystickVisibility();
-
-  // Temporary: Force joystick to be visible for testing
-  setTimeout(() => {
-    console.log("Forcing joystick visibility for testing");
-    joystick.style.display = "block";
-  }, 1000);
 }
 
 function updateJoystickVisibility() {
@@ -360,14 +364,17 @@ function updateJoystickVisibility() {
     return;
   }
 
-  const shouldShow = window.innerWidth < 700 || window.innerHeight < 700;
+  const shouldShow =
+    (window.innerWidth < 700 || window.innerHeight < 700) && !isModalOpen;
   console.log(
     "Should show joystick:",
     shouldShow,
     "Screen:",
     window.innerWidth,
     "x",
-    window.innerHeight
+    window.innerHeight,
+    "Modal open:",
+    isModalOpen
   );
   joystick.style.display = shouldShow ? "block" : "none";
 
@@ -437,7 +444,7 @@ function resetJoystickInputs() {
       console.warn("Walking audio pause error:", err);
     }
   }
-  socket.emit("inputs", inputs);
+  emitInputs();
 }
 
 function handleJoystickTouch(clientX, clientY) {
@@ -480,7 +487,7 @@ function handleJoystickTouch(clientX, clientY) {
     }
   }
 
-  socket.emit("inputs", inputs);
+  emitInputs();
 }
 
 // Touch event listeners for joystick
@@ -847,6 +854,7 @@ function showMeetingUI() {
   if (meetingUI) {
     meetingUI.style.display = "flex";
     startMeetingTimer();
+    isModalOpen = true; // Block movement when meeting UI is open
   }
 }
 
@@ -859,6 +867,7 @@ function showVotingUI() {
 
   createVotingOptions();
   startVotingTimer(); // Start the 60-second voting timer
+  isModalOpen = true; // Block movement when voting UI is open
 }
 
 function hideAllUI() {
@@ -873,6 +882,8 @@ function hideAllUI() {
   if (votingResultsUI) votingResultsUI.style.display = "none";
   if (gameEndUI) gameEndUI.style.display = "none";
   if (taskModal) taskModal.style.display = "none";
+
+  isModalOpen = false; // Allow movement when all UIs are hidden
 }
 
 // Task modal functions
@@ -900,6 +911,7 @@ function showTaskModal(data) {
 
   taskModal.style.display = "flex";
   console.log("Task modal shown with question:", data.question);
+  isModalOpen = true; // Block movement when task modal is open
 }
 
 function hideTaskModal() {
@@ -908,6 +920,7 @@ function hideTaskModal() {
     taskModal.style.display = "none";
   }
   gameState.currentTaskModal = null;
+  isModalOpen = false; // Allow movement when task modal is hidden
 }
 
 function submitTaskAnswer(answer) {
@@ -1015,6 +1028,7 @@ function showVotingResults(data) {
 
   votingResultsContent.innerHTML = resultHTML;
   votingResultsUI.style.display = "flex";
+  isModalOpen = true; // Block movement when voting results are shown
 
   // Start 5-second countdown
   let timeLeft = 5;
@@ -1028,6 +1042,7 @@ function showVotingResults(data) {
     if (timeLeft < 0) {
       clearInterval(timer);
       votingResultsUI.style.display = "none";
+      isModalOpen = false; // Allow movement when voting results are hidden
     }
   }, 1000);
 }
@@ -1067,6 +1082,7 @@ function showGameEnd(data) {
   }
 
   gameEndUI.style.display = "flex";
+  isModalOpen = true; // Block movement when game end screen is shown
 
   // Set up button handlers
   setupGameEndButtons();
@@ -1080,12 +1096,14 @@ function setupGameEndButtons() {
     goToLobbyButton.onclick = () => {
       // Send return to lobby request to server
       socket.emit("returnToLobby");
+      isModalOpen = false; // Allow movement when returning to lobby
     };
   }
 
   if (exitGameButton) {
     exitGameButton.onclick = () => {
       // Navigate back to home
+      isModalOpen = false; // Allow movement when exiting
       window.location.href = "/";
     };
   }
@@ -1421,14 +1439,24 @@ function renderMinimap() {
   const offsetX = (minimapWidth - scaledWidth) / 2;
   const offsetY = (minimapHeight - scaledHeight) / 2;
 
-  // Draw minimap background
+  // Draw minimap background - fit exactly around the map content
   canvas.fillStyle = "rgba(0, 0, 0, 0.7)";
-  canvas.fillRect(minimapX, minimapY, minimapWidth, minimapHeight);
+  canvas.fillRect(
+    minimapX + offsetX,
+    minimapY + offsetY,
+    scaledWidth,
+    scaledHeight
+  );
 
-  // Draw minimap border
+  // Draw minimap border - fit exactly around the map content
   canvas.strokeStyle = "white";
   canvas.lineWidth = 2;
-  canvas.strokeRect(minimapX, minimapY, minimapWidth, minimapHeight);
+  canvas.strokeRect(
+    minimapX + offsetX,
+    minimapY + offsetY,
+    scaledWidth,
+    scaledHeight
+  );
 
   // Draw simplified map (just a dark background for now)
   canvas.fillStyle = "rgba(40, 40, 40, 1)";

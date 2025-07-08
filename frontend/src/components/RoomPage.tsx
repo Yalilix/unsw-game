@@ -114,6 +114,13 @@ const RoomPage = () => {
 
     // Game started
     newSocket.on("gameStarted", (data: { roomId: string }) => {
+      // Store the socket ID for reconnection in the game
+      if (newSocket.id) {
+        sessionStorage.setItem(
+          `room_${data.roomId}_originalSocketId`,
+          newSocket.id
+        );
+      }
       navigate(`/game/${data.roomId}`);
     });
 

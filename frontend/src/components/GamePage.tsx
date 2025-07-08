@@ -56,8 +56,146 @@ export function GamePage() {
   }, [roomId, navigate]);
 
   return (
-    <div className="w-screen h-screen bg-black">
+    <div className="w-screen h-screen bg-black relative">
       <canvas id="canvas" className="block"></canvas>
+
+      {/* Action Buttons - Bottom Right */}
+      <div
+        className="absolute bottom-4 right-4 flex gap-3"
+        style={{ zIndex: 100 }}
+      >
+        {/* Kill Button (only for imposters) */}
+        <button
+          id="killButton"
+          className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-lg cursor-pointer"
+          style={{ display: "none" }}
+          onClick={() => (window as any).attemptKill?.()}
+        >
+          KILL
+        </button>
+
+        {/* Report Button (for all players) */}
+        <button
+          id="reportButton"
+          className="px-4 py-2 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-700 transition-colors shadow-lg cursor-pointer"
+          style={{ display: "none" }}
+          onClick={() => (window as any).attemptReport?.()}
+        >
+          REPORT
+        </button>
+      </div>
+
+      {/* Voting UI */}
+      <div
+        id="votingUI"
+        className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
+        style={{ display: "none", zIndex: 1000 }}
+      >
+        <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4 border-2 border-gray-600">
+          <h2 className="text-xl font-bold mb-4 text-center text-white">
+            Vote to Eject
+          </h2>
+          <div className="text-center mb-4">
+            <p className="text-sm text-gray-200">
+              Time remaining:{" "}
+              <span id="votingTimer" className="font-bold text-yellow-400">
+                60
+              </span>{" "}
+              seconds
+            </p>
+          </div>
+          <div id="votingOptions" className="space-y-2">
+            {/* Voting options will be populated by JavaScript */}
+          </div>
+          <div className="mt-4 text-center">
+            <div id="voteStatus" className="text-sm text-gray-200"></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Meeting UI */}
+      <div
+        id="meetingUI"
+        className="absolute inset-0 bg-red-900 bg-opacity-75 flex items-center justify-center"
+        style={{ display: "none", zIndex: 1000 }}
+      >
+        <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+          <h2 className="text-xl font-bold mb-4 text-center text-red-600">
+            Emergency Meeting
+          </h2>
+          <div id="meetingInfo" className="text-center">
+            <p>A dead body has been reported!</p>
+            <p className="text-sm mt-2">
+              Discuss who you think the imposter is.
+            </p>
+            <p className="text-sm">
+              Voting will start automatically in{" "}
+              <span id="meetingTimer">60</span> seconds.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Voting Results UI */}
+      <div
+        id="votingResultsUI"
+        className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
+        style={{ display: "none", zIndex: 1000 }}
+      >
+        <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4 border-2 border-gray-600">
+          <h2 className="text-xl font-bold mb-4 text-center text-white">
+            Voting Results
+          </h2>
+          <div
+            id="votingResultsContent"
+            className="text-center text-gray-200 mb-4"
+          >
+            {/* Results will be populated by JavaScript */}
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-gray-300">
+              Game continues in{" "}
+              <span id="continueTimer" className="font-bold text-yellow-400">
+                5
+              </span>{" "}
+              seconds
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Game End UI */}
+      <div
+        id="gameEndUI"
+        className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
+        style={{ display: "none", zIndex: 1000 }}
+      >
+        <div className="bg-gray-800 p-6 rounded-lg max-w-lg w-full mx-4 border-2 border-gray-600">
+          <h2
+            id="gameEndTitle"
+            className="text-2xl font-bold mb-4 text-center text-white"
+          >
+            Game Over
+          </h2>
+          <div id="gameEndContent" className="text-center text-gray-200 mb-6">
+            {/* Game end content will be populated by JavaScript */}
+          </div>
+          <div className="flex flex-col gap-3">
+            <button
+              id="goToLobbyButton"
+              className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold transition-colors cursor-pointer"
+            >
+              Go to Lobby
+            </button>
+            <button
+              id="exitGameButton"
+              className="w-full py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-bold transition-colors cursor-pointer"
+            >
+              Exit Game
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

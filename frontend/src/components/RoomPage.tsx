@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 
 interface Player {
@@ -18,6 +18,7 @@ const RoomPage = () => {
 	const { roomId } = useParams<{ roomId: string }>();
 	const navigate = useNavigate();
 	const socket = useSocket();
+	const location = useLocation();
 	const [roomData, setRoomData] = useState<RoomData | null>(null);
 	const [error, setError] = useState<string>("");
 	const [loading, setLoading] = useState(true);
@@ -29,9 +30,19 @@ const RoomPage = () => {
 	const PLAYER_NAME_KEY = "playerName";
 
 	useEffect(() => {
-		if (!roomId) {
-			navigate("/");
+		if (!roomId || !socket) return;
+		const params = new URLSearchParams(location.search);
+		const urlUserId = params.get("user");
+		if (urlUserId && urlUserId !== socket.id) {
+			navigate("/waitingroom");
 			return;
+		}
+		// If no user param or matches, update the URL to include the current user's id
+		if (socket.id && urlUserId !== socket.id) {
+			const newUrl = `/room/${roomId}?user=${socket.id}`;
+			if (location.pathname + location.search !== newUrl) {
+				navigate(newUrl, { replace: true });
+			}
 		}
 
 		if (!socket) return;
@@ -149,7 +160,7 @@ const RoomPage = () => {
 			socket.off("gameStarted");
 			socket.off("error");
 		};
-	}, [roomId, navigate, socket]);
+	}, [roomId, socket, location, navigate]);
 
 	const startGame = () => {
 		if (socket && roomId) {

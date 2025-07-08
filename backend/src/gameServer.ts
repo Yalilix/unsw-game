@@ -159,6 +159,41 @@ function getVisiblePlayers(
   })[];
 }
 
+// Helper function to pause kill cooldowns when voting starts
+function pauseKillCooldowns(gameInstance: GameInstance): void {
+  const now = Date.now();
+  for (const player of gameInstance.players) {
+    if (player.role === "imposter" && player.lastKillTime) {
+      const timeSinceLastKill = now - player.lastKillTime;
+      const remainingCooldown = Math.max(0, 30000 - timeSinceLastKill);
+
+      if (remainingCooldown > 0) {
+        player.killCooldownPausedAt = now;
+        player.pausedCooldownRemaining = remainingCooldown;
+      }
+    }
+  }
+}
+
+// Helper function to resume kill cooldowns when voting ends
+function resumeKillCooldowns(gameInstance: GameInstance): void {
+  const now = Date.now();
+  for (const player of gameInstance.players) {
+    if (
+      player.role === "imposter" &&
+      player.killCooldownPausedAt &&
+      player.pausedCooldownRemaining
+    ) {
+      // Calculate new lastKillTime based on paused cooldown
+      player.lastKillTime = now - (30000 - player.pausedCooldownRemaining);
+
+      // Clear pause data
+      player.killCooldownPausedAt = undefined;
+      player.pausedCooldownRemaining = undefined;
+    }
+  }
+}
+
 function processVotes(
   gameInstance: GameInstance,
   io: IOServer,
@@ -230,7 +265,7 @@ function processVotes(
 
   // Resume game
   gameInstance.gameState = "playing";
-  gameInstance.gameStartTime = Date.now(); // Reset kill cooldown timer
+  resumeKillCooldowns(gameInstance); // Resume any paused kill cooldowns
   gameInstance.votes = {};
 
   // Notify players
@@ -836,6 +871,7 @@ export async function initGameServer(
       // Start meeting with immediate voting
       gameInstance.gameState = "voting";
       gameInstance.meetingStartTime = Date.now();
+      pauseKillCooldowns(gameInstance); // Pause any active kill cooldowns
       gameInstance.votes = {};
 
       // Mark body as reported
@@ -937,6 +973,18 @@ export async function initGameServer(
 
       const now = Date.now();
       const timeSinceGameStart = now - gameInstance.gameStartTime;
+
+      // Check if player has a paused cooldown (from voting)
+      if (
+        killer.pausedCooldownRemaining &&
+        killer.pausedCooldownRemaining > 0
+      ) {
+        socket.emit("killCooldown", {
+          timeRemaining: killer.pausedCooldownRemaining,
+        });
+        return;
+      }
+
       const timeSinceLastKill = killer.lastKillTime
         ? now - killer.lastKillTime
         : Infinity;
@@ -1011,7 +1059,7 @@ export async function initGameServer(
       if (!gameInstance || gameInstance.gameState !== "playing") return;
 
       const player = gameInstance.players.find((p) => p.id === socket.id);
-      if (!player || !player.isAlive || player.role !== "crewmate") return;
+      if (!player || player.role !== "crewmate") return;
 
       // Check if player is at the task location (within reasonable distance)
       const TILE_SIZE = 32;
@@ -1091,7 +1139,7 @@ export async function initGameServer(
         if (!gameInstance || gameInstance.gameState !== "playing") return;
 
         const player = gameInstance.players.find((p) => p.id === socket.id);
-        if (!player || !player.isAlive || player.role !== "crewmate") return;
+        if (!player || player.role !== "crewmate") return;
 
         try {
           // Get the current question for this player

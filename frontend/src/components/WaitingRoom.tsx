@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 function isDefaultPlayerName(name: string) {
   return /^Player \d+$/.test(name);
 }
-const USERNAME_MIN_LENGTH = 3;
+const USERNAME_MIN_LENGTH = 1;
 const USERNAME_MAX_LENGTH = 14;
 const USERNAME_REGEX = /^[a-zA-Z0-9 ]+$/;
 const PLAYER_NAME_KEY = "playerName";
@@ -157,7 +157,7 @@ export function WaitingRoom() {
         {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-bold text-foreground">
-            Welcome to Sussy Uni!
+            Welcome to SUS1511!
           </h1>
           <p className="text-muted-foreground">
             Create or join a room to start playing

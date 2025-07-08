@@ -22,7 +22,7 @@ const TICK_RATE = 30;
 const PLAYER_SIZE = 32; // Visual size remains 32
 const TILE_SIZE = 32;
 const TILE_COLLISION_SIZE = 32; // Smaller collision box for tiles (4px padding each side)
-const KILL_RADIUS = PLAYER_SIZE * 2; // larger proximity for teleport
+const KILL_RADIUS = PLAYER_SIZE * 3; // larger proximity for teleport
 const VISION_RADIUS = 10 * TILE_SIZE; // 10 tiles vision radius
 
 let ground2D: MapData["ground2D"]; // will be set after map loads

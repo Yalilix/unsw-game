@@ -36,6 +36,7 @@ export interface DeadBody {
 export interface TaskLocation {
   x: number;
   y: number;
+  name: string;
 }
 
 export interface PlayerTask {
@@ -45,16 +46,13 @@ export interface PlayerTask {
 
 // Task locations in tile coordinates
 export const TASK_LOCATIONS: TaskLocation[] = [
-  { x: 3, y: 6 },
-  { x: 38, y: 49 },
-  { x: 28, y: 49 },
-  { x: 27, y: 37 },
-  { x: 6, y: 8 },
-  { x: 4, y: 2 },
-  { x: 5, y: 30 },
-  { x: 5, y: 20 },
-  { x: 10, y: 30 },
-  { x: 15, y: 30 },
+  { x: 14, y: 30, name: "Village Green" },
+  { x: 10, y: 14, name: "Roundhouse" },
+  { x: 39, y: 29, name: "Red Centre (side facing away from main walkway)" },
+  { x: 26, y: 13, name: "Business School (side facing the main walkway)" },
+  { x: 53, y: 14, name: "Quadrangle Lawn" },
+  { x: 54, y: 24, name: "Ainsworth Building" },
+  { x: 83, y: 14, name: "Main Library" },
 ];
 
 export interface GameInstance {
@@ -256,7 +254,7 @@ class RoomManager {
         const shuffledTasks = [...TASK_LOCATIONS].sort(
           () => Math.random() - 0.5
         );
-        const assignedTasks = shuffledTasks.slice(0, 5).map((location) => ({
+        const assignedTasks = shuffledTasks.slice(0, 4).map((location) => ({
           location,
           completed: false,
         }));

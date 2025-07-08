@@ -528,7 +528,7 @@ export async function initGameServer(
                 () => Math.random() - 0.5
               );
               const assignedTasks = shuffledTasks
-                .slice(0, 5)
+                .slice(0, 4)
                 .map((location) => ({
                   location,
                   completed: false,
@@ -623,12 +623,12 @@ export async function initGameServer(
                   isAlive: true,
                 });
 
-                // Assign tasks to new crewmate (5 random tasks from available locations)
+                // Assign tasks to new crewmate (4 random tasks from available locations)
                 const shuffledTasks = [...TASK_LOCATIONS].sort(
                   () => Math.random() - 0.5
                 );
                 const assignedTasks = shuffledTasks
-                  .slice(0, 5)
+                  .slice(0, 4)
                   .map((location) => ({
                     location,
                     completed: false,

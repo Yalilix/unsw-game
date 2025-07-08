@@ -364,7 +364,20 @@ function tickRoom(roomId: string, delta: number, io: IOServer): void {
     const socket = io.sockets.sockets.get(player.id);
     if (socket) {
       const visiblePlayers = getVisiblePlayers(player, gameInstance.players);
-      socket.emit("players", visiblePlayers);
+
+      // Add player names from room data
+      const room = roomManager.getRoom(roomId);
+      const playersWithNames = visiblePlayers.map((visiblePlayer) => {
+        const roomPlayer = room?.players.find(
+          (rp) => rp.socketId === visiblePlayer.id
+        );
+        return {
+          ...visiblePlayer,
+          name: roomPlayer?.name || `Player (${visiblePlayer.id.slice(-4)})`,
+        };
+      });
+
+      socket.emit("players", playersWithNames);
 
       // Send game state info including tasks
       socket.emit("gameState", {

@@ -856,9 +856,11 @@ function loop() {
 
   for (const player of players) {
     // Set player opacity if provided
-    if (player.opacity !== undefined && player.opacity < 1.0) {
-      canvas.globalAlpha = player.opacity;
-    }
+    const playerOpacity =
+      player.opacity !== undefined && player.opacity < 1.0
+        ? player.opacity
+        : 1.0;
+    canvas.globalAlpha = playerOpacity;
 
     canvas.drawImage(
       personImage,
@@ -867,6 +869,44 @@ function loop() {
       TILE_SIZE,
       TILE_SIZE
     );
+
+    // Draw player name underneath
+    if (player.name || player.id) {
+      const displayName = player.name || player.id;
+      // Truncate name if longer than 16 characters
+      const truncatedName =
+        displayName.length > 16
+          ? displayName.substring(0, 16) + "..."
+          : displayName;
+
+      // Make names more opaque - minimum 0.7 opacity, maximum 1.0
+      const nameOpacity = Math.max(0.7, playerOpacity);
+      canvas.globalAlpha = nameOpacity;
+
+      canvas.font = "12px Arial";
+      canvas.textAlign = "center";
+
+      // Position name below the player sprite
+      const nameX = player.x - cameraX + TILE_SIZE / 2;
+      const nameY = player.y - cameraY + TILE_SIZE + 14; // 14px below sprite
+
+      // Draw strong black outline by drawing text multiple times with offsets
+      canvas.fillStyle = "black";
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          if (dx !== 0 || dy !== 0) {
+            canvas.fillText(truncatedName, nameX + dx, nameY + dy);
+          }
+        }
+      }
+
+      // Draw the main white text
+      canvas.fillStyle = "white";
+      canvas.fillText(truncatedName, nameX, nameY);
+
+      // Reset text alignment
+      canvas.textAlign = "start";
+    }
 
     // Reset opacity
     canvas.globalAlpha = 1.0;

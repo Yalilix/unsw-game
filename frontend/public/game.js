@@ -316,13 +316,13 @@ function createJoystick() {
     left: 30px;
     width: ${joystickRadius * 2}px;
     height: ${joystickRadius * 2}px;
-    border: 4px solid rgba(255, 255, 255, 0.8);
+    border: 4px solid rgba(255, 255, 255, 0.6);
     border-radius: 50%;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.3);
     z-index: 10000;
     display: none;
     touch-action: none;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
   `;
 
   // Create joystick knob
@@ -333,12 +333,12 @@ function createJoystick() {
     left: 50%;
     width: ${joystickKnobRadius * 2}px;
     height: ${joystickKnobRadius * 2}px;
-    background-color: rgba(255, 255, 255, 0.9);
-    border: 2px solid rgba(0, 0, 0, 0.3);
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 2px solid rgba(0, 0, 0, 0.2);
     border-radius: 50%;
     transform: translate(-50%, -50%);
     touch-action: none;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   `;
 
   joystick.appendChild(joystickKnob);

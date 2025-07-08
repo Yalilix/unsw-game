@@ -48,8 +48,8 @@ export interface PlayerTask {
 export const TASK_LOCATIONS: TaskLocation[] = [
   { x: 14, y: 30, name: "Village Green" },
   { x: 10, y: 14, name: "Roundhouse" },
-  { x: 39, y: 29, name: "Red Centre (side facing away from main walkway)" },
-  { x: 26, y: 13, name: "Business School (side facing the main walkway)" },
+  { x: 39, y: 29, name: "Red Centre" },
+  { x: 26, y: 13, name: "Business School" },
   { x: 53, y: 14, name: "Quadrangle Lawn" },
   { x: 54, y: 24, name: "Ainsworth Building" },
   { x: 83, y: 14, name: "Main Library" },
@@ -254,7 +254,7 @@ class RoomManager {
         const shuffledTasks = [...TASK_LOCATIONS].sort(
           () => Math.random() - 0.5
         );
-        const assignedTasks = shuffledTasks.slice(0, 4).map((location) => ({
+        const assignedTasks = shuffledTasks.slice(0, 5).map((location) => ({
           location,
           completed: false,
         }));

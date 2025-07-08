@@ -103,7 +103,9 @@ document.addEventListener("click", startNatureSound, { once: true });
 document.addEventListener("keydown", startNatureSound, { once: true });
 
 function loop() {
-  canvas.clearRect(0, 0, canvasEl.width, canvasEl.height);
+  // Fill background with black
+  canvas.fillStyle = "black";
+  canvas.fillRect(0, 0, canvasEl.width, canvasEl.height);
 
   const myPlayer = players.find((player) => player.id === socket.id);
   let cameraX = 0;

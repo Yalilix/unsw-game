@@ -990,7 +990,7 @@ function loop() {
 		);
 	}
 
-	const BLOB_SIZE = 48; // new size for the blob
+	const BLOB_SIZE = 40; // reduced size for the blob
 	for (const [i, player] of players.entries()) {
 		// Draw colored aura (halo) so it overlaps more with the bottom of the blob
 		const auraColors = [
@@ -1025,7 +1025,7 @@ function loop() {
 				: 1.0;
 		canvas.globalAlpha = playerOpacity;
 
-		// Draw larger blob.gif, keeping feet in same place
+		// Draw smaller blob.gif, keeping feet in same place
 		canvas.drawImage(
 			blobGifImage,
 			player.x - cameraX - (BLOB_SIZE - TILE_SIZE) / 2,

@@ -137,7 +137,7 @@ export function GamePage() {
       return;
     }
 
-    // Promise-based loader that ensures the script fires its onload before resolving.
+    // // Promise-based loader that ensures the script fires its onload before resolving.
     // function loadScript(
     // 	src: string,
     // 	id?: string

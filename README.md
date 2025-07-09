@@ -4,7 +4,7 @@ A multiplayer Among Us-inspired game set on a university campus where students m
 
 ## 🎮 Game Description
 
-**SUS1511** is an online multiplayer social deduction game for 1-10 players. Players are divided into two teams:
+**SUS1511** is an online multiplayer social deduction game for 4-10 players. Players are divided into two teams:
 
 - **Students**: Answer course questions correctly to complete tasks around campus and save the university
 - **Imposters**: Eliminate students and sabotage their mission to take over the campus

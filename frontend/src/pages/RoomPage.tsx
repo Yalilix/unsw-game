@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { useSocket } from "../SocketContext";
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useSocket } from '../hooks/SocketContext';
 
 interface Player {
   id: string;
@@ -11,7 +11,7 @@ interface RoomData {
   roomId: string;
   players: Player[];
   isHost: boolean;
-  status: "waiting" | "playing";
+  status: 'waiting' | 'playing';
 }
 
 const RoomPage = () => {
@@ -20,21 +20,21 @@ const RoomPage = () => {
   const socket = useSocket();
   const location = useLocation();
   const [roomData, setRoomData] = useState<RoomData | null>(null);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [copySuccess, setCopySuccess] = useState(false);
 
-  const PLAYER_NAME_KEY = "playerName";
+  const PLAYER_NAME_KEY = 'playerName';
 
   // Set max name length
-  const USERNAME_MAX_LENGTH = 14;
+  // const USERNAME_MAX_LENGTH = 14;
 
   useEffect(() => {
     if (!roomId || !socket) return;
     const params = new URLSearchParams(location.search);
-    const urlUserId = params.get("user");
+    const urlUserId = params.get('user');
     if (urlUserId && urlUserId !== socket.id) {
-      navigate("/waitingroom");
+      navigate('/waitingroom');
       return;
     }
     // If no user param or matches, update the URL to include the current user's id
@@ -49,14 +49,14 @@ const RoomPage = () => {
 
     // Check if this user created this room
     const isCreator =
-      sessionStorage.getItem(`room_${roomId}_creator`) === "true";
-    sessionStorage.getItem(`room_${roomId}_creator`) === "true";
+      sessionStorage.getItem(`room_${roomId}_creator`) === 'true';
+    sessionStorage.getItem(`room_${roomId}_creator`) === 'true';
 
     // Join room
-    socket.emit("joinRoom", { roomId, isCreator });
+    socket.emit('joinRoom', { roomId, isCreator });
 
     // Room joined successfully
-    socket.on("roomJoined", (data: RoomData) => {
+    socket.on('roomJoined', (data: RoomData) => {
       setRoomData(data);
       setLoading(false);
 
@@ -66,9 +66,9 @@ const RoomPage = () => {
       );
       const storedName = sessionStorage.getItem(`room_${roomId}_playerName`);
 
-      if (returnFromGame === "true" && storedName) {
+      if (returnFromGame === 'true' && storedName) {
         console.log(`Restoring player name from game: "${storedName}"`);
-        socket.emit("updatePlayerName", { name: storedName });
+        socket.emit('updatePlayerName', { name: storedName });
         localStorage.setItem(PLAYER_NAME_KEY, storedName);
         // Clear the session storage flags
         sessionStorage.removeItem(`room_${roomId}_returnFromGame`);
@@ -78,14 +78,14 @@ const RoomPage = () => {
         const currentPlayer = data.players.find((p) => p.id === socket.id);
         const savedName = localStorage.getItem(PLAYER_NAME_KEY);
         if (currentPlayer && savedName && savedName !== currentPlayer.name) {
-          socket.emit("updatePlayerName", { name: savedName });
+          socket.emit('updatePlayerName', { name: savedName });
         }
       }
     });
 
     // Room update event
     socket.on(
-      "roomUpdate",
+      'roomUpdate',
       (data: { playerCount: number; players: Player[] }) => {
         setRoomData((prev) => {
           if (!prev) return prev;
@@ -98,7 +98,7 @@ const RoomPage = () => {
     );
 
     // Game started
-    socket.on("gameStarted", (data: { roomId: string }) => {
+    socket.on('gameStarted', (data: { roomId: string }) => {
       // Store the socket ID for reconnection in the game
       if (socket.id) {
         sessionStorage.setItem(
@@ -110,26 +110,26 @@ const RoomPage = () => {
     });
 
     // Error handling
-    socket.on("error", (data: { message: string }) => {
+    socket.on('error', (data: { message: string }) => {
       setError(data.message);
       setLoading(false);
     });
 
     return () => {
       // Only remove listeners, do not disconnect socket
-      socket.off("roomJoined");
-      socket.off("playerJoined");
-      socket.off("roomUpdate");
-      socket.off("playerLeft");
-      socket.off("gameStarted");
-      socket.off("error");
+      socket.off('roomJoined');
+      socket.off('playerJoined');
+      socket.off('roomUpdate');
+      socket.off('playerLeft');
+      socket.off('gameStarted');
+      socket.off('error');
     };
   }, [roomId, socket, location, navigate]);
 
   const startGame = () => {
     if (socket && roomId) {
-      socket.emit("startGame", { roomId });
-      socket.emit("startGame", { roomId });
+      socket.emit('startGame', { roomId });
+      socket.emit('startGame', { roomId });
     }
   };
 
@@ -140,16 +140,16 @@ const RoomPage = () => {
         setCopySuccess(true);
         setTimeout(() => setCopySuccess(false), 2000);
       } catch (err) {
-        console.error("Failed to copy room ID:", err);
+        console.error('Failed to copy room ID:', err);
       }
     }
   };
 
   const leaveRoom = () => {
     if (socket) {
-      socket.emit("leaveRoom");
+      socket.emit('leaveRoom');
     }
-    navigate("/");
+    navigate('/');
   };
 
   if (loading) {
@@ -185,13 +185,13 @@ const RoomPage = () => {
     );
   }
 
-  const canStartGame = roomData.players.length >= 4 && roomData.isHost;
+  // const canStartGame = roomData.players.length >= 4 && roomData.isHost;
   const minPlayersNeeded = Math.max(0, 4 - roomData.players.length);
 
   return (
     <div
       className="min-h-screen bg-gradient-space p-4"
-      style={{ fontFamily: "DragonHunter" }}
+      style={{ fontFamily: 'DragonHunter' }}
     >
       <div className="max-w-4xl mx-auto">
         {/* Header */}
@@ -205,7 +205,7 @@ const RoomPage = () => {
               <span className="text-muted-foreground">Room ID:</span>
               <code
                 className="bg-muted px-3 py-1 rounded text-foreground font-mono text-lg tracking-[.1em]"
-                style={{ fontFamily: "DragonHunter" }}
+                style={{ fontFamily: 'DragonHunter' }}
               >
                 {roomId}
               </code>
@@ -213,7 +213,7 @@ const RoomPage = () => {
                 onClick={copyRoomId}
                 className="bg-secondary text-secondary-foreground px-3 py-1 rounded hover:bg-secondary/80 transition-colors"
               >
-                {copySuccess ? "Copied ID!" : "Copy ID"}
+                {copySuccess ? 'Copied ID!' : 'Copy ID'}
               </button>
             </div>
             {/* Status */}
@@ -242,8 +242,8 @@ const RoomPage = () => {
                   className={`relative w-40 h-20 flex items-center justify-center rounded-2xl text-xl font-bold transition-all duration-200
 										${
                       player
-                        ? "bg-gradient-to-br from-purple-500 to-blue-500 text-white shadow-lg"
-                        : "bg-muted text-muted-foreground border-2 border-dashed border-muted"
+                        ? 'bg-gradient-to-br from-purple-500 to-blue-500 text-white shadow-lg'
+                        : 'bg-muted text-muted-foreground border-2 border-dashed border-muted'
                     }
 									`}
                 >
@@ -252,10 +252,10 @@ const RoomPage = () => {
                       <span
                         className={`text-center block max-w-[8.5rem] whitespace-nowrap overflow-hidden  tracking-[.1em] ${
                           player.name.length > 10
-                            ? "text-sm"
+                            ? 'text-sm'
                             : player.name.length > 10
-                            ? "text-lg"
-                            : "text-xl"
+                            ? 'text-lg'
+                            : 'text-xl'
                         }`}
                       >
                         {player.name}
@@ -286,7 +286,7 @@ const RoomPage = () => {
             <div className="bg-muted p-4 rounded text-center">
               <p className="text-muted-foreground">
                 Need {minPlayersNeeded} more player
-                {minPlayersNeeded !== 1 ? "s" : ""} to start the game
+                {minPlayersNeeded !== 1 ? 's' : ''} to start the game
               </p>
             </div>
           ) : roomData.isHost ? (

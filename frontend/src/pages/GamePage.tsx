@@ -5,7 +5,7 @@ import {
   leaveRoom,
   muteLocalAudio,
   unmuteLocalAudio,
-} from './Agora';
+} from '../components/Agora';
 
 export function GamePage() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -118,7 +118,7 @@ export function GamePage() {
         <button
           id="sabotageButton"
           className="px-4 py-2 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 transition-colors shadow-lg cursor-pointer"
-          style={{ display: "none" }}
+          style={{ display: 'none' }}
           onClick={() => (window as any).attemptSabotage?.()}
         >
           SABOTAGE
@@ -307,7 +307,7 @@ export function GamePage() {
       <div
         id="sabotageModal"
         className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
-        style={{ display: "none", zIndex: 1000 }}
+        style={{ display: 'none', zIndex: 1000 }}
       >
         <div className="bg-red-900 p-6 rounded-lg max-w-lg w-full mx-4 border-2 border-red-600 max-h-[90vh] overflow-y-auto">
           <h2 className="text-xl font-bold mb-4 text-center text-white">
@@ -329,7 +329,7 @@ export function GamePage() {
       <div
         id="repairModal"
         className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center"
-        style={{ display: "none", zIndex: 1000 }}
+        style={{ display: 'none', zIndex: 1000 }}
       >
         <div className="bg-blue-900 p-6 rounded-lg max-w-lg w-full mx-4 border-2 border-blue-600 max-h-[90vh] overflow-y-auto">
           <h2 className="text-xl font-bold mb-4 text-center text-white">

@@ -10,14 +10,14 @@ import { useSocket } from "../hooks/SocketContext";
 
 // Extend Window interface to include our custom properties
 declare global {
-  interface Window {
-    BACKEND_URL: string;
-    ROOM_ID: string;
-    attemptSabotage?: () => void;
-    attemptKill?: () => void;
-    attemptTask?: () => void;
-    attemptReport?: () => void;
-  }
+	interface Window {
+		BACKEND_URL: string;
+		ROOM_ID: string;
+		attemptSabotage?: () => void;
+		attemptKill?: () => void;
+		attemptTask?: () => void;
+		attemptReport?: () => void;
+	}
 }
 
 export function GamePage() {
@@ -31,7 +31,7 @@ export function GamePage() {
   const [transitionPhase, setTransitionPhase] = useState<
     "waiting" | "fadeToBlack" | "roleReveal" | "fadeToGame" | "complete"
   >("waiting");
-  const [playerRole, setPlayerRole] = useState<"imposter" | "crewmate" | null>(
+  const [playerRole, setPlayerRole] = useState<"imposter" | "student" | null>(
     null
   );
   const [transitionOpacity, setTransitionOpacity] = useState(0);
@@ -84,7 +84,7 @@ export function GamePage() {
     if (!socket) return;
 
     // Listen for game state to get player role
-    const handleGameState = (data: { playerRole: "imposter" | "crewmate" }) => {
+    const handleGameState = (data: { playerRole: "imposter" | "student" }) => {
       setPlayerRole(data.playerRole);
     };
 
@@ -292,7 +292,7 @@ export function GamePage() {
           KILL
         </button>
 
-        {/* Task Button (only for crewmates) */}
+        {/* Task Button (only for students) */}
         <button
           id="taskButton"
           className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg cursor-pointer"

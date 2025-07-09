@@ -324,31 +324,31 @@ function checkWinConditions(
 ): void {
 	const alivePlayers = gameInstance.players.filter((p) => p.isAlive);
 	const aliveImposters = alivePlayers.filter((p) => p.role === "imposter");
-	const aliveCrewmates = alivePlayers.filter((p) => p.role === "crewmate");
+	const aliveStudents = alivePlayers.filter((p) => p.role === "student");
 
 	let gameOver = false;
-	let winner: "imposters" | "crewmates" | null = null;
+	let winner: "imposters" | "students" | null = null;
 
-	// Crewmates win if all tasks are completed
+	// Students win if all tasks are completed
 	if (roomManager.areAllTasksCompleted(roomId)) {
 		gameOver = true;
-		winner = "crewmates";
+		winner = "students";
 		console.log(
-			`[DEBUG] Crewmates win by completing all tasks in room ${roomId}`
+			`[DEBUG] Students win by completing all tasks in room ${roomId}`
 		);
 	}
-	// Imposters win if they equal or outnumber crewmates
+	// Imposters win if they equal or outnumber students
 	else if (
-		aliveImposters.length >= aliveCrewmates.length &&
+		aliveImposters.length >= aliveStudents.length &&
 		aliveImposters.length > 0
 	) {
 		gameOver = true;
 		winner = "imposters";
 	}
-	// Crewmates win if all imposters are dead
+	// Students win if all imposters are dead
 	else if (aliveImposters.length === 0) {
 		gameOver = true;
-		winner = "crewmates";
+		winner = "students";
 	}
 
 	if (gameOver) {
@@ -619,19 +619,19 @@ export async function initGameServer(
 							(p) => p.id === socket.id
 						);
 						if (!existingPlayer) {
-							// For truly new players joining mid-game, assign them as crewmate
+							// For truly new players joining mid-game, assign them as student
 							console.log(
-								`[WARNING] New player ${socket.id} joining mid-game, assigning as crewmate`
+								`[WARNING] New player ${socket.id} joining mid-game, assigning as student`
 							);
 							gameInstance.players.push({
 								id: socket.id,
 								x: 56 * 32, // TILE_SIZE
 								y: 14 * 32, // TILE_SIZE
-								role: "crewmate",
+								role: "student",
 								isAlive: true,
 							});
 
-							// Assign tasks to new crewmate (5 random tasks from available locations)
+							// Assign tasks to new student (5 random tasks from available locations)
 							const shuffledTasks = [...TASK_LOCATIONS].sort(
 								() => Math.random() - 0.5
 							);
@@ -729,19 +729,19 @@ export async function initGameServer(
 								(p) => p.id === socket.id
 							);
 							if (!existingPlayer) {
-								// For truly new players joining mid-game, assign them as crewmate
+								// For truly new players joining mid-game, assign them as student
 								console.log(
-									`[WARNING] New player ${socket.id} joining mid-game without room, assigning as crewmate`
+									`[WARNING] New player ${socket.id} joining mid-game without room, assigning as student`
 								);
 								gameInstance.players.push({
 									id: socket.id,
 									x: 56 * 32, // TILE_SIZE
 									y: 14 * 32, // TILE_SIZE
-									role: "crewmate",
+									role: "student",
 									isAlive: true,
 								});
 
-								// Assign tasks to new crewmate (5 random tasks from available locations)
+								// Assign tasks to new student (5 random tasks from available locations)
 								const shuffledTasks = [...TASK_LOCATIONS].sort(
 									() => Math.random() - 0.5
 								);
@@ -1464,7 +1464,7 @@ export async function initGameServer(
 				const player = gameInstance.players.find(
 					(p) => p.id === socket.id
 				);
-				if (!player || player.role !== "crewmate") return;
+				if (!player || player.role !== "student") return;
 
 				// Check if player is at the task location (within reasonable distance)
 				const TILE_SIZE = 32;
@@ -1559,7 +1559,7 @@ export async function initGameServer(
 				const player = gameInstance.players.find(
 					(p) => p.id === socket.id
 				);
-				if (!player || player.role !== "crewmate") return;
+				if (!player || player.role !== "student") return;
 
 				try {
 					// Get the current question for this player

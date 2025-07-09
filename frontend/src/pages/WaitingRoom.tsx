@@ -209,6 +209,11 @@ export function WaitingRoom() {
 							onChange={(e) =>
 								setJoinRoomId(e.target.value.toUpperCase())
 							}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" && joinRoomId.trim() && !loading) {
+									joinRoom();
+								}
+							}}
 							className="w-full bg-input border border-border rounded px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 							maxLength={6}
 						/>

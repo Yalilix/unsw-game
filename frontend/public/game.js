@@ -1,38 +1,38 @@
 const mapImage = new Image();
-mapImage.src = "/Modern_Exteriors_Complete_Tileset_32x32.png";
+mapImage.src = '/Modern_Exteriors_Complete_Tileset_32x32.png';
 
 const blobGifImage = new Image();
-blobGifImage.src = "/blob.gif";
+blobGifImage.src = '/blob.gif';
 
 // Add error handlers for blob gif
-blobGifImage.addEventListener("load", () => {
-  console.log("Blob GIF loaded successfully");
+blobGifImage.addEventListener('load', () => {
+  console.log('Blob GIF loaded successfully');
 });
 
-blobGifImage.addEventListener("error", (e) => {
-  console.warn("Blob GIF failed to load:", e);
-  console.warn("Falling back to simple colored rectangle for players");
+blobGifImage.addEventListener('error', (e) => {
+  console.warn('Blob GIF failed to load:', e);
+  console.warn('Falling back to simple colored rectangle for players');
 });
 
-const walking = new Audio("/walking.mp3");
-const nature = new Audio("/nature.mp3");
+const walking = new Audio('/walking.mp3');
+const nature = new Audio('/nature.mp3');
 
 // Add error handlers for audio
-walking.addEventListener("error", (e) => {
-  console.warn("Walking audio failed to load:", e);
+walking.addEventListener('error', (e) => {
+  console.warn('Walking audio failed to load:', e);
 });
 
-nature.addEventListener("error", (e) => {
-  console.warn("Nature audio failed to load:", e);
+nature.addEventListener('error', (e) => {
+  console.warn('Nature audio failed to load:', e);
 });
 
-const canvasEl = document.getElementById("canvas");
+const canvasEl = document.getElementById('canvas');
 canvasEl.width = window.innerWidth;
 canvasEl.height = window.innerHeight;
-const canvas = canvasEl.getContext("2d");
+const canvas = canvasEl.getContext('2d');
 
 // Handle window resize
-window.addEventListener("resize", () => {
+window.addEventListener('resize', () => {
   canvasEl.width = window.innerWidth;
   canvasEl.height = window.innerHeight;
   updateButtons(); // Update button visibility when screen size changes
@@ -53,23 +53,23 @@ function handleFirstInteraction() {
     lockToLandscape(); // Ensure landscape lock on first interaction
     handleAutoFullscreen(); // Ensure fullscreen on small screens
     // Remove listeners after first interaction
-    document.removeEventListener("click", handleFirstInteraction);
-    document.removeEventListener("keydown", handleFirstInteraction);
-    document.removeEventListener("touchstart", handleFirstInteraction);
+    document.removeEventListener('click', handleFirstInteraction);
+    document.removeEventListener('keydown', handleFirstInteraction);
+    document.removeEventListener('touchstart', handleFirstInteraction);
   }
 }
 
-document.addEventListener("click", handleFirstInteraction);
-document.addEventListener("keydown", handleFirstInteraction);
-document.addEventListener("touchstart", handleFirstInteraction);
+document.addEventListener('click', handleFirstInteraction);
+document.addEventListener('keydown', handleFirstInteraction);
+document.addEventListener('touchstart', handleFirstInteraction);
 
 // Cleanup orientation lock when leaving the page
-window.addEventListener("beforeunload", () => {
+window.addEventListener('beforeunload', () => {
   unlockOrientation();
 });
 
 // Also unlock when the page becomes hidden (user switches tabs/apps)
-document.addEventListener("visibilitychange", () => {
+document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     unlockOrientation();
   } else {
@@ -78,7 +78,7 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-const socket = io(window.BACKEND_URL || "http://localhost:3000");
+const socket = io(window.BACKEND_URL || 'http://localhost:3000');
 
 let groundMap = [[]];
 let decalMap = [[]];
@@ -87,7 +87,7 @@ let gameStarted = false;
 
 const TILE_SIZE = 32;
 const IMPOSTER_VISION_RADIUS = 10 * TILE_SIZE; // 10 tiles vision radius for imposters
-const CREWMATE_VISION_RADIUS = Math.round((10 * TILE_SIZE * 2) / 3); // ~6.67 tiles vision radius for crewmates (2/3 of imposter vision)
+const STUDENT_VISION_RADIUS = Math.round((10 * TILE_SIZE * 2) / 3); // ~6.67 tiles vision radius for students (2/3 of imposter vision)
 let TILES_IN_ROW = 8; // will be overwritten when image loads
 
 mapImage.onload = () => {
@@ -130,16 +130,16 @@ function getStablePlayerColor(playerId, auraColors) {
 }
 
 blobGifImage.onload = () => {
-  console.log("Blob GIF loaded and ready for animation");
-  console.log("🎭 Enhanced blob animation system activated!");
+  console.log('Blob GIF loaded and ready for animation');
+  console.log('🎭 Enhanced blob animation system activated!');
   console.log(
-    "Features: bouncing, breathing, rotation, squash/stretch, trails, and color tinting"
+    'Features: bouncing, breathing, rotation, squash/stretch, trails, and color tinting'
   );
   blobGifLoaded = true;
 };
 
-socket.on("connect", () => {
-  console.log("connected");
+socket.on('connect', () => {
+  console.log('connected');
   // Join the room when connected
   const roomId = window.ROOM_ID;
   if (roomId) {
@@ -147,31 +147,31 @@ socket.on("connect", () => {
     const originalSocketId = sessionStorage.getItem(
       `room_${roomId}_originalSocketId`
     );
-    socket.emit("joinRoom", {
+    socket.emit('joinRoom', {
       roomId,
       originalSocketId: originalSocketId,
     });
   }
 });
 
-socket.on("gameJoined", (data) => {
-  console.log("Joined game room:", data.roomId);
+socket.on('gameJoined', (data) => {
+  console.log('Joined game room:', data.roomId);
   gameStarted = true;
 });
 
-socket.on("map", (loadedMap) => {
+socket.on('map', (loadedMap) => {
   groundMap = loadedMap.ground;
   decalMap = loadedMap.decal;
 });
 
-socket.on("error", (data) => {
-  console.error("Game error:", data.message);
+socket.on('error', (data) => {
+  console.error('Game error:', data.message);
   alert(data.message);
   // Redirect to home page
-  window.location.href = "/";
+  window.location.href = '/';
 });
 
-socket.on("players", (serverPlayers) => {
+socket.on('players', (serverPlayers) => {
   players = serverPlayers;
 
   // Clean up color assignments for disconnected players
@@ -187,16 +187,16 @@ socket.on("players", (serverPlayers) => {
 });
 
 // Player left game event
-socket.on("playerLeftGame", (data) => {
-  console.log("Player left game:", data.playerId);
+socket.on('playerLeftGame', (data) => {
+  console.log('Player left game:', data.playerId);
   // Remove the player from the players array
   players = players.filter((player) => player.id !== data.playerId);
 });
 
 // Game state updates
 let gameState = {
-  state: "playing",
-  playerRole: "crewmate",
+  state: 'playing',
+  playerRole: 'student',
   isAlive: true,
   deadBodies: [],
   killCooldown: 0,
@@ -214,7 +214,7 @@ let gameState = {
   repairLocation: null,
 };
 
-socket.on("gameState", (data) => {
+socket.on('gameState', (data) => {
   gameState.state = data.state;
   gameState.playerRole = data.playerRole;
   gameState.isAlive = data.isAlive;
@@ -229,14 +229,14 @@ socket.on("gameState", (data) => {
 });
 
 // Kill cooldown updates
-socket.on("killCooldown", (data) => {
+socket.on('killCooldown', (data) => {
   gameState.killCooldown = data.timeRemaining;
   gameState.killCooldownStart = Date.now();
 });
 
 // Player killed event
-socket.on("playerKilled", (data) => {
-  console.log("Player killed:", data.victimId);
+socket.on('playerKilled', (data) => {
+  console.log('Player killed:', data.victimId);
 
   // If the current player was killed, close the task modal if it's open
   if (data.victimId === socket.id) {
@@ -245,7 +245,7 @@ socket.on("playerKilled", (data) => {
 });
 
 // Meeting events
-socket.on("meetingStarted", (data) => {
+socket.on('meetingStarted', (data) => {
   gameState.meetingActive = false; // No separate meeting phase
   gameState.votingActive = true; // Start voting immediately
   gameState.alivePlayers = data.alivePlayers;
@@ -260,11 +260,11 @@ socket.on("meetingStarted", (data) => {
   }
 
   showVotingUI(); // Show voting UI immediately
-  console.log("Meeting started by", data.reportedBy, "- voting begins now");
-  console.log("All bodies removed and players teleported to spawn");
+  console.log('Meeting started by', data.reportedBy, '- voting begins now');
+  console.log('All bodies removed and players teleported to spawn');
 });
 
-socket.on("votingStarted", (data) => {
+socket.on('votingStarted', (data) => {
   // This event may still be sent by old code, but we handle everything in meetingStarted now
   gameState.meetingActive = false;
   gameState.votingActive = true;
@@ -274,34 +274,34 @@ socket.on("votingStarted", (data) => {
   hideTaskModal();
 
   showVotingUI();
-  console.log("Voting started");
+  console.log('Voting started');
 });
 
-socket.on("voteUpdate", (data) => {
+socket.on('voteUpdate', (data) => {
   updateVoteStatus(data);
 });
 
-socket.on("votingResults", (data) => {
+socket.on('votingResults', (data) => {
   gameState.meetingActive = false;
   gameState.votingActive = false;
   hideAllUI();
   showVotingResults(data);
 
-  console.log("Voting results:", data);
+  console.log('Voting results:', data);
 });
 
-socket.on("gameOver", (data) => {
+socket.on('gameOver', (data) => {
   gameState.meetingActive = false;
   gameState.votingActive = false;
   hideAllUI();
   showGameEnd(data);
 
-  console.log("Game Over! Winner:", data.winner);
+  console.log('Game Over! Winner:', data.winner);
 });
 
 // Return to lobby event
-socket.on("returnToLobby", (data) => {
-  console.log("Returning to lobby for room:", data.roomId);
+socket.on('returnToLobby', (data) => {
+  console.log('Returning to lobby for room:', data.roomId);
 
   // Store current player info for lobby reconnection
   const currentPlayer = data.players.find((p) => p.id === socket.id);
@@ -310,7 +310,7 @@ socket.on("returnToLobby", (data) => {
       `room_${data.roomId}_playerName`,
       currentPlayer.name
     );
-    sessionStorage.setItem(`room_${data.roomId}_returnFromGame`, "true");
+    sessionStorage.setItem(`room_${data.roomId}_returnFromGame`, 'true');
     console.log(
       `Stored player name "${currentPlayer.name}" for lobby reconnection`
     );
@@ -321,20 +321,20 @@ socket.on("returnToLobby", (data) => {
 });
 
 // Task events
-socket.on("taskQuestion", (data) => {
+socket.on('taskQuestion', (data) => {
   showTaskModal(data);
 });
 
-socket.on("taskCompleted", (data) => {
+socket.on('taskCompleted', (data) => {
   if (data.correct) {
-    console.log("Task completed successfully!");
+    console.log('Task completed successfully!');
     showTaskSuccess();
   } else {
     showTaskFailure(data.correctAnswer);
   }
 });
 
-socket.on("taskCompletedByPlayer", (data) => {
+socket.on('taskCompletedByPlayer', (data) => {
   console.log(
     `Player completed task at (${data.taskLocation.x},${data.taskLocation.y})`
   );
@@ -342,42 +342,42 @@ socket.on("taskCompletedByPlayer", (data) => {
 });
 
 // Sabotage events
-socket.on("sabotageQuestion", (data) => {
+socket.on('sabotageQuestion', (data) => {
   gameState.currentSabotageModal = data;
   showSabotageModal(data);
 });
 
-socket.on("sabotageCompleted", (data) => {
+socket.on('sabotageCompleted', (data) => {
   if (data.correct) {
-    console.log("Sabotage activated - lights out!");
+    console.log('Sabotage activated - lights out!');
     showSabotageSuccess();
   } else {
     showSabotageFailure(data.correctAnswer);
   }
 });
 
-socket.on("sabotageActivated", (data) => {
-  console.log("Sabotage activated - lights out!");
+socket.on('sabotageActivated', (data) => {
+  console.log('Sabotage activated - lights out!');
   hideSabotageModal();
 });
 
 // Repair events
-socket.on("repairQuestion", (data) => {
+socket.on('repairQuestion', (data) => {
   gameState.currentRepairModal = data;
   showRepairModal(data);
 });
 
-socket.on("repairCompleted", (data) => {
+socket.on('repairCompleted', (data) => {
   if (data.correct) {
-    console.log("Sabotage fixed - lights restored!");
+    console.log('Sabotage fixed - lights restored!');
     showRepairSuccess();
   } else {
     showRepairFailure(data.correctAnswer);
   }
 });
 
-socket.on("sabotageFixed", (data) => {
-  console.log("Sabotage fixed - lights restored!");
+socket.on('sabotageFixed', (data) => {
+  console.log('Sabotage fixed - lights restored!');
   hideRepairModal();
 });
 
@@ -394,19 +394,19 @@ let isModalOpen = false;
 // Helper function to emit inputs only when no modal is open
 function emitInputs() {
   if (!isModalOpen) {
-    socket.emit("inputs", inputs);
+    socket.emit('inputs', inputs);
   }
 }
 
-window.addEventListener("keydown", (e) => {
-  if (e.key === "w" || e.key === "ArrowUp") {
-    inputs["up"] = true;
-  } else if (e.key === "s" || e.key === "ArrowDown") {
-    inputs["down"] = true;
-  } else if (e.key === "d" || e.key === "ArrowRight") {
-    inputs["right"] = true;
-  } else if (e.key === "a" || e.key === "ArrowLeft") {
-    inputs["left"] = true;
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'w' || e.key === 'ArrowUp') {
+    inputs['up'] = true;
+  } else if (e.key === 's' || e.key === 'ArrowDown') {
+    inputs['down'] = true;
+  } else if (e.key === 'd' || e.key === 'ArrowRight') {
+    inputs['right'] = true;
+  } else if (e.key === 'a' || e.key === 'ArrowLeft') {
+    inputs['left'] = true;
   }
   const moving = inputs.up || inputs.down || inputs.left || inputs.right;
   if (moving && walking.paused) {
@@ -414,24 +414,24 @@ window.addEventListener("keydown", (e) => {
       walking.currentTime = 0;
       walking
         .play()
-        .catch((err) => console.warn("Walking audio blocked:", err));
+        .catch((err) => console.warn('Walking audio blocked:', err));
     } catch (err) {
-      console.warn("Walking audio error:", err);
+      console.warn('Walking audio error:', err);
     }
   }
   // Removed spacebar functionality - now using buttons
   emitInputs();
 });
 
-window.addEventListener("keyup", (e) => {
-  if (e.key === "w" || e.key === "ArrowUp") {
-    inputs["up"] = false;
-  } else if (e.key === "s" || e.key === "ArrowDown") {
-    inputs["down"] = false;
-  } else if (e.key === "d" || e.key === "ArrowRight") {
-    inputs["right"] = false;
-  } else if (e.key === "a" || e.key === "ArrowLeft") {
-    inputs["left"] = false;
+window.addEventListener('keyup', (e) => {
+  if (e.key === 'w' || e.key === 'ArrowUp') {
+    inputs['up'] = false;
+  } else if (e.key === 's' || e.key === 'ArrowDown') {
+    inputs['down'] = false;
+  } else if (e.key === 'd' || e.key === 'ArrowRight') {
+    inputs['right'] = false;
+  } else if (e.key === 'a' || e.key === 'ArrowLeft') {
+    inputs['left'] = false;
   }
   const stillMoving = inputs.up || inputs.down || inputs.left || inputs.right;
   if (!stillMoving) {
@@ -439,7 +439,7 @@ window.addEventListener("keyup", (e) => {
       walking.pause();
       walking.currentTime = 0;
     } catch (err) {
-      console.warn("Walking audio pause error:", err);
+      console.warn('Walking audio pause error:', err);
     }
   }
   emitInputs();
@@ -455,8 +455,8 @@ let joystickKnobRadius = 25;
 
 function createJoystick() {
   // Create joystick container
-  joystick = document.createElement("div");
-  joystick.id = "mobileJoystick";
+  joystick = document.createElement('div');
+  joystick.id = 'mobileJoystick';
   joystick.style.cssText = `
     position: fixed;
     bottom: 30px;
@@ -473,7 +473,7 @@ function createJoystick() {
   `;
 
   // Create joystick knob
-  joystickKnob = document.createElement("div");
+  joystickKnob = document.createElement('div');
   joystickKnob.style.cssText = `
     position: absolute;
     top: 50%;
@@ -490,33 +490,33 @@ function createJoystick() {
 
   joystick.appendChild(joystickKnob);
   document.body.appendChild(joystick);
-  console.log("Joystick created and added to document");
+  console.log('Joystick created and added to document');
 
   updateJoystickVisibility();
 }
 
 function updateJoystickVisibility() {
   if (!joystick) {
-    console.log("Joystick element not found");
+    console.log('Joystick element not found');
     return;
   }
 
   const shouldShow =
     (window.innerWidth < 700 || window.innerHeight < 700) && !isModalOpen;
   console.log(
-    "Should show joystick:",
+    'Should show joystick:',
     shouldShow,
-    "Screen:",
+    'Screen:',
     window.innerWidth,
-    "x",
+    'x',
     window.innerHeight,
-    "Modal open:",
+    'Modal open:',
     isModalOpen
   );
-  joystick.style.display = shouldShow ? "block" : "none";
+  joystick.style.display = shouldShow ? 'block' : 'none';
 
   if (shouldShow) {
-    console.log("Joystick should be visible now");
+    console.log('Joystick should be visible now');
   }
 }
 
@@ -578,7 +578,7 @@ function resetJoystickInputs() {
       walking.pause();
       walking.currentTime = 0;
     } catch (err) {
-      console.warn("Walking audio pause error:", err);
+      console.warn('Walking audio pause error:', err);
     }
   }
   emitInputs();
@@ -611,16 +611,16 @@ function handleJoystickTouch(clientX, clientY) {
       walking.currentTime = 0;
       walking
         .play()
-        .catch((err) => console.warn("Walking audio blocked:", err));
+        .catch((err) => console.warn('Walking audio blocked:', err));
     } catch (err) {
-      console.warn("Walking audio error:", err);
+      console.warn('Walking audio error:', err);
     }
   } else if (!isMoving && wasMoving) {
     try {
       walking.pause();
       walking.currentTime = 0;
     } catch (err) {
-      console.warn("Walking audio pause error:", err);
+      console.warn('Walking audio pause error:', err);
     }
   }
 
@@ -631,21 +631,21 @@ function handleJoystickTouch(clientX, clientY) {
 function setupJoystickEvents() {
   if (!joystick) return;
 
-  joystick.addEventListener("touchstart", (e) => {
+  joystick.addEventListener('touchstart', (e) => {
     e.preventDefault();
     joystickActive = true;
     const touch = e.touches[0];
     handleJoystickTouch(touch.clientX, touch.clientY);
   });
 
-  document.addEventListener("touchmove", (e) => {
+  document.addEventListener('touchmove', (e) => {
     if (!joystickActive) return;
     e.preventDefault();
     const touch = e.touches[0];
     handleJoystickTouch(touch.clientX, touch.clientY);
   });
 
-  document.addEventListener("touchend", (e) => {
+  document.addEventListener('touchend', (e) => {
     if (!joystickActive) return;
     e.preventDefault();
     joystickActive = false;
@@ -660,8 +660,8 @@ function setupJoystickEvents() {
 
 // Initialize joystick immediately since game.js loads after DOM is ready
 function initializeJoystick() {
-  console.log("Initializing joystick...");
-  console.log("Screen size:", window.innerWidth, "x", window.innerHeight);
+  console.log('Initializing joystick...');
+  console.log('Screen size:', window.innerWidth, 'x', window.innerHeight);
   createJoystick();
   setupJoystickEvents();
 }
@@ -670,7 +670,7 @@ function initializeJoystick() {
 initializeJoystick();
 
 // Update joystick visibility on window resize
-window.addEventListener("resize", updateJoystickVisibility);
+window.addEventListener('resize', updateJoystickVisibility);
 
 // Setup background nature sound
 nature.loop = true;
@@ -679,13 +679,13 @@ nature.volume = 0.3;
 // Start nature sound on first user interaction
 function startNatureSound() {
   if (nature.paused) {
-    nature.play().catch((err) => console.warn("Nature audio blocked:", err));
+    nature.play().catch((err) => console.warn('Nature audio blocked:', err));
   }
 }
 
 // Listen for any user interaction to start audio
-document.addEventListener("click", startNatureSound, { once: true });
-document.addEventListener("keydown", startNatureSound, { once: true });
+document.addEventListener('click', startNatureSound, { once: true });
+document.addEventListener('keydown', startNatureSound, { once: true });
 
 // Helper function to find closest dead body
 function findClosestBody(player) {
@@ -705,7 +705,7 @@ function findClosestBody(player) {
 
 // Helper function to find closest incomplete task
 function findClosestTask(player) {
-  if (gameState.playerRole !== "crewmate") return null;
+  if (gameState.playerRole !== 'student') return null;
 
   let closest = null;
   let closestDist = Infinity;
@@ -728,20 +728,20 @@ function findClosestTask(player) {
   return closest;
 }
 
-// Helper function to find closest killable target (living crewmate)
+// Helper function to find closest killable target (living student)
 function findClosestTarget(player) {
-  if (gameState.playerRole !== "imposter") return null;
+  if (gameState.playerRole !== 'imposter') return null;
 
   let closest = null;
   let closestDist = Infinity;
   const KILL_RADIUS = TILE_SIZE * 3; // Same as report radius
 
   for (const target of players) {
-    // Only target living crewmates (not imposters, not dead players, not self)
+    // Only target living students (not imposters, not dead players, not self)
     if (
       target.id === player.id ||
       !target.isAlive ||
-      target.role === "imposter"
+      target.role === 'imposter'
     ) {
       continue;
     }
@@ -765,15 +765,15 @@ function isTaskCompleted(location) {
 
 // Helper function to wrap text within a given width
 function wrapText(text, maxWidth) {
-  const words = text.split(" ");
+  const words = text.split(' ');
   const lines = [];
   let currentLine = words[0];
 
   for (let i = 1; i < words.length; i++) {
     const word = words[i];
-    const width = canvas.measureText(currentLine + " " + word).width;
+    const width = canvas.measureText(currentLine + ' ' + word).width;
     if (width < maxWidth) {
-      currentLine += " " + word;
+      currentLine += ' ' + word;
     } else {
       lines.push(currentLine);
       currentLine = word;
@@ -786,33 +786,33 @@ function wrapText(text, maxWidth) {
 // Button Functions
 window.attemptKill = function () {
   if (
-    gameState.playerRole === "imposter" &&
+    gameState.playerRole === 'imposter' &&
     gameState.isAlive &&
     !gameState.meetingActive &&
     !gameState.votingActive
   ) {
-    socket.emit("kill");
+    socket.emit('kill');
   }
 };
 
 // Lock orientation to landscape for better mobile gaming experience
 function lockToLandscape() {
   if (screen.orientation && screen.orientation.lock) {
-    screen.orientation.lock("landscape").catch((err) => {
-      console.log("Orientation lock failed:", err);
+    screen.orientation.lock('landscape').catch((err) => {
+      console.log('Orientation lock failed:', err);
       // Fallback: some browsers don't support orientation lock
     });
   } else if (screen.lockOrientation) {
     // Fallback for older browsers
-    screen.lockOrientation("landscape");
+    screen.lockOrientation('landscape');
   } else if (screen.mozLockOrientation) {
     // Firefox fallback
-    screen.mozLockOrientation("landscape");
+    screen.mozLockOrientation('landscape');
   } else if (screen.msLockOrientation) {
     // IE/Edge fallback
-    screen.msLockOrientation("landscape");
+    screen.msLockOrientation('landscape');
   } else {
-    console.log("Orientation lock not supported on this browser");
+    console.log('Orientation lock not supported on this browser');
   }
 }
 
@@ -837,14 +837,14 @@ function handleAutoFullscreen() {
   if (isSmallScreen && !isCurrentlyFullscreen) {
     // Enter fullscreen on small screens
     document.documentElement.requestFullscreen().catch((err) => {
-      console.log("Auto-fullscreen failed:", err);
+      console.log('Auto-fullscreen failed:', err);
       // Fullscreen might fail on some browsers without user interaction
       // This is expected behavior and not an error
     });
   } else if (!isSmallScreen && isCurrentlyFullscreen) {
     // Exit fullscreen on large screens
     document.exitFullscreen().catch((err) => {
-      console.log("Auto-exit fullscreen failed:", err);
+      console.log('Auto-exit fullscreen failed:', err);
     });
   }
 }
@@ -859,7 +859,7 @@ window.attemptReport = function () {
     if (myPlayer) {
       const closestBody = findClosestBody(myPlayer);
       if (closestBody) {
-        socket.emit("reportBody", { bodyId: closestBody.id });
+        socket.emit('reportBody', { bodyId: closestBody.id });
       }
     }
   }
@@ -867,7 +867,7 @@ window.attemptReport = function () {
 
 window.attemptTask = function () {
   if (
-    gameState.playerRole === "crewmate" &&
+    gameState.playerRole === 'student' &&
     !gameState.meetingActive &&
     !gameState.votingActive
   ) {
@@ -875,7 +875,7 @@ window.attemptTask = function () {
     if (myPlayer) {
       const closestTask = findClosestTask(myPlayer);
       if (closestTask) {
-        socket.emit("attemptTask", { taskLocation: closestTask.location });
+        socket.emit('attemptTask', { taskLocation: closestTask.location });
       }
     }
   }
@@ -883,12 +883,12 @@ window.attemptTask = function () {
 
 window.attemptSabotage = function () {
   if (
-    gameState.playerRole === "imposter" &&
+    gameState.playerRole === 'imposter' &&
     gameState.isAlive &&
     !gameState.meetingActive &&
     !gameState.votingActive
   ) {
-    socket.emit("sabotage");
+    socket.emit('sabotage');
   }
 };
 
@@ -906,7 +906,7 @@ window.attemptRepair = function () {
       const dy = Math.abs(myPlayer.y / TILE_SIZE - gameState.repairLocation.y);
 
       if (dx <= 1 && dy <= 1) {
-        socket.emit("attemptRepair", { location: gameState.repairLocation });
+        socket.emit('attemptRepair', { location: gameState.repairLocation });
       }
     }
   }
@@ -914,10 +914,10 @@ window.attemptRepair = function () {
 
 // Update button visibility and state
 function updateButtons() {
-  const killButton = document.getElementById("killButton");
-  const sabotageButton = document.getElementById("sabotageButton");
-  const reportButton = document.getElementById("reportButton");
-  const taskButton = document.getElementById("taskButton");
+  const killButton = document.getElementById('killButton');
+  const sabotageButton = document.getElementById('sabotageButton');
+  const reportButton = document.getElementById('reportButton');
+  const taskButton = document.getElementById('taskButton');
 
   if (!killButton || !sabotageButton || !reportButton || !taskButton) return;
 
@@ -925,8 +925,8 @@ function updateButtons() {
   const myPlayer = players.find((player) => player.id === socket.id);
 
   // Kill button - only show for living imposters during active game
-  if (gameState.playerRole === "imposter" && gameState.isAlive && gameActive) {
-    killButton.style.display = "block";
+  if (gameState.playerRole === 'imposter' && gameState.isAlive && gameActive) {
+    killButton.style.display = 'block';
 
     // Calculate cooldown based on game start time and last kill time
     const now = Date.now();
@@ -959,25 +959,25 @@ function updateButtons() {
       killButton.disabled = true;
       killButton.textContent = `KILL (${Math.ceil(remainingCooldown / 1000)}s)`;
       killButton.className =
-        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+        'px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg';
     } else if (!hasNearbyTarget) {
       killButton.disabled = true;
-      killButton.textContent = "KILL";
+      killButton.textContent = 'KILL';
       killButton.className =
-        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+        'px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg';
     } else {
       killButton.disabled = false;
-      killButton.textContent = "KILL";
+      killButton.textContent = 'KILL';
       killButton.className =
-        "px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-lg cursor-pointer";
+        'px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-lg cursor-pointer';
     }
   } else {
-    killButton.style.display = "none";
+    killButton.style.display = 'none';
   }
 
   // Sabotage button - only show for living imposters during active game
-  if (gameState.playerRole === "imposter" && gameState.isAlive && gameActive) {
-    sabotageButton.style.display = "block";
+  if (gameState.playerRole === 'imposter' && gameState.isAlive && gameActive) {
+    sabotageButton.style.display = 'block';
 
     // Calculate sabotage cooldown
     const now = Date.now();
@@ -1005,51 +1005,51 @@ function updateButtons() {
         remainingSabotageCooldown / 1000
       )}s)`;
       sabotageButton.className =
-        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+        'px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg';
     } else if (sabotageAlreadyActive) {
       sabotageButton.disabled = true;
-      sabotageButton.textContent = "SABOTAGE (ACTIVE)";
+      sabotageButton.textContent = 'SABOTAGE (ACTIVE)';
       sabotageButton.className =
-        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+        'px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg';
     } else {
       sabotageButton.disabled = false;
-      sabotageButton.textContent = "SABOTAGE";
+      sabotageButton.textContent = 'SABOTAGE';
       sabotageButton.className =
-        "px-4 py-2 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 transition-colors shadow-lg cursor-pointer";
+        'px-4 py-2 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 transition-colors shadow-lg cursor-pointer';
     }
   } else {
-    sabotageButton.style.display = "none";
+    sabotageButton.style.display = 'none';
   }
 
   // Report button - show for all living players during active game
   if (gameState.isAlive && gameActive) {
-    reportButton.style.display = "block";
+    reportButton.style.display = 'block';
 
     // Check if there's a body nearby
     const hasNearbyBody = myPlayer && findClosestBody(myPlayer);
 
     if (hasNearbyBody) {
       reportButton.disabled = false;
-      reportButton.textContent = "REPORT";
+      reportButton.textContent = 'REPORT';
       reportButton.className =
-        "px-4 py-2 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-700 transition-colors shadow-lg cursor-pointer";
+        'px-4 py-2 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-700 transition-colors shadow-lg cursor-pointer';
     } else {
       reportButton.disabled = true;
-      reportButton.textContent = "REPORT";
+      reportButton.textContent = 'REPORT';
       reportButton.className =
-        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+        'px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg';
     }
   } else {
-    reportButton.style.display = "none";
+    reportButton.style.display = 'none';
   }
 
-  // Task/Repair button - show for crewmates and all players during sabotage
+  // Task/Repair button - show for students and all players during sabotage
   if (gameActive && gameState.isAlive) {
     let buttonVisible = false;
-    let buttonText = "DO TASK";
+    let buttonText = 'DO TASK';
     let buttonClass =
-      "px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg cursor-pointer";
-    let buttonAction = "task";
+      'px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg cursor-pointer';
+    let buttonAction = 'task';
 
     // Check for repair opportunity during sabotage
     if (gameState.sabotageActive && gameState.repairLocation && myPlayer) {
@@ -1058,59 +1058,59 @@ function updateButtons() {
 
       if (dx <= 1 && dy <= 1) {
         buttonVisible = true;
-        buttonText = "FIX LIGHTS";
+        buttonText = 'FIX LIGHTS';
         buttonClass =
-          "px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-lg cursor-pointer";
-        buttonAction = "repair";
+          'px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-lg cursor-pointer';
+        buttonAction = 'repair';
       }
     }
 
-    // Check for regular tasks (only for crewmates when no repair available)
-    if (!buttonVisible && gameState.playerRole === "crewmate") {
+    // Check for regular tasks (only for students when no repair available)
+    if (!buttonVisible && gameState.playerRole === 'student') {
       const hasNearbyTask = myPlayer && findClosestTask(myPlayer);
       if (hasNearbyTask) {
         buttonVisible = true;
-        buttonText = "DO TASK";
-        buttonAction = "task";
+        buttonText = 'DO TASK';
+        buttonAction = 'task';
       }
     }
 
     if (buttonVisible) {
-      taskButton.style.display = "block";
+      taskButton.style.display = 'block';
       taskButton.disabled = false;
       taskButton.textContent = buttonText;
       taskButton.className = buttonClass;
 
       // Update the onclick handler based on action
-      if (buttonAction === "repair") {
+      if (buttonAction === 'repair') {
         taskButton.onclick = () => window.attemptRepair();
       } else {
         taskButton.onclick = () => window.attemptTask();
       }
     } else {
-      taskButton.style.display = "none";
+      taskButton.style.display = 'none';
     }
   } else {
-    taskButton.style.display = "none";
+    taskButton.style.display = 'none';
   }
 }
 
 // UI Management Functions
 function showMeetingUI() {
-  const meetingUI = document.getElementById("meetingUI");
+  const meetingUI = document.getElementById('meetingUI');
   if (meetingUI) {
-    meetingUI.style.display = "flex";
+    meetingUI.style.display = 'flex';
     startMeetingTimer();
     isModalOpen = true; // Block movement when meeting UI is open
   }
 }
 
 function showVotingUI() {
-  const meetingUI = document.getElementById("meetingUI");
-  const votingUI = document.getElementById("votingUI");
+  const meetingUI = document.getElementById('meetingUI');
+  const votingUI = document.getElementById('votingUI');
 
-  if (meetingUI) meetingUI.style.display = "none";
-  if (votingUI) votingUI.style.display = "flex";
+  if (meetingUI) meetingUI.style.display = 'none';
+  if (votingUI) votingUI.style.display = 'flex';
 
   createVotingOptions();
   startVotingTimer(); // Start the 60-second voting timer
@@ -1118,21 +1118,21 @@ function showVotingUI() {
 }
 
 function hideAllUI() {
-  const meetingUI = document.getElementById("meetingUI");
-  const votingUI = document.getElementById("votingUI");
-  const votingResultsUI = document.getElementById("votingResultsUI");
-  const gameEndUI = document.getElementById("gameEndUI");
-  const taskModal = document.getElementById("taskModal");
-  const sabotageModal = document.getElementById("sabotageModal");
-  const repairModal = document.getElementById("repairModal");
+  const meetingUI = document.getElementById('meetingUI');
+  const votingUI = document.getElementById('votingUI');
+  const votingResultsUI = document.getElementById('votingResultsUI');
+  const gameEndUI = document.getElementById('gameEndUI');
+  const taskModal = document.getElementById('taskModal');
+  const sabotageModal = document.getElementById('sabotageModal');
+  const repairModal = document.getElementById('repairModal');
 
-  if (meetingUI) meetingUI.style.display = "none";
-  if (votingUI) votingUI.style.display = "none";
-  if (votingResultsUI) votingResultsUI.style.display = "none";
-  if (gameEndUI) gameEndUI.style.display = "none";
-  if (taskModal) taskModal.style.display = "none";
-  if (sabotageModal) sabotageModal.style.display = "none";
-  if (repairModal) repairModal.style.display = "none";
+  if (meetingUI) meetingUI.style.display = 'none';
+  if (votingUI) votingUI.style.display = 'none';
+  if (votingResultsUI) votingResultsUI.style.display = 'none';
+  if (gameEndUI) gameEndUI.style.display = 'none';
+  if (taskModal) taskModal.style.display = 'none';
+  if (sabotageModal) sabotageModal.style.display = 'none';
+  if (repairModal) repairModal.style.display = 'none';
 
   // Reset modal states
   gameState.currentTaskModal = null;
@@ -1144,119 +1144,119 @@ function hideAllUI() {
 
 // Task modal functions
 function showTaskModal(data) {
-  const taskModal = document.getElementById("taskModal");
-  const taskQuestion = document.getElementById("taskQuestion");
-  const taskOptions = document.getElementById("taskOptions");
+  const taskModal = document.getElementById('taskModal');
+  const taskQuestion = document.getElementById('taskQuestion');
+  const taskOptions = document.getElementById('taskOptions');
 
   if (!taskModal || !taskQuestion || !taskOptions) return;
 
   gameState.currentTaskModal = data;
 
   taskQuestion.textContent = data.question;
-  taskOptions.innerHTML = "";
+  taskOptions.innerHTML = '';
 
   // Create option buttons
   data.options.forEach((option, index) => {
-    const button = document.createElement("button");
+    const button = document.createElement('button');
     button.className =
-      "w-full p-3 bg-gray-600 text-white rounded mb-2 cursor-pointer hover:bg-gray-500 text-left";
+      'w-full p-3 bg-gray-600 text-white rounded mb-2 cursor-pointer hover:bg-gray-500 text-left';
     button.textContent = option;
     button.onclick = () => submitTaskAnswer(option);
     taskOptions.appendChild(button);
   });
-  taskModal.style.display = "flex";
-  console.log("Task modal shown with question:", data.question);
+  taskModal.style.display = 'flex';
+  console.log('Task modal shown with question:', data.question);
   isModalOpen = true; // Block movement when task modal is open
 }
 
 function hideTaskModal() {
-  const taskModal = document.getElementById("taskModal");
+  const taskModal = document.getElementById('taskModal');
   if (taskModal) {
-    taskModal.style.display = "none";
+    taskModal.style.display = 'none';
   }
   gameState.currentTaskModal = null;
   isModalOpen = false; // Allow movement when task modal is hidden
 }
 
 function showSabotageModal(data) {
-  console.log("Showing sabotage modal:", data);
+  console.log('Showing sabotage modal:', data);
 
-  const sabotageModal = document.getElementById("sabotageModal");
-  const sabotageQuestion = document.getElementById("sabotageQuestion");
-  const sabotageOptions = document.getElementById("sabotageOptions");
+  const sabotageModal = document.getElementById('sabotageModal');
+  const sabotageQuestion = document.getElementById('sabotageQuestion');
+  const sabotageOptions = document.getElementById('sabotageOptions');
 
   if (!sabotageModal || !sabotageQuestion || !sabotageOptions) return;
 
   sabotageQuestion.textContent = data.question;
-  sabotageOptions.innerHTML = "";
+  sabotageOptions.innerHTML = '';
 
   data.options.forEach((option, index) => {
-    const button = document.createElement("button");
+    const button = document.createElement('button');
     button.textContent = option;
     button.className =
-      "w-full py-2 px-4 bg-red-800 hover:bg-red-900 text-white rounded font-bold transition-colors";
+      'w-full py-2 px-4 bg-red-800 hover:bg-red-900 text-white rounded font-bold transition-colors';
     button.onclick = () => submitSabotageAnswer(option);
     sabotageOptions.appendChild(button);
   });
 
-  sabotageModal.style.display = "flex";
+  sabotageModal.style.display = 'flex';
   isModalOpen = true;
 }
 
 function hideSabotageModal() {
-  const sabotageModal = document.getElementById("sabotageModal");
+  const sabotageModal = document.getElementById('sabotageModal');
   if (sabotageModal) {
-    sabotageModal.style.display = "none";
+    sabotageModal.style.display = 'none';
   }
   gameState.currentSabotageModal = null;
   isModalOpen = false;
 }
 
 function submitSabotageAnswer(answer) {
-  socket.emit("completeSabotage", { answer: answer });
+  socket.emit('completeSabotage', { answer: answer });
 }
 
 function showRepairModal(data) {
-  console.log("Showing repair modal:", data);
+  console.log('Showing repair modal:', data);
 
-  const repairModal = document.getElementById("repairModal");
-  const repairQuestion = document.getElementById("repairQuestion");
-  const repairOptions = document.getElementById("repairOptions");
+  const repairModal = document.getElementById('repairModal');
+  const repairQuestion = document.getElementById('repairQuestion');
+  const repairOptions = document.getElementById('repairOptions');
 
   if (!repairModal || !repairQuestion || !repairOptions) return;
 
   repairQuestion.textContent = data.question;
-  repairOptions.innerHTML = "";
+  repairOptions.innerHTML = '';
 
   data.options.forEach((option, index) => {
-    const button = document.createElement("button");
+    const button = document.createElement('button');
     button.textContent = option;
     button.className =
-      "w-full py-2 px-4 bg-blue-800 hover:bg-blue-900 text-white rounded font-bold transition-colors";
+      'w-full py-2 px-4 bg-blue-800 hover:bg-blue-900 text-white rounded font-bold transition-colors';
     button.onclick = () => submitRepairAnswer(option);
     repairOptions.appendChild(button);
   });
 
-  repairModal.style.display = "flex";
+  repairModal.style.display = 'flex';
   isModalOpen = true;
 }
 
 function hideRepairModal() {
-  const repairModal = document.getElementById("repairModal");
+  const repairModal = document.getElementById('repairModal');
   if (repairModal) {
-    repairModal.style.display = "none";
+    repairModal.style.display = 'none';
   }
   gameState.currentRepairModal = null;
   isModalOpen = false;
 }
 
 function submitRepairAnswer(answer) {
-  socket.emit("completeRepair", { answer: answer });
+  socket.emit('completeRepair', { answer: answer });
 }
 
 function submitTaskAnswer(answer) {
   if (gameState.currentTaskModal) {
-    socket.emit("completeTask", {
+    socket.emit('completeTask', {
       taskLocation: gameState.currentTaskModal.taskLocation,
       answer: answer,
     });
@@ -1264,7 +1264,7 @@ function submitTaskAnswer(answer) {
 }
 
 function showTaskFailure(correctAnswer) {
-  const taskOptions = document.getElementById("taskOptions");
+  const taskOptions = document.getElementById('taskOptions');
   if (!taskOptions) return;
 
   // Show failure message and correct answer
@@ -1280,7 +1280,7 @@ function showTaskFailure(correctAnswer) {
 
   // 5 second cooldown
   let timeLeft = 5;
-  const tryAgainButton = document.getElementById("tryAgainButton");
+  const tryAgainButton = document.getElementById('tryAgainButton');
 
   const timer = setInterval(() => {
     timeLeft--;
@@ -1292,10 +1292,10 @@ function showTaskFailure(correctAnswer) {
       clearInterval(timer);
       if (tryAgainButton) {
         tryAgainButton.disabled = false;
-        tryAgainButton.textContent = "Try Again";
+        tryAgainButton.textContent = 'Try Again';
         tryAgainButton.onclick = () => {
           if (gameState.currentTaskModal) {
-            socket.emit("attemptTask", {
+            socket.emit('attemptTask', {
               taskLocation: gameState.currentTaskModal.taskLocation,
             });
           }
@@ -1306,7 +1306,7 @@ function showTaskFailure(correctAnswer) {
 }
 
 function showTaskSuccess() {
-  const taskOptions = document.getElementById("taskOptions");
+  const taskOptions = document.getElementById('taskOptions');
   if (!taskOptions) return;
 
   // Show success message
@@ -1324,7 +1324,7 @@ function showTaskSuccess() {
 }
 
 function showSabotageFailure(correctAnswer) {
-  const sabotageOptions = document.getElementById("sabotageOptions");
+  const sabotageOptions = document.getElementById('sabotageOptions');
   if (!sabotageOptions) return;
 
   // Show failure message and correct answer
@@ -1340,7 +1340,7 @@ function showSabotageFailure(correctAnswer) {
 
   // 5 second cooldown
   let timeLeft = 5;
-  const retryButton = document.getElementById("sabotageRetryButton");
+  const retryButton = document.getElementById('sabotageRetryButton');
 
   const timer = setInterval(() => {
     timeLeft--;
@@ -1352,10 +1352,10 @@ function showSabotageFailure(correctAnswer) {
       clearInterval(timer);
       if (retryButton) {
         retryButton.disabled = false;
-        retryButton.textContent = "Try Again";
+        retryButton.textContent = 'Try Again';
         retryButton.onclick = () => {
           if (gameState.currentSabotageModal) {
-            socket.emit("sabotage");
+            socket.emit('sabotage');
           }
         };
       }
@@ -1364,7 +1364,7 @@ function showSabotageFailure(correctAnswer) {
 }
 
 function showSabotageSuccess() {
-  const sabotageOptions = document.getElementById("sabotageOptions");
+  const sabotageOptions = document.getElementById('sabotageOptions');
   if (!sabotageOptions) return;
 
   // Show success message
@@ -1382,7 +1382,7 @@ function showSabotageSuccess() {
 }
 
 function showRepairFailure(correctAnswer) {
-  const repairOptions = document.getElementById("repairOptions");
+  const repairOptions = document.getElementById('repairOptions');
   if (!repairOptions) return;
 
   // Show failure message and correct answer
@@ -1398,7 +1398,7 @@ function showRepairFailure(correctAnswer) {
 
   // 5 second cooldown
   let timeLeft = 5;
-  const retryButton = document.getElementById("repairRetryButton");
+  const retryButton = document.getElementById('repairRetryButton');
 
   const timer = setInterval(() => {
     timeLeft--;
@@ -1410,10 +1410,10 @@ function showRepairFailure(correctAnswer) {
       clearInterval(timer);
       if (retryButton) {
         retryButton.disabled = false;
-        retryButton.textContent = "Try Again";
+        retryButton.textContent = 'Try Again';
         retryButton.onclick = () => {
           if (gameState.currentRepairModal && gameState.repairLocation) {
-            socket.emit("attemptRepair", {
+            socket.emit('attemptRepair', {
               location: gameState.repairLocation,
             });
           }
@@ -1424,7 +1424,7 @@ function showRepairFailure(correctAnswer) {
 }
 
 function showRepairSuccess() {
-  const repairOptions = document.getElementById("repairOptions");
+  const repairOptions = document.getElementById('repairOptions');
   if (!repairOptions) return;
 
   // Show success message
@@ -1444,7 +1444,7 @@ function showRepairSuccess() {
 function startVotingTimer() {
   let timeLeft = 59;
   const timer = setInterval(() => {
-    const timerElement = document.getElementById("votingTimer");
+    const timerElement = document.getElementById('votingTimer');
     if (timerElement) {
       timerElement.textContent = timeLeft;
     }
@@ -1457,18 +1457,18 @@ function startVotingTimer() {
 }
 
 function showVotingResults(data) {
-  const votingResultsUI = document.getElementById("votingResultsUI");
-  const votingResultsContent = document.getElementById("votingResultsContent");
+  const votingResultsUI = document.getElementById('votingResultsUI');
+  const votingResultsContent = document.getElementById('votingResultsContent');
 
   if (!votingResultsUI || !votingResultsContent) return;
 
   // Show the results
-  let resultHTML = "";
+  let resultHTML = '';
   if (data.ejectedPlayer) {
     resultHTML = `<p class="text-lg font-bold text-red-400 mb-2">${data.ejectedPlayer} was ejected!</p>`;
     if (data.ejectedRole) {
       resultHTML += `<p class="text-sm">They were ${
-        data.ejectedRole === "imposter" ? "an Imposter" : "a Crewmate"
+        data.ejectedRole === 'imposter' ? 'an Imposter' : 'a Student'
       }</p>`;
     }
   } else {
@@ -1476,13 +1476,13 @@ function showVotingResults(data) {
   }
 
   votingResultsContent.innerHTML = resultHTML;
-  votingResultsUI.style.display = "flex";
+  votingResultsUI.style.display = 'flex';
   isModalOpen = true; // Block movement when voting results are shown
 
   // Start 5-second countdown
   let timeLeft = 5;
   const timer = setInterval(() => {
-    const timerElement = document.getElementById("continueTimer");
+    const timerElement = document.getElementById('continueTimer');
     if (timerElement) {
       timerElement.textContent = timeLeft;
     }
@@ -1490,46 +1490,46 @@ function showVotingResults(data) {
 
     if (timeLeft < 0) {
       clearInterval(timer);
-      votingResultsUI.style.display = "none";
+      votingResultsUI.style.display = 'none';
       isModalOpen = false; // Allow movement when voting results are hidden
     }
   }, 1000);
 }
 
 function showGameEnd(data) {
-  const gameEndUI = document.getElementById("gameEndUI");
-  const gameEndTitle = document.getElementById("gameEndTitle");
-  const gameEndContent = document.getElementById("gameEndContent");
+  const gameEndUI = document.getElementById('gameEndUI');
+  const gameEndTitle = document.getElementById('gameEndTitle');
+  const gameEndContent = document.getElementById('gameEndContent');
 
   if (!gameEndUI || !gameEndTitle || !gameEndContent) return;
 
   // Set title and content based on winner
-  if (data.winner === "imposters") {
-    gameEndTitle.textContent = "Imposters Win!";
-    gameEndTitle.className = "text-2xl font-bold mb-4 text-center text-red-400";
+  if (data.winner === 'imposters') {
+    gameEndTitle.textContent = 'Imposters Win!';
+    gameEndTitle.className = 'text-2xl font-bold mb-4 text-center text-red-400';
 
     // Find all imposters and their names
-    const imposters = data.allPlayers.filter((p) => p.role === "imposter");
-    const imposterNames = imposters.map((p) => p.name).join(", ");
+    const imposters = data.allPlayers.filter((p) => p.role === 'imposter');
+    const imposterNames = imposters.map((p) => p.name).join(', ');
 
     gameEndContent.innerHTML = `
       <p class="text-lg mb-2">The imposters have won!</p>
       <p class="text-md mb-2 text-red-300">The imposter(s) were: ${imposterNames}</p>
       <p class="text-sm text-gray-400">Evil triumphs this time...</p>
     `;
-  } else if (data.winner === "crewmates") {
-    gameEndTitle.textContent = "Crewmates Win!";
+  } else if (data.winner === 'students') {
+    gameEndTitle.textContent = 'Students Win!';
     gameEndTitle.className =
-      "text-2xl font-bold mb-4 text-center text-blue-400";
+      'text-2xl font-bold mb-4 text-center text-blue-400';
     gameEndContent.innerHTML = `
       <p class="text-lg mb-2">Justice has been served</p>
     `;
   } else {
-    gameEndTitle.textContent = "Game Over";
-    gameEndTitle.className = "text-2xl font-bold mb-4 text-center text-white";
+    gameEndTitle.textContent = 'Game Over';
+    gameEndTitle.className = 'text-2xl font-bold mb-4 text-center text-white';
     gameEndContent.innerHTML = `<p class="text-lg">Game ended</p>`;
   }
-  gameEndUI.style.display = "flex";
+  gameEndUI.style.display = 'flex';
   isModalOpen = true; // Block movement when game end screen is shown
 
   // Set up button handlers
@@ -1537,13 +1537,13 @@ function showGameEnd(data) {
 }
 
 function setupGameEndButtons() {
-  const goToLobbyButton = document.getElementById("goToLobbyButton");
-  const exitGameButton = document.getElementById("exitGameButton");
+  const goToLobbyButton = document.getElementById('goToLobbyButton');
+  const exitGameButton = document.getElementById('exitGameButton');
 
   if (goToLobbyButton) {
     goToLobbyButton.onclick = () => {
       // Send return to lobby request to server
-      socket.emit("returnToLobby");
+      socket.emit('returnToLobby');
       isModalOpen = false; // Allow movement when returning to lobby
     };
   }
@@ -1552,32 +1552,32 @@ function setupGameEndButtons() {
     exitGameButton.onclick = () => {
       // Navigate back to home
       isModalOpen = false; // Allow movement when exiting
-      window.location.href = "/";
+      window.location.href = '/';
     };
   }
 }
 
 function createVotingOptions() {
-  const votingOptions = document.getElementById("votingOptions");
+  const votingOptions = document.getElementById('votingOptions');
   if (!votingOptions || !gameState.alivePlayers) return;
 
-  votingOptions.innerHTML = "";
+  votingOptions.innerHTML = '';
 
   // Only show voting options if alive
   if (gameState.isAlive) {
     // Add skip option
-    const skipButton = document.createElement("button");
-    const isSkipSelected = gameState.currentVote === "skip";
+    const skipButton = document.createElement('button');
+    const isSkipSelected = gameState.currentVote === 'skip';
     skipButton.className = isSkipSelected
-      ? "w-full p-2 bg-gray-800 border-2 border-yellow-400 text-white rounded mb-2 cursor-pointer hover:bg-gray-700"
-      : "w-full p-2 bg-gray-600 text-white rounded mb-2 cursor-pointer hover:bg-gray-500";
-    skipButton.textContent = isSkipSelected ? "Skip Vote ✓" : "Skip Vote";
-    skipButton.onclick = () => vote("skip");
+      ? 'w-full p-2 bg-gray-800 border-2 border-yellow-400 text-white rounded mb-2 cursor-pointer hover:bg-gray-700'
+      : 'w-full p-2 bg-gray-600 text-white rounded mb-2 cursor-pointer hover:bg-gray-500';
+    skipButton.textContent = isSkipSelected ? 'Skip Vote ✓' : 'Skip Vote';
+    skipButton.onclick = () => vote('skip');
     votingOptions.appendChild(skipButton);
 
     // Add player options - including self
     gameState.alivePlayers.forEach((player) => {
-      const button = document.createElement("button");
+      const button = document.createElement('button');
       const isSelected = gameState.currentVote === player.id;
 
       // Special styling for self-vote
@@ -1586,15 +1586,15 @@ function createVotingOptions() {
           ? `Vote for ${player.name || player.id} (You) ✓`
           : `Vote for ${player.name || player.id} (You)`;
         button.className = isSelected
-          ? "w-full p-2 bg-purple-800 border-2 border-yellow-400 text-white rounded mb-2 cursor-pointer hover:bg-purple-700"
-          : "w-full p-2 bg-purple-600 text-white rounded mb-2 cursor-pointer hover:bg-purple-500";
+          ? 'w-full p-2 bg-purple-800 border-2 border-yellow-400 text-white rounded mb-2 cursor-pointer hover:bg-purple-700'
+          : 'w-full p-2 bg-purple-600 text-white rounded mb-2 cursor-pointer hover:bg-purple-500';
       } else {
         button.textContent = isSelected
           ? `Vote for ${player.name || player.id} ✓`
           : `Vote for ${player.name || player.id}`;
         button.className = isSelected
-          ? "w-full p-2 bg-blue-800 border-2 border-yellow-400 text-white rounded mb-2 cursor-pointer hover:bg-blue-700"
-          : "w-full p-2 bg-blue-600 text-white rounded mb-2 cursor-pointer hover:bg-blue-500";
+          ? 'w-full p-2 bg-blue-800 border-2 border-yellow-400 text-white rounded mb-2 cursor-pointer hover:bg-blue-700'
+          : 'w-full p-2 bg-blue-600 text-white rounded mb-2 cursor-pointer hover:bg-blue-500';
       }
 
       button.onclick = () => vote(player.id);
@@ -1602,9 +1602,9 @@ function createVotingOptions() {
     });
   } else {
     // Dead players can't vote - no options shown
-    const deadMessage = document.createElement("p");
-    deadMessage.className = "text-center text-gray-300";
-    deadMessage.textContent = "You are dead and cannot vote.";
+    const deadMessage = document.createElement('p');
+    deadMessage.className = 'text-center text-gray-300';
+    deadMessage.textContent = 'You are dead and cannot vote.';
     votingOptions.appendChild(deadMessage);
   }
 }
@@ -1615,7 +1615,7 @@ function vote(targetId) {
     gameState.currentVote = targetId;
 
     // Send vote to server
-    socket.emit("vote", { targetId: targetId });
+    socket.emit('vote', { targetId: targetId });
 
     // Refresh voting options to show new selection
     createVotingOptions();
@@ -1623,7 +1623,7 @@ function vote(targetId) {
 }
 
 function updateVoteStatus(data) {
-  const voteStatus = document.getElementById("voteStatus");
+  const voteStatus = document.getElementById('voteStatus');
   if (voteStatus) {
     voteStatus.textContent = `Votes cast: ${data.votedCount}/${data.totalCount}`;
   }
@@ -1631,7 +1631,7 @@ function updateVoteStatus(data) {
 
 function loop() {
   // Fill background with black
-  canvas.fillStyle = "black";
+  canvas.fillStyle = 'black';
   canvas.fillRect(0, 0, canvasEl.width, canvasEl.height);
 
   const myPlayer = players.find((player) => player.id === socket.id);
@@ -1683,19 +1683,19 @@ function loop() {
     }
   }
 
-  // Render task tiles (yellow overlay for crewmates)
-  if (gameState.playerRole === "crewmate") {
+  // Render task tiles (yellow overlay for students)
+  if (gameState.playerRole === 'student') {
     for (const task of gameState.playerTasks) {
       if (!task.completed && !isTaskCompleted(task.location)) {
         const taskX = task.location.x * TILE_SIZE - cameraX;
         const taskY = task.location.y * TILE_SIZE - cameraY;
 
         // Render transparent yellow overlay
-        canvas.fillStyle = "rgba(255, 255, 0, 0.4)";
+        canvas.fillStyle = 'rgba(255, 255, 0, 0.4)';
         canvas.fillRect(taskX, taskY, TILE_SIZE, TILE_SIZE);
 
         // Add subtle border
-        canvas.strokeStyle = "rgba(255, 255, 0, 0.8)";
+        canvas.strokeStyle = 'rgba(255, 255, 0, 0.8)';
         canvas.lineWidth = 2;
         canvas.strokeRect(taskX, taskY, TILE_SIZE, TILE_SIZE);
       }
@@ -1714,30 +1714,30 @@ function loop() {
     canvas.fillRect(repairX, repairY, TILE_SIZE, TILE_SIZE);
 
     // Add bright red border
-    canvas.strokeStyle = "rgba(255, 0, 0, 0.9)";
+    canvas.strokeStyle = 'rgba(255, 0, 0, 0.9)';
     canvas.lineWidth = 3;
     canvas.strokeRect(repairX, repairY, TILE_SIZE, TILE_SIZE);
   }
 
   // Render dead bodies
   for (const body of gameState.deadBodies) {
-    canvas.fillStyle = "red";
+    canvas.fillStyle = 'red';
     canvas.fillRect(body.x - cameraX, body.y - cameraY, TILE_SIZE, TILE_SIZE);
   }
 
   const BLOB_SIZE = 34; // reduced size for the blob
   // Define aura colors outside the loop for better performance
   const auraColors = [
-    "#FF4B4B", // red
-    "#4B8BFF", // blue
-    "#FFD93D", // yellow
-    "#4BFF4B", // green
-    "#FF4BFF", // magenta
-    "#FF914B", // orange
-    "#4BFFD9", // cyan
-    "#B84BFF", // purple
-    "#A0FF4B", // lime
-    "#FF4B8B", // pink
+    '#FF4B4B', // red
+    '#4B8BFF', // blue
+    '#FFD93D', // yellow
+    '#4BFF4B', // green
+    '#FF4BFF', // magenta
+    '#FF914B', // orange
+    '#4BFFD9', // cyan
+    '#B84BFF', // purple
+    '#A0FF4B', // lime
+    '#FF4B8B', // pink
   ];
 
   for (const [i, player] of players.entries()) {
@@ -1893,12 +1893,12 @@ function loop() {
       canvas.translate(-BLOB_SIZE / 2, -BLOB_SIZE / 2);
 
       // Add color tinting for variety
-      canvas.globalCompositeOperation = "multiply";
+      canvas.globalCompositeOperation = 'multiply';
       canvas.fillStyle = `rgba(${255 - tintAmount * 50}, ${
         255 - tintAmount * 30
       }, ${255 - tintAmount * 20}, ${0.1 + tintAmount * 0.1})`;
       canvas.fillRect(0, 0, BLOB_SIZE, BLOB_SIZE);
-      canvas.globalCompositeOperation = "source-over";
+      canvas.globalCompositeOperation = 'source-over';
 
       // Draw the blob with all animation effects
       canvas.drawImage(blobGifImage, 0, 0, BLOB_SIZE, BLOB_SIZE);
@@ -1922,22 +1922,22 @@ function loop() {
       // Truncate name if longer than 16 characters
       const truncatedName =
         displayName.length > 16
-          ? displayName.substring(0, 16) + "..."
+          ? displayName.substring(0, 16) + '...'
           : displayName;
 
       // Make names more opaque - minimum 0.7 opacity, maximum 1.0
       const nameOpacity = Math.max(0.7, playerOpacity);
       canvas.globalAlpha = nameOpacity;
 
-      canvas.font = "12px Arial";
-      canvas.textAlign = "center";
+      canvas.font = '12px Arial';
+      canvas.textAlign = 'center';
 
       // Position name below the player sprite
       const nameX = player.x - cameraX + TILE_SIZE / 2;
       const nameY = player.y - cameraY + TILE_SIZE + 14; // 14px below sprite
 
       // Draw strong black outline by drawing text multiple times with offsets
-      canvas.fillStyle = "black";
+      canvas.fillStyle = 'black';
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
           if (dx !== 0 || dy !== 0) {
@@ -1947,11 +1947,11 @@ function loop() {
       }
 
       // Draw the main white text
-      canvas.fillStyle = "white";
+      canvas.fillStyle = 'white';
       canvas.fillText(truncatedName, nameX, nameY);
 
       // Reset text alignment
-      canvas.textAlign = "start";
+      canvas.textAlign = 'start';
     }
 
     // Reset opacity
@@ -1974,8 +1974,8 @@ function loop() {
 
 function renderUI() {
   // Role display
-  canvas.fillStyle = "white";
-  canvas.font = "20px Arial";
+  canvas.fillStyle = 'white';
+  canvas.font = '20px Arial';
   canvas.fillText(
     `Role: ${
       gameState.playerRole.charAt(0).toUpperCase() +
@@ -1984,29 +1984,29 @@ function renderUI() {
     10,
     30
   );
-  canvas.fillText(`Status: ${gameState.isAlive ? "Alive" : "Dead"}`, 10, 55);
+  canvas.fillText(`Status: ${gameState.isAlive ? 'Alive' : 'Dead'}`, 10, 55);
 
-  // Task list for crewmates
-  if (gameState.playerRole === "crewmate") {
+  // Task list for students
+  if (gameState.playerRole === 'student') {
     const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
     const maxTextWidth = isSmallScreen
       ? canvasEl.width / 3
       : canvasEl.width * 0.6; // 1/3 on small screens, 60% on large
 
-    canvas.font = "16px Arial";
-    canvas.fillStyle = "yellow";
-    canvas.fillText("Task Locations:", 10, 85);
+    canvas.font = '16px Arial';
+    canvas.fillStyle = 'yellow';
+    canvas.fillText('Task Locations:', 10, 85);
 
     if (gameState.playerTasks.length === 0) {
-      canvas.fillStyle = "gray";
-      canvas.fillText("No tasks assigned", 10, 105);
+      canvas.fillStyle = 'gray';
+      canvas.fillText('No tasks assigned', 10, 105);
     } else {
       let yOffset = 105;
       for (const task of gameState.playerTasks) {
         const location =
           task.location.name || `(${task.location.x}, ${task.location.y})`;
-        const status = task.completed ? "✓" : "○";
-        const color = task.completed ? "lightgreen" : "white";
+        const status = task.completed ? '✓' : '○';
+        const color = task.completed ? 'lightgreen' : 'white';
         const fullText = `${status} ${location}`;
 
         canvas.fillStyle = color;
@@ -2017,7 +2017,7 @@ function renderUI() {
           yOffset += 20;
         } else {
           // Wrap text for small screens with proper indentation
-          const statusWidth = canvas.measureText(status + " ").width;
+          const statusWidth = canvas.measureText(status + ' ').width;
           const indentedMaxWidth = maxTextWidth - statusWidth;
           const locationOnlyWrapped = wrapText(location, indentedMaxWidth);
 
@@ -2039,13 +2039,13 @@ function renderUI() {
 
   // Meeting/Voting status
   if (gameState.meetingActive) {
-    canvas.fillStyle = "yellow";
-    canvas.font = "24px Arial";
-    canvas.fillText("MEETING IN PROGRESS", canvasEl.width / 2 - 150, 50);
+    canvas.fillStyle = 'yellow';
+    canvas.font = '24px Arial';
+    canvas.fillText('MEETING IN PROGRESS', canvasEl.width / 2 - 150, 50);
   } else if (gameState.votingActive) {
-    canvas.fillStyle = "orange";
-    canvas.font = "24px Arial";
-    canvas.fillText("VOTING IN PROGRESS", canvasEl.width / 2 - 150, 50);
+    canvas.fillStyle = 'orange';
+    canvas.font = '24px Arial';
+    canvas.fillText('VOTING IN PROGRESS', canvasEl.width / 2 - 150, 50);
   }
 
   // Render minimap
@@ -2073,18 +2073,18 @@ function renderUI() {
     const statusX = minimapX;
     const statusY = minimapY + scaledHeight + 17;
 
-    canvas.fillStyle = "red";
-    canvas.font = "bold 12px Arial";
+    canvas.fillStyle = 'red';
+    canvas.font = 'bold 12px Arial';
 
-    const statusText = "Night Mode: Fix Lights Upper Campus Entrance";
+    const statusText = 'Night Mode: Fix Lights Upper Campus Entrance';
     const textWidth = canvas.measureText(statusText).width;
 
     // Check if text needs wrapping
     if (textWidth > minimapWidth) {
       // Split text into multiple lines
-      const line1 = "Night Mode:";
-      const line2 = "Fix Lights";
-      const line3 = "Upper Campus Entrance";
+      const line1 = 'Night Mode:';
+      const line2 = 'Fix Lights';
+      const line3 = 'Upper Campus Entrance';
 
       canvas.fillText(line1, statusX, statusY);
       canvas.fillText(line2, statusX, statusY + 14); // 14px line spacing
@@ -2126,7 +2126,7 @@ function renderMinimap() {
   const offsetY = 0;
 
   // Draw minimap background - fit exactly around the map content
-  canvas.fillStyle = "rgba(0, 0, 0, 0.7)";
+  canvas.fillStyle = 'rgba(0, 0, 0, 0.7)';
   canvas.fillRect(
     minimapX + offsetX,
     minimapY + offsetY,
@@ -2135,7 +2135,7 @@ function renderMinimap() {
   );
 
   // Draw minimap border - fit exactly around the map content
-  canvas.strokeStyle = "white";
+  canvas.strokeStyle = 'white';
   canvas.lineWidth = 2;
   canvas.strokeRect(
     minimapX + offsetX,
@@ -2145,7 +2145,7 @@ function renderMinimap() {
   );
 
   // Draw simplified map (just a dark background for now)
-  canvas.fillStyle = "rgba(40, 40, 40, 1)";
+  canvas.fillStyle = 'rgba(40, 40, 40, 1)';
   canvas.fillRect(
     minimapX + offsetX,
     minimapY + offsetY,
@@ -2153,8 +2153,8 @@ function renderMinimap() {
     scaledHeight
   );
 
-  // Draw task locations for crewmates
-  if (gameState.playerRole === "crewmate") {
+  // Draw task locations for students
+  if (gameState.playerRole === 'student') {
     for (const task of gameState.playerTasks) {
       if (!task.completed && !isTaskCompleted(task.location)) {
         const taskMinimapX =
@@ -2164,7 +2164,7 @@ function renderMinimap() {
 
         // Draw yellow dot for task - smaller on small screens
         const taskDotRadius = isSmallScreen ? 2 : 3;
-        canvas.fillStyle = "yellow";
+        canvas.fillStyle = 'yellow';
         canvas.beginPath();
         canvas.arc(taskMinimapX, taskMinimapY, taskDotRadius, 0, 2 * Math.PI);
         canvas.fill();
@@ -2189,7 +2189,7 @@ function renderMinimap() {
     canvas.fill();
 
     // Add white outline for visibility
-    canvas.strokeStyle = "white";
+    canvas.strokeStyle = 'white';
     canvas.lineWidth = 1;
     canvas.beginPath();
     canvas.arc(repairMinimapX, repairMinimapY, repairDotRadius, 0, 2 * Math.PI);
@@ -2202,14 +2202,14 @@ function renderMinimap() {
 
   // Draw player dot - smaller on small screens
   const playerDotRadius = isSmallScreen ? 3 : 4;
-  const playerColor = gameState.playerRole === "imposter" ? "red" : "cyan";
+  const playerColor = gameState.playerRole === 'imposter' ? 'red' : 'cyan';
   canvas.fillStyle = playerColor;
   canvas.beginPath();
   canvas.arc(playerMinimapX, playerMinimapY, playerDotRadius, 0, 2 * Math.PI);
   canvas.fill();
 
   // Add white outline to player dot for visibility
-  canvas.strokeStyle = "white";
+  canvas.strokeStyle = 'white';
   canvas.lineWidth = 1;
   canvas.beginPath();
   canvas.arc(playerMinimapX, playerMinimapY, playerDotRadius, 0, 2 * Math.PI);
@@ -2223,13 +2223,13 @@ function renderFogOfWar(player, cameraX, cameraY) {
 
   // Determine vision radius based on role and sabotage state
   let visionRadius;
-  if (gameState.playerRole === "imposter") {
+  if (gameState.playerRole === 'imposter') {
     visionRadius = IMPOSTER_VISION_RADIUS;
   } else {
-    // Crewmate vision - reduce to quarter during sabotage
+    // student vision - reduce to quarter during sabotage
     visionRadius = gameState.sabotageActive
-      ? CREWMATE_VISION_RADIUS / 4
-      : CREWMATE_VISION_RADIUS;
+      ? STUDENT_VISION_RADIUS / 4
+      : STUDENT_VISION_RADIUS;
   }
   const visualFogRadius = visionRadius * 1.1;
   const gradient = canvas.createRadialGradient(
@@ -2242,15 +2242,15 @@ function renderFogOfWar(player, cameraX, cameraY) {
   );
 
   // Smoother gradient with more gradual transitions
-  gradient.addColorStop(0, "rgba(0, 0, 0, 0)"); // Center: fully visible
-  gradient.addColorStop(0.45, "rgba(0, 0, 0, 0)"); // 45%: still fully visible
-  gradient.addColorStop(0.6, "rgba(0, 0, 0, 0.05)"); // 60%: barely visible dimming
-  gradient.addColorStop(0.7, "rgba(0, 0, 0, 0.15)"); // 70%: very light dimming
-  gradient.addColorStop(0.8, "rgba(0, 0, 0, 0.3)"); // 80%: light dimming
-  gradient.addColorStop(0.87, "rgba(0, 0, 0, 0.5)"); // 87%: moderate dimming
-  gradient.addColorStop(0.93, "rgba(0, 0, 0, 0.65)"); // 93%: heavy dimming
-  gradient.addColorStop(0.97, "rgba(0, 0, 0, 0.78)"); // 97%: very heavy dimming
-  gradient.addColorStop(1.0, "rgba(0, 0, 0, 0.85)"); // Edge: almost black
+  gradient.addColorStop(0, 'rgba(0, 0, 0, 0)'); // Center: fully visible
+  gradient.addColorStop(0.45, 'rgba(0, 0, 0, 0)'); // 45%: still fully visible
+  gradient.addColorStop(0.6, 'rgba(0, 0, 0, 0.05)'); // 60%: barely visible dimming
+  gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.15)'); // 70%: very light dimming
+  gradient.addColorStop(0.8, 'rgba(0, 0, 0, 0.3)'); // 80%: light dimming
+  gradient.addColorStop(0.87, 'rgba(0, 0, 0, 0.5)'); // 87%: moderate dimming
+  gradient.addColorStop(0.93, 'rgba(0, 0, 0, 0.65)'); // 93%: heavy dimming
+  gradient.addColorStop(0.97, 'rgba(0, 0, 0, 0.78)'); // 97%: very heavy dimming
+  gradient.addColorStop(1.0, 'rgba(0, 0, 0, 0.85)'); // Edge: almost black
 
   // Fill the entire screen with the gradient
   canvas.fillStyle = gradient;

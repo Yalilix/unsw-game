@@ -6,7 +6,7 @@ A multiplayer Among Us-inspired game set on a university campus where students m
 
 **SUS1511** is an online multiplayer social deduction game for 4-10 players. Players are divided into two teams:
 
-- **Students (Crewmates)**: Answer course questions correctly to complete tasks around campus and save the university
+- **Students**: Answer course questions correctly to complete tasks around campus and save the university
 - **Imposters**: Eliminate students and sabotage their mission to take over the campus
 
 Students win by completing all tasks or voting out all imposters. Imposters win by eliminating enough students or preventing task completion.

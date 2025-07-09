@@ -4,7 +4,6 @@ import { GamePage } from './components/GamePage';
 import { GameLanding } from './pages/GameLanding';
 import { SocketProvider } from './SocketContext';
 import RoomPage from './components/RoomPage';
-// import VoiceChatRoom from './pages/VoiceChatRoom';
 
 function App() {
   return (

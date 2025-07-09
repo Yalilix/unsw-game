@@ -629,6 +629,10 @@ export async function initGameServer(
 								y: 14 * 32, // TILE_SIZE
 								role: "student",
 								isAlive: true,
+								color: roomManager.getPlayerColor(
+									roomId,
+									socket.id
+								),
 							});
 
 							// Assign tasks to new student (5 random tasks from available locations)
@@ -739,6 +743,7 @@ export async function initGameServer(
 									y: 14 * 32, // TILE_SIZE
 									role: "student",
 									isAlive: true,
+									color: roomManager.getPlayerColor(roomId, socket.id),
 								});
 
 								// Assign tasks to new student (5 random tasks from available locations)

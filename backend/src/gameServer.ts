@@ -137,7 +137,7 @@ function getVisiblePlayers(
 			const visionRadius =
 				viewer.role === "imposter"
 					? IMPOSTER_VISION_RADIUS
-					: CREWMATE_VISION_RADIUS;
+					: STUDENT_VISION_RADIUS;
 			const fadeStartRadius = visionRadius * 0.7; // Start fading at 70%
 			const fadeEndRadius = visionRadius * 1.2; // Completely hidden at 120%
 

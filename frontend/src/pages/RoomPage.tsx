@@ -27,7 +27,6 @@ const RoomPage = () => {
   const PLAYER_NAME_KEY = 'playerName';
 
   // Set max name length
-  // const USERNAME_MAX_LENGTH = 14;
 
   useEffect(() => {
     if (!roomId || !socket) return;
@@ -185,14 +184,10 @@ const RoomPage = () => {
     );
   }
 
-  // const canStartGame = roomData.players.length >= 4 && roomData.isHost;
   const minPlayersNeeded = Math.max(0, 4 - roomData.players.length);
 
   return (
-    <div
-      className="min-h-screen bg-gradient-space p-4"
-      style={{ fontFamily: 'DragonHunter' }}
-    >
+    <div className="min-h-screen bg-gradient-space p-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="bg-card p-4 rounded-lg shadow-lg mb-4 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -203,10 +198,7 @@ const RoomPage = () => {
             {/* Room ID */}
             <div className="flex items-center gap-3 mb-4">
               <span className="text-muted-foreground">Room ID:</span>
-              <code
-                className="bg-muted px-3 py-1 rounded text-foreground font-mono text-lg tracking-[.1em]"
-                style={{ fontFamily: 'DragonHunter' }}
-              >
+              <code className="bg-muted px-3 py-1 rounded text-foreground font-mono text-lg tracking-[.1em]">
                 {roomId}
               </code>
               <button

@@ -20,7 +20,7 @@ export function GameTransition({
 	const socket = useSocket();
 	const [phase, setPhase] = useState<TransitionPhase>("waiting");
 	const [playerRole, setPlayerRole] = useState<
-		"imposter" | "crewmate" | null
+		"imposter" | "student" | null
 	>(null);
 	const [opacity, setOpacity] = useState(0);
 
@@ -38,7 +38,7 @@ export function GameTransition({
 
 		// Listen for game state to get player role
 		const handleGameState = (data: {
-			playerRole: "imposter" | "crewmate";
+			playerRole: "imposter" | "student";
 		}) => {
 			setPlayerRole(data.playerRole);
 		};

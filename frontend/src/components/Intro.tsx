@@ -12,7 +12,7 @@ export const Intro = () => {
 				</h1>
 
 				<p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-12 leading-relaxed">
-					Play online with 1-10 players as you attempt to answer
+					Play online with 4-10 players as you attempt to answer
 					questions to save the campus from annihilation.
 				</p>
 				<p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-12 leading-relaxed">

@@ -1,6 +1,6 @@
 # SUS1511
 
-A multiplayer Among Us-inspired game set on a university campus where students must complete academic tasks while imposters attempt to sabotage the mission.
+A multiplayer Among Us-inspired game set on a university campus where students must complete academic tasks while imposters attempt to sabotage the mission. It is ideal for first year COMP1511 students who may find it helpful in making friends, having fun while studying, and familiarising themselves with common locations on campus.
 
 ## 🎮 Game Description
 
@@ -13,8 +13,10 @@ Students win by completing all tasks or voting out all imposters. Imposters win 
 
 ## 🚀 Features
 
--   **Real-time multiplayer gameplay** with 1-10 players
+-   **Real-time multiplayer gameplay** with 4-10 players
 -   **Educational twist** - tasks involve answering COMP1511 course questions
+-   **Make friends in your first term at uni**
+-   **Familiarise yourself with your classrooms on campus**
 -   **Cross-platform support** - works on desktop and mobile devices
 -   **Mobile-optimized controls** - touch joystick for mobile players
 -   **Fog of war vision system** - limited vision creates suspense

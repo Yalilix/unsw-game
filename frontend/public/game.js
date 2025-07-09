@@ -1,8 +1,18 @@
 const mapImage = new Image();
 mapImage.src = "/Modern_Exteriors_Complete_Tileset_32x32.png";
 
-const personImage = new Image();
-personImage.src = "/person.png";
+const blobGifImage = new Image();
+blobGifImage.src = "/blob.gif";
+
+// Add error handlers for blob gif
+blobGifImage.addEventListener("load", () => {
+  console.log("Blob GIF loaded successfully");
+});
+
+blobGifImage.addEventListener("error", (e) => {
+  console.warn("Blob GIF failed to load:", e);
+  console.warn("Falling back to simple colored rectangle for players");
+});
 
 const walking = new Audio("/walking.mp3");
 const nature = new Audio("/nature.mp3");
@@ -84,6 +94,50 @@ mapImage.onload = () => {
   TILES_IN_ROW = Math.floor(mapImage.width / TILE_SIZE);
 };
 
+// Animation system for blob characters
+let blobGifLoaded = false;
+let animationFrame = 0;
+let lastAnimationTime = 0;
+const ANIMATION_SPEED = 200; // milliseconds per frame
+const BOUNCE_INTENSITY = 1; // pixels of bounce (reduced for gentler effect)
+
+// Trail effect system for moving players
+const playerTrails = new Map(); // Store trail particles for each player
+
+// Stable color assignment system - assigns colors sequentially to guarantee uniqueness
+const playerColorAssignments = new Map(); // Maps player ID to color index
+let nextColorIndex = 0; // Next available color index
+
+function getStablePlayerColor(playerId, auraColors) {
+  // Check if we already have a color assigned to this player
+  if (playerColorAssignments.has(playerId)) {
+    const colorIndex = playerColorAssignments.get(playerId);
+    return auraColors[colorIndex];
+  }
+
+  // Assign the next available color sequentially
+  const colorIndex = nextColorIndex % auraColors.length;
+  const color = auraColors[colorIndex];
+
+  // Store the assignment
+  playerColorAssignments.set(playerId, colorIndex);
+  nextColorIndex++;
+
+  console.log(
+    `🎨 Assigned stable color ${color} to player ${playerId} (index ${colorIndex})`
+  );
+  return color;
+}
+
+blobGifImage.onload = () => {
+  console.log("Blob GIF loaded and ready for animation");
+  console.log("🎭 Enhanced blob animation system activated!");
+  console.log(
+    "Features: bouncing, breathing, rotation, squash/stretch, trails, and color tinting"
+  );
+  blobGifLoaded = true;
+};
+
 socket.on("connect", () => {
   console.log("connected");
   // Join the room when connected
@@ -119,6 +173,17 @@ socket.on("error", (data) => {
 
 socket.on("players", (serverPlayers) => {
   players = serverPlayers;
+
+  // Clean up color assignments for disconnected players
+  const activePlayerIds = new Set(players.map((p) => p.id));
+  for (const [playerId, _] of playerColorAssignments) {
+    if (!activePlayerIds.has(playerId)) {
+      playerColorAssignments.delete(playerId);
+      console.log(
+        `🗑️ Cleaned up color assignment for disconnected player ${playerId}`
+      );
+    }
+  }
 });
 
 // Player left game event
@@ -144,6 +209,9 @@ let gameState = {
   playerTasks: [],
   completedTasks: [],
   currentTaskModal: null,
+  sabotageActive: false,
+  lastSabotageTime: null,
+  repairLocation: null,
 };
 
 socket.on("gameState", (data) => {
@@ -155,6 +223,9 @@ socket.on("gameState", (data) => {
   gameState.lastKillTime = data.lastKillTime;
   gameState.playerTasks = data.playerTasks || [];
   gameState.completedTasks = data.completedTasks || [];
+  gameState.sabotageActive = data.sabotageActive || false;
+  gameState.lastSabotageTime = data.lastSabotageTime;
+  gameState.repairLocation = data.repairLocation;
 });
 
 // Kill cooldown updates
@@ -268,6 +339,46 @@ socket.on("taskCompletedByPlayer", (data) => {
     `Player completed task at (${data.taskLocation.x},${data.taskLocation.y})`
   );
   // Task completion is handled by updated gameState
+});
+
+// Sabotage events
+socket.on("sabotageQuestion", (data) => {
+  gameState.currentSabotageModal = data;
+  showSabotageModal(data);
+});
+
+socket.on("sabotageCompleted", (data) => {
+  if (data.correct) {
+    console.log("Sabotage activated - lights out!");
+    showSabotageSuccess();
+  } else {
+    showSabotageFailure(data.correctAnswer);
+  }
+});
+
+socket.on("sabotageActivated", (data) => {
+  console.log("Sabotage activated - lights out!");
+  hideSabotageModal();
+});
+
+// Repair events
+socket.on("repairQuestion", (data) => {
+  gameState.currentRepairModal = data;
+  showRepairModal(data);
+});
+
+socket.on("repairCompleted", (data) => {
+  if (data.correct) {
+    console.log("Sabotage fixed - lights restored!");
+    showRepairSuccess();
+  } else {
+    showRepairFailure(data.correctAnswer);
+  }
+});
+
+socket.on("sabotageFixed", (data) => {
+  console.log("Sabotage fixed - lights restored!");
+  hideRepairModal();
 });
 
 const inputs = {
@@ -770,13 +881,45 @@ window.attemptTask = function () {
   }
 };
 
+window.attemptSabotage = function () {
+  if (
+    gameState.playerRole === "imposter" &&
+    gameState.isAlive &&
+    !gameState.meetingActive &&
+    !gameState.votingActive
+  ) {
+    socket.emit("sabotage");
+  }
+};
+
+window.attemptRepair = function () {
+  if (
+    gameState.isAlive &&
+    !gameState.meetingActive &&
+    !gameState.votingActive &&
+    gameState.sabotageActive &&
+    gameState.repairLocation
+  ) {
+    const myPlayer = players.find((player) => player.id === socket.id);
+    if (myPlayer) {
+      const dx = Math.abs(myPlayer.x / TILE_SIZE - gameState.repairLocation.x);
+      const dy = Math.abs(myPlayer.y / TILE_SIZE - gameState.repairLocation.y);
+
+      if (dx <= 1 && dy <= 1) {
+        socket.emit("attemptRepair", { location: gameState.repairLocation });
+      }
+    }
+  }
+};
+
 // Update button visibility and state
 function updateButtons() {
   const killButton = document.getElementById("killButton");
+  const sabotageButton = document.getElementById("sabotageButton");
   const reportButton = document.getElementById("reportButton");
   const taskButton = document.getElementById("taskButton");
 
-  if (!killButton || !reportButton || !taskButton) return;
+  if (!killButton || !sabotageButton || !reportButton || !taskButton) return;
 
   const gameActive = !gameState.meetingActive && !gameState.votingActive;
   const myPlayer = players.find((player) => player.id === socket.id);
@@ -832,6 +975,52 @@ function updateButtons() {
     killButton.style.display = "none";
   }
 
+  // Sabotage button - only show for living imposters during active game
+  if (gameState.playerRole === "imposter" && gameState.isAlive && gameActive) {
+    sabotageButton.style.display = "block";
+
+    // Calculate sabotage cooldown
+    const now = Date.now();
+    let remainingSabotageCooldown = 0;
+
+    if (gameState.gameStartTime > 0) {
+      const timeSinceGameStart = now - gameState.gameStartTime;
+      const timeSinceLastSabotage = gameState.lastSabotageTime
+        ? now - gameState.lastSabotageTime
+        : Infinity;
+
+      // Check both initial 30s cooldown and sabotage cooldown (60s)
+      const initialCooldown = Math.max(0, 30000 - timeSinceGameStart);
+      const sabotageCooldown = Math.max(0, 60000 - timeSinceLastSabotage);
+
+      remainingSabotageCooldown = Math.max(initialCooldown, sabotageCooldown);
+    }
+
+    // Check if sabotage is already active
+    const sabotageAlreadyActive = gameState.sabotageActive;
+
+    if (remainingSabotageCooldown > 0) {
+      sabotageButton.disabled = true;
+      sabotageButton.textContent = `SABOTAGE (${Math.ceil(
+        remainingSabotageCooldown / 1000
+      )}s)`;
+      sabotageButton.className =
+        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+    } else if (sabotageAlreadyActive) {
+      sabotageButton.disabled = true;
+      sabotageButton.textContent = "SABOTAGE (ACTIVE)";
+      sabotageButton.className =
+        "px-4 py-2 bg-gray-500 text-white rounded-lg font-bold cursor-not-allowed shadow-lg";
+    } else {
+      sabotageButton.disabled = false;
+      sabotageButton.textContent = "SABOTAGE";
+      sabotageButton.className =
+        "px-4 py-2 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 transition-colors shadow-lg cursor-pointer";
+    }
+  } else {
+    sabotageButton.style.display = "none";
+  }
+
   // Report button - show for all living players during active game
   if (gameState.isAlive && gameActive) {
     reportButton.style.display = "block";
@@ -854,17 +1043,50 @@ function updateButtons() {
     reportButton.style.display = "none";
   }
 
-  // Task button - show for crewmates (both alive and dead) during active game
-  if (gameState.playerRole === "crewmate" && gameActive) {
-    // Check if there's a task nearby
-    const hasNearbyTask = myPlayer && findClosestTask(myPlayer);
+  // Task/Repair button - show for crewmates and all players during sabotage
+  if (gameActive && gameState.isAlive) {
+    let buttonVisible = false;
+    let buttonText = "DO TASK";
+    let buttonClass =
+      "px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg cursor-pointer";
+    let buttonAction = "task";
 
-    if (hasNearbyTask) {
+    // Check for repair opportunity during sabotage
+    if (gameState.sabotageActive && gameState.repairLocation && myPlayer) {
+      const dx = Math.abs(myPlayer.x / TILE_SIZE - gameState.repairLocation.x);
+      const dy = Math.abs(myPlayer.y / TILE_SIZE - gameState.repairLocation.y);
+
+      if (dx <= 1 && dy <= 1) {
+        buttonVisible = true;
+        buttonText = "FIX LIGHTS";
+        buttonClass =
+          "px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-lg cursor-pointer";
+        buttonAction = "repair";
+      }
+    }
+
+    // Check for regular tasks (only for crewmates when no repair available)
+    if (!buttonVisible && gameState.playerRole === "crewmate") {
+      const hasNearbyTask = myPlayer && findClosestTask(myPlayer);
+      if (hasNearbyTask) {
+        buttonVisible = true;
+        buttonText = "DO TASK";
+        buttonAction = "task";
+      }
+    }
+
+    if (buttonVisible) {
       taskButton.style.display = "block";
       taskButton.disabled = false;
-      taskButton.textContent = "DO TASK";
-      taskButton.className =
-        "px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg cursor-pointer";
+      taskButton.textContent = buttonText;
+      taskButton.className = buttonClass;
+
+      // Update the onclick handler based on action
+      if (buttonAction === "repair") {
+        taskButton.onclick = () => window.attemptRepair();
+      } else {
+        taskButton.onclick = () => window.attemptTask();
+      }
     } else {
       taskButton.style.display = "none";
     }
@@ -901,12 +1123,21 @@ function hideAllUI() {
   const votingResultsUI = document.getElementById("votingResultsUI");
   const gameEndUI = document.getElementById("gameEndUI");
   const taskModal = document.getElementById("taskModal");
+  const sabotageModal = document.getElementById("sabotageModal");
+  const repairModal = document.getElementById("repairModal");
 
   if (meetingUI) meetingUI.style.display = "none";
   if (votingUI) votingUI.style.display = "none";
   if (votingResultsUI) votingResultsUI.style.display = "none";
   if (gameEndUI) gameEndUI.style.display = "none";
   if (taskModal) taskModal.style.display = "none";
+  if (sabotageModal) sabotageModal.style.display = "none";
+  if (repairModal) repairModal.style.display = "none";
+
+  // Reset modal states
+  gameState.currentTaskModal = null;
+  gameState.currentSabotageModal = null;
+  gameState.currentRepairModal = null;
 
   isModalOpen = false; // Allow movement when all UIs are hidden
 }
@@ -933,7 +1164,6 @@ function showTaskModal(data) {
     button.onclick = () => submitTaskAnswer(option);
     taskOptions.appendChild(button);
   });
-
   taskModal.style.display = "flex";
   console.log("Task modal shown with question:", data.question);
   isModalOpen = true; // Block movement when task modal is open
@@ -946,6 +1176,82 @@ function hideTaskModal() {
   }
   gameState.currentTaskModal = null;
   isModalOpen = false; // Allow movement when task modal is hidden
+}
+
+function showSabotageModal(data) {
+  console.log("Showing sabotage modal:", data);
+
+  const sabotageModal = document.getElementById("sabotageModal");
+  const sabotageQuestion = document.getElementById("sabotageQuestion");
+  const sabotageOptions = document.getElementById("sabotageOptions");
+
+  if (!sabotageModal || !sabotageQuestion || !sabotageOptions) return;
+
+  sabotageQuestion.textContent = data.question;
+  sabotageOptions.innerHTML = "";
+
+  data.options.forEach((option, index) => {
+    const button = document.createElement("button");
+    button.textContent = option;
+    button.className =
+      "w-full py-2 px-4 bg-red-800 hover:bg-red-900 text-white rounded font-bold transition-colors";
+    button.onclick = () => submitSabotageAnswer(option);
+    sabotageOptions.appendChild(button);
+  });
+
+  sabotageModal.style.display = "flex";
+  isModalOpen = true;
+}
+
+function hideSabotageModal() {
+  const sabotageModal = document.getElementById("sabotageModal");
+  if (sabotageModal) {
+    sabotageModal.style.display = "none";
+  }
+  gameState.currentSabotageModal = null;
+  isModalOpen = false;
+}
+
+function submitSabotageAnswer(answer) {
+  socket.emit("completeSabotage", { answer: answer });
+}
+
+function showRepairModal(data) {
+  console.log("Showing repair modal:", data);
+
+  const repairModal = document.getElementById("repairModal");
+  const repairQuestion = document.getElementById("repairQuestion");
+  const repairOptions = document.getElementById("repairOptions");
+
+  if (!repairModal || !repairQuestion || !repairOptions) return;
+
+  repairQuestion.textContent = data.question;
+  repairOptions.innerHTML = "";
+
+  data.options.forEach((option, index) => {
+    const button = document.createElement("button");
+    button.textContent = option;
+    button.className =
+      "w-full py-2 px-4 bg-blue-800 hover:bg-blue-900 text-white rounded font-bold transition-colors";
+    button.onclick = () => submitRepairAnswer(option);
+    repairOptions.appendChild(button);
+  });
+
+  repairModal.style.display = "flex";
+  isModalOpen = true;
+}
+
+function hideRepairModal() {
+  const repairModal = document.getElementById("repairModal");
+  if (repairModal) {
+    repairModal.style.display = "none";
+  }
+  gameState.currentRepairModal = null;
+  isModalOpen = false;
+}
+
+function submitRepairAnswer(answer) {
+  socket.emit("completeRepair", { answer: answer });
 }
 
 function submitTaskAnswer(answer) {
@@ -1014,6 +1320,124 @@ function showTaskSuccess() {
   // Auto-close after 1 second
   setTimeout(() => {
     hideTaskModal();
+  }, 1000);
+}
+
+function showSabotageFailure(correctAnswer) {
+  const sabotageOptions = document.getElementById("sabotageOptions");
+  if (!sabotageOptions) return;
+
+  // Show failure message and correct answer
+  sabotageOptions.innerHTML = `
+    <div class="text-center text-red-400 mb-4">
+      <p class="text-lg font-bold">Incorrect!</p>
+      <p class="text-sm">${correctAnswer}</p>
+    </div>
+    <button id="sabotageRetryButton" class="w-full p-3 bg-red-600 text-white rounded cursor-pointer hover:bg-red-700" disabled>
+      Try Again (5s)
+    </button>
+  `;
+
+  // 5 second cooldown
+  let timeLeft = 5;
+  const retryButton = document.getElementById("sabotageRetryButton");
+
+  const timer = setInterval(() => {
+    timeLeft--;
+    if (retryButton) {
+      retryButton.textContent = `Try Again (${timeLeft}s)`;
+    }
+
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      if (retryButton) {
+        retryButton.disabled = false;
+        retryButton.textContent = "Try Again";
+        retryButton.onclick = () => {
+          if (gameState.currentSabotageModal) {
+            socket.emit("sabotage");
+          }
+        };
+      }
+    }
+  }, 1000);
+}
+
+function showSabotageSuccess() {
+  const sabotageOptions = document.getElementById("sabotageOptions");
+  if (!sabotageOptions) return;
+
+  // Show success message
+  sabotageOptions.innerHTML = `
+    <div class="text-center text-green-400 mb-4">
+      <p class="text-xl font-bold">💥 Sabotage Activated!</p>
+      <p class="text-lg">Lights are out!</p>
+    </div>
+  `;
+
+  // Auto-close after 1 second
+  setTimeout(() => {
+    hideSabotageModal();
+  }, 1000);
+}
+
+function showRepairFailure(correctAnswer) {
+  const repairOptions = document.getElementById("repairOptions");
+  if (!repairOptions) return;
+
+  // Show failure message and correct answer
+  repairOptions.innerHTML = `
+    <div class="text-center text-red-400 mb-4">
+      <p class="text-lg font-bold">Incorrect!</p>
+      <p class="text-sm">${correctAnswer}</p>
+    </div>
+    <button id="repairRetryButton" class="w-full p-3 bg-blue-600 text-white rounded cursor-pointer hover:bg-blue-700" disabled>
+      Try Again (5s)
+    </button>
+  `;
+
+  // 5 second cooldown
+  let timeLeft = 5;
+  const retryButton = document.getElementById("repairRetryButton");
+
+  const timer = setInterval(() => {
+    timeLeft--;
+    if (retryButton) {
+      retryButton.textContent = `Try Again (${timeLeft}s)`;
+    }
+
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      if (retryButton) {
+        retryButton.disabled = false;
+        retryButton.textContent = "Try Again";
+        retryButton.onclick = () => {
+          if (gameState.currentRepairModal && gameState.repairLocation) {
+            socket.emit("attemptRepair", {
+              location: gameState.repairLocation,
+            });
+          }
+        };
+      }
+    }
+  }, 1000);
+}
+
+function showRepairSuccess() {
+  const repairOptions = document.getElementById("repairOptions");
+  if (!repairOptions) return;
+
+  // Show success message
+  repairOptions.innerHTML = `
+    <div class="text-center text-green-400 mb-4">
+      <p class="text-xl font-bold">🔧 Repair Complete!</p>
+      <p class="text-lg">Lights restored!</p>
+    </div>
+  `;
+
+  // Auto-close after 1 second
+  setTimeout(() => {
+    hideRepairModal();
   }, 1000);
 }
 
@@ -1105,7 +1529,6 @@ function showGameEnd(data) {
     gameEndTitle.className = "text-2xl font-bold mb-4 text-center text-white";
     gameEndContent.innerHTML = `<p class="text-lg">Game ended</p>`;
   }
-
   gameEndUI.style.display = "flex";
   isModalOpen = true; // Block movement when game end screen is shown
 
@@ -1279,13 +1702,63 @@ function loop() {
     }
   }
 
+  // Render repair location (red highlighting when sabotage is active)
+  if (gameState.sabotageActive && gameState.repairLocation) {
+    const repairX = gameState.repairLocation.x * TILE_SIZE - cameraX;
+    const repairY = gameState.repairLocation.y * TILE_SIZE - cameraY;
+
+    // Render pulsing red overlay with animation
+    const time = Date.now() * 0.005; // Adjust speed of pulsing
+    const alpha = 0.3 + 0.2 * Math.sin(time); // Pulsing between 0.3 and 0.5 alpha
+    canvas.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+    canvas.fillRect(repairX, repairY, TILE_SIZE, TILE_SIZE);
+
+    // Add bright red border
+    canvas.strokeStyle = "rgba(255, 0, 0, 0.9)";
+    canvas.lineWidth = 3;
+    canvas.strokeRect(repairX, repairY, TILE_SIZE, TILE_SIZE);
+  }
+
   // Render dead bodies
   for (const body of gameState.deadBodies) {
     canvas.fillStyle = "red";
     canvas.fillRect(body.x - cameraX, body.y - cameraY, TILE_SIZE, TILE_SIZE);
   }
 
-  for (const player of players) {
+  const BLOB_SIZE = 34; // reduced size for the blob
+  // Define aura colors outside the loop for better performance
+  const auraColors = [
+    "#FF4B4B", // red
+    "#4B8BFF", // blue
+    "#FFD93D", // yellow
+    "#4BFF4B", // green
+    "#FF4BFF", // magenta
+    "#FF914B", // orange
+    "#4BFFD9", // cyan
+    "#B84BFF", // purple
+    "#A0FF4B", // lime
+    "#FF4B8B", // pink
+  ];
+
+  for (const [i, player] of players.entries()) {
+    // Get stable color assignment based on player ID, not array position
+    const auraColor = getStablePlayerColor(player.id, auraColors);
+
+    // Use the assigned color index for stable animation timing
+    const colorIndex = playerColorAssignments.get(player.id);
+    const stableIndex = colorIndex * 100; // Scale up for animation variation
+    const auraX = player.x - cameraX + TILE_SIZE / 2;
+    const auraY = player.y - cameraY + BLOB_SIZE - 8; // move up by 8px
+    canvas.save();
+    canvas.globalAlpha = 0.55;
+    canvas.beginPath();
+    canvas.ellipse(auraX, auraY, 26, 14, 0, 0, 2 * Math.PI); // larger halo
+    canvas.shadowColor = auraColor;
+    canvas.shadowBlur = 24;
+    canvas.fillStyle = auraColor;
+    canvas.fill();
+    canvas.restore();
+
     // Set player opacity if provided
     const playerOpacity =
       player.opacity !== undefined && player.opacity < 1.0
@@ -1293,13 +1766,155 @@ function loop() {
         : 1.0;
     canvas.globalAlpha = playerOpacity;
 
-    canvas.drawImage(
-      personImage,
-      player.x - cameraX,
-      player.y - cameraY,
-      TILE_SIZE,
-      TILE_SIZE
-    );
+    // Draw smaller blob.gif, keeping feet in same place
+    // Calculate animation effects for blob character
+    const currentTime = Date.now();
+    if (currentTime - lastAnimationTime > ANIMATION_SPEED) {
+      animationFrame = (animationFrame + 1) % 8; // 8 frame cycle for smooth animation
+      lastAnimationTime = currentTime;
+    }
+
+    // Check if player is moving for enhanced animation (with tolerance for floating point precision)
+    const isMoving = Math.abs(player.vx) > 0.1 || Math.abs(player.vy) > 0.1;
+    const movementMultiplier = isMoving ? 2.0 : 1.0;
+    const speedMultiplier = isMoving ? 1.5 : 1.0;
+
+    // Create vertical bouncing effects (enhanced when moving) - using stable index
+    const bounceOffset =
+      Math.sin(currentTime * 0.005 * speedMultiplier + stableIndex * 0.008) *
+      BOUNCE_INTENSITY *
+      movementMultiplier;
+    const scaleEffect =
+      1 +
+      Math.sin(currentTime * 0.006 * speedMultiplier + stableIndex * 0.003) *
+        0.02 *
+        movementMultiplier; // breathing effect (reduced for subtle effect)
+
+    // Add slight color tint variation per player for uniqueness - using stable index
+    const colorPhase = currentTime * 0.002 + stableIndex * 0.021;
+    const tintAmount = 0.1 + Math.sin(colorPhase) * 0.05;
+
+    // Trail effect for moving players
+    if (isMoving) {
+      // Initialize trail array for this player if it doesn't exist
+      if (!playerTrails.has(player.id)) {
+        playerTrails.set(player.id, []);
+      }
+
+      const trail = playerTrails.get(player.id);
+      // Add new trail particle every few frames
+      if (animationFrame % 3 === 0) {
+        trail.push({
+          x: player.x,
+          y: player.y,
+          life: 1.0,
+          color: auraColor,
+        });
+      }
+
+      // Update and draw trail particles
+      for (let j = trail.length - 1; j >= 0; j--) {
+        const particle = trail[j];
+        particle.life -= 0.08;
+
+        if (particle.life <= 0) {
+          trail.splice(j, 1);
+        } else {
+          // Draw fading trail particle
+          canvas.save();
+          canvas.globalAlpha = particle.life * 0.4;
+          canvas.fillStyle = particle.color;
+          const size = TILE_SIZE * 0.4 * particle.life;
+          canvas.fillRect(
+            particle.x - cameraX - size / 2,
+            particle.y - cameraY - size / 2,
+            size,
+            size
+          );
+          canvas.restore();
+        }
+      }
+
+      // Limit trail length for performance
+      if (trail.length > 8) {
+        trail.splice(0, trail.length - 8);
+      }
+    } else {
+      // Gradually fade trail when not moving
+      if (playerTrails.has(player.id)) {
+        const trail = playerTrails.get(player.id);
+        for (let j = trail.length - 1; j >= 0; j--) {
+          trail[j].life -= 0.15;
+          if (trail[j].life <= 0) {
+            trail.splice(j, 1);
+          }
+        }
+      }
+    }
+
+    if (
+      blobGifLoaded &&
+      blobGifImage.complete &&
+      blobGifImage.naturalWidth > 0
+    ) {
+      // Save canvas state for transformations
+      canvas.save();
+
+      // Calculate animated position (vertical bounce only)
+      const baseX = player.x - cameraX - (BLOB_SIZE - TILE_SIZE) / 2;
+      const baseY = player.y - cameraY - (BLOB_SIZE - TILE_SIZE);
+      const drawX = baseX;
+      const drawY = baseY + bounceOffset;
+
+      // Apply scale and rotation for more life-like movement
+      const centerX = drawX + BLOB_SIZE / 2;
+      const centerY = drawY + BLOB_SIZE / 2;
+      canvas.translate(centerX, centerY);
+
+      // Add subtle rotation only when moving - using stable index
+      if (isMoving) {
+        const rotationAngle =
+          Math.sin(
+            currentTime * 0.004 * speedMultiplier + stableIndex * 0.004
+          ) * 0.08;
+        canvas.rotate(rotationAngle);
+      }
+
+      // Squash and stretch effect for bouncing - using stable index
+      const squashY =
+        1 +
+        Math.sin(currentTime * 0.01 * speedMultiplier + stableIndex * 0.012) *
+          0.01 *
+          movementMultiplier;
+      const stretchX = 1 / squashY; // maintain area
+
+      // Scale breathing effect with squash/stretch
+      canvas.scale(scaleEffect * stretchX, scaleEffect * squashY);
+      canvas.translate(-BLOB_SIZE / 2, -BLOB_SIZE / 2);
+
+      // Add color tinting for variety
+      canvas.globalCompositeOperation = "multiply";
+      canvas.fillStyle = `rgba(${255 - tintAmount * 50}, ${
+        255 - tintAmount * 30
+      }, ${255 - tintAmount * 20}, ${0.1 + tintAmount * 0.1})`;
+      canvas.fillRect(0, 0, BLOB_SIZE, BLOB_SIZE);
+      canvas.globalCompositeOperation = "source-over";
+
+      // Draw the blob with all animation effects
+      canvas.drawImage(blobGifImage, 0, 0, BLOB_SIZE, BLOB_SIZE);
+
+      // Restore canvas state
+      canvas.restore();
+    } else {
+      // Fallback: draw animated colored rectangle while blob loads or if it fails
+      canvas.fillStyle = auraColor;
+      canvas.fillRect(
+        player.x - cameraX,
+        player.y - cameraY + bounceOffset,
+        TILE_SIZE * scaleEffect,
+        TILE_SIZE * scaleEffect
+      );
+    }
 
     // Draw player name underneath
     if (player.name || player.id) {
@@ -1435,6 +2050,49 @@ function renderUI() {
 
   // Render minimap
   renderMinimap();
+
+  // Show sabotage status message under minimap
+  if (gameState.sabotageActive) {
+    const isSmallScreen = window.innerWidth < 700 || window.innerHeight < 700;
+    const minimapWidth = isSmallScreen ? 100 : 200;
+    const minimapHeight = isSmallScreen ? 75 : 150;
+
+    // Calculate the same scaled dimensions as the minimap
+    const mapPixelWidth = groundMap[0].length * TILE_SIZE;
+    const mapPixelHeight = groundMap.length * TILE_SIZE;
+    const scaleX = minimapWidth / mapPixelWidth;
+    const scaleY = minimapHeight / mapPixelHeight;
+    const scale = Math.min(scaleX, scaleY);
+    const scaledHeight = mapPixelHeight * scale;
+
+    const spacing = 20;
+    const minimapX = canvasEl.width - minimapWidth - spacing;
+    const minimapY = spacing;
+
+    // Position text closer to minimap using actual scaled height with minimal gap
+    const statusX = minimapX;
+    const statusY = minimapY + scaledHeight + 17;
+
+    canvas.fillStyle = "red";
+    canvas.font = "bold 12px Arial";
+
+    const statusText = "Night Mode: Fix Lights Upper Campus Entrance";
+    const textWidth = canvas.measureText(statusText).width;
+
+    // Check if text needs wrapping
+    if (textWidth > minimapWidth) {
+      // Split text into multiple lines
+      const line1 = "Night Mode:";
+      const line2 = "Fix Lights";
+      const line3 = "Upper Campus Entrance";
+
+      canvas.fillText(line1, statusX, statusY);
+      canvas.fillText(line2, statusX, statusY + 14); // 14px line spacing
+      canvas.fillText(line3, statusX, statusY + 28); // 28px total spacing
+    } else {
+      canvas.fillText(statusText, statusX, statusY);
+    }
+  }
 }
 
 function renderMinimap() {
@@ -1514,6 +2172,30 @@ function renderMinimap() {
     }
   }
 
+  // Draw repair location when sabotage is active
+  if (gameState.sabotageActive && gameState.repairLocation) {
+    const repairMinimapX =
+      minimapX + offsetX + gameState.repairLocation.x * TILE_SIZE * scale;
+    const repairMinimapY =
+      minimapY + offsetY + gameState.repairLocation.y * TILE_SIZE * scale;
+
+    // Draw pulsing red dot for repair location
+    const time = Date.now() * 0.005;
+    const pulseAlpha = 0.7 + 0.3 * Math.sin(time); // Pulsing between 0.7 and 1.0 alpha
+    const repairDotRadius = isSmallScreen ? 3 : 4;
+    canvas.fillStyle = `rgba(255, 0, 0, ${pulseAlpha})`;
+    canvas.beginPath();
+    canvas.arc(repairMinimapX, repairMinimapY, repairDotRadius, 0, 2 * Math.PI);
+    canvas.fill();
+
+    // Add white outline for visibility
+    canvas.strokeStyle = "white";
+    canvas.lineWidth = 1;
+    canvas.beginPath();
+    canvas.arc(repairMinimapX, repairMinimapY, repairDotRadius, 0, 2 * Math.PI);
+    canvas.stroke();
+  }
+
   // Draw player position
   const playerMinimapX = minimapX + offsetX + myPlayer.x * scale;
   const playerMinimapY = minimapY + offsetY + myPlayer.y * scale;
@@ -1539,11 +2221,16 @@ function renderFogOfWar(player, cameraX, cameraY) {
   const playerScreenX = player.x - cameraX + TILE_SIZE / 2;
   const playerScreenY = player.y - cameraY + TILE_SIZE / 2;
 
-  // Slightly larger visual fog radius with smoother transitions - use role-specific vision
-  const visionRadius =
-    gameState.playerRole === "imposter"
-      ? IMPOSTER_VISION_RADIUS
+  // Determine vision radius based on role and sabotage state
+  let visionRadius;
+  if (gameState.playerRole === "imposter") {
+    visionRadius = IMPOSTER_VISION_RADIUS;
+  } else {
+    // Crewmate vision - reduce to quarter during sabotage
+    visionRadius = gameState.sabotageActive
+      ? CREWMATE_VISION_RADIUS / 4
       : CREWMATE_VISION_RADIUS;
+  }
   const visualFogRadius = visionRadius * 1.1;
   const gradient = canvas.createRadialGradient(
     playerScreenX,

@@ -1,9 +1,9 @@
-import express from "express";
-import { Server as IOServer } from "socket.io";
-import { Server as HTTPServer } from "http";
-import { promises as fs } from "fs";
-import path from "path";
-import loadMap, { MapData } from "./mapLoader";
+import express from 'express';
+import { Server as IOServer } from 'socket.io';
+import { Server as HTTPServer } from 'http';
+import { promises as fs } from 'fs';
+import path from 'path';
+import loadMap, { MapData } from './mapLoader';
 import {
   roomManager,
   Room,
@@ -13,7 +13,7 @@ import {
   TaskLocation,
   TASK_LOCATIONS,
   REPAIR_LOCATION,
-} from "./roomManager";
+} from './roomManager';
 
 interface Player {
   id: string;
@@ -37,8 +37,8 @@ const KILL_RADIUS = PLAYER_SIZE * 3; // larger proximity for teleport
 const IMPOSTER_VISION_RADIUS = 10 * TILE_SIZE; // 10 tiles vision radius for imposters
 const CREWMATE_VISION_RADIUS = Math.round((10 * TILE_SIZE * 2) / 3); // ~6.67 tiles vision radius for crewmates (2/3 of imposter vision)
 
-let ground2D: MapData["ground2D"]; // will be set after map loads
-let decal2D: MapData["decal2D"];
+let ground2D: MapData['ground2D']; // will be set after map loads
+let decal2D: MapData['decal2D'];
 
 function isColliding(
   rect1: { x: number; y: number; w: number; h: number },
@@ -135,7 +135,7 @@ function getVisiblePlayers(
 
       // Extended vision radius for gradual fading - use role-specific vision
       const visionRadius =
-        viewer.role === "imposter"
+        viewer.role === 'imposter'
           ? IMPOSTER_VISION_RADIUS
           : CREWMATE_VISION_RADIUS;
       const fadeStartRadius = visionRadius * 0.7; // Start fading at 70%
@@ -164,7 +164,7 @@ function getVisiblePlayers(
 function pauseKillCooldowns(gameInstance: GameInstance): void {
   const now = Date.now();
   for (const player of gameInstance.players) {
-    if (player.role === "imposter" && player.lastKillTime) {
+    if (player.role === 'imposter' && player.lastKillTime) {
       const timeSinceLastKill = now - player.lastKillTime;
       const remainingCooldown = Math.max(0, 30000 - timeSinceLastKill);
 
@@ -181,7 +181,7 @@ function resumeKillCooldowns(gameInstance: GameInstance): void {
   const now = Date.now();
   for (const player of gameInstance.players) {
     if (
-      player.role === "imposter" &&
+      player.role === 'imposter' &&
       player.killCooldownPausedAt &&
       player.pausedCooldownRemaining
     ) {
@@ -265,7 +265,7 @@ function processVotes(
   } else if (targetsWithMaxVotes.length > 1) {
     // Tie between multiple targets (including potentially skip)
     ejectedPlayer = null;
-  } else if (targetsWithMaxVotes[0] === "skip") {
+  } else if (targetsWithMaxVotes[0] === 'skip') {
     // Skip won outright
     ejectedPlayer = null;
   } else {
@@ -277,7 +277,7 @@ function processVotes(
   let ejectedRole: string | null = null;
   let ejectedPlayerName: string | null = null;
 
-  if (ejectedPlayer && ejectedPlayer !== "skip") {
+  if (ejectedPlayer && ejectedPlayer !== 'skip') {
     const player = gameInstance.players.find((p) => p.id === ejectedPlayer);
     if (player) {
       player.isAlive = false;
@@ -296,13 +296,13 @@ function processVotes(
   }
 
   // Resume game
-  gameInstance.gameState = "playing";
+  gameInstance.gameState = 'playing';
   resumeKillCooldowns(gameInstance); // Resume any paused kill cooldowns
   resumeSabotageCooldowns(gameInstance); // Resume any paused sabotage cooldowns
   gameInstance.votes = {};
 
   // Notify players
-  io.to(`game_${roomId}`).emit("votingResults", {
+  io.to(`game_${roomId}`).emit('votingResults', {
     ejectedPlayer: ejectedPlayerName,
     ejectedRole: ejectedRole,
     votes: votes,
@@ -321,16 +321,16 @@ function checkWinConditions(
   roomId: string
 ): void {
   const alivePlayers = gameInstance.players.filter((p) => p.isAlive);
-  const aliveImposters = alivePlayers.filter((p) => p.role === "imposter");
-  const aliveCrewmates = alivePlayers.filter((p) => p.role === "crewmate");
+  const aliveImposters = alivePlayers.filter((p) => p.role === 'imposter');
+  const aliveCrewmates = alivePlayers.filter((p) => p.role === 'crewmate');
 
   let gameOver = false;
-  let winner: "imposters" | "crewmates" | null = null;
+  let winner: 'imposters' | 'crewmates' | null = null;
 
   // Crewmates win if all tasks are completed
   if (roomManager.areAllTasksCompleted(roomId)) {
     gameOver = true;
-    winner = "crewmates";
+    winner = 'crewmates';
     console.log(
       `[DEBUG] Crewmates win by completing all tasks in room ${roomId}`
     );
@@ -341,19 +341,19 @@ function checkWinConditions(
     aliveImposters.length > 0
   ) {
     gameOver = true;
-    winner = "imposters";
+    winner = 'imposters';
   }
   // Crewmates win if all imposters are dead
   else if (aliveImposters.length === 0) {
     gameOver = true;
-    winner = "crewmates";
+    winner = 'crewmates';
   }
 
   if (gameOver) {
     // Get the room to access player names
     const room = roomManager.getRoom(roomId);
 
-    io.to(`game_${roomId}`).emit("gameOver", {
+    io.to(`game_${roomId}`).emit('gameOver', {
       winner: winner,
       alivePlayers: alivePlayers.map((p) => {
         const roomPlayer = room?.players.find((rp) => rp.socketId === p.id);
@@ -380,12 +380,12 @@ function tickRoom(roomId: string, delta: number, io: IOServer): void {
   const gameInstance = roomManager.getGameInstance(roomId);
   const room = roomManager.getRoom(roomId);
 
-  if (!gameInstance || !room || room.status !== "playing") {
+  if (!gameInstance || !room || room.status !== 'playing') {
     return;
   }
 
   // Handle meeting timer (auto-start voting after 1 minute)
-  if (gameInstance.gameState === "voting" && gameInstance.meetingStartTime) {
+  if (gameInstance.gameState === 'voting' && gameInstance.meetingStartTime) {
     const meetingDuration = Date.now() - gameInstance.meetingStartTime;
     if (meetingDuration >= 60000) {
       // 1 minute - process votes even if not everyone has voted
@@ -445,10 +445,10 @@ function tickRoom(roomId: string, delta: number, io: IOServer): void {
         };
       });
 
-      socket.emit("players", playersWithNames);
+      socket.emit('players', playersWithNames);
 
       // Send game state info including tasks
-      socket.emit("gameState", {
+      socket.emit('gameState', {
         state: gameInstance.gameState,
         playerRole: player.role,
         isAlive: player.isAlive,
@@ -477,17 +477,17 @@ export async function initGameServer(
   // Initialize Socket.IO server
   const io = new IOServer(httpServer, {
     cors: {
-      origin: "*", // Allow dev server on different port
+      origin: '*', // Allow dev server on different port
     },
   });
 
-  io.on("connect", (socket) => {
-    console.log("[game] user connected", socket.id);
+  io.on('connect', (socket) => {
+    console.log('[game] user connected', socket.id);
     console.log(`[game] Total connections: ${io.engine.clientsCount}`);
 
     // Join room event
     socket.on(
-      "joinRoom",
+      'joinRoom',
       (data: {
         roomId: string;
         playerToken?: string;
@@ -506,17 +506,17 @@ export async function initGameServer(
         }
 
         if (!room) {
-          socket.emit("error", { message: "Room not found" });
+          socket.emit('error', { message: 'Room not found' });
           return;
         }
 
         // If room is in waiting state, join the waiting room
-        if (room.status === "waiting") {
+        if (room.status === 'waiting') {
           // Try to join the room through room manager (only if not already the creator)
           if (!isCreator) {
             const joinResult = roomManager.joinRoom(roomId, socket.id);
             if (!joinResult.success) {
-              socket.emit("error", { message: joinResult.error });
+              socket.emit('error', { message: joinResult.error });
               return;
             }
           }
@@ -528,7 +528,7 @@ export async function initGameServer(
           const updatedRoom = roomManager.getRoom(roomId);
           if (!updatedRoom) return;
 
-          socket.emit("roomJoined", {
+          socket.emit('roomJoined', {
             roomId: roomId,
             players: updatedRoom.players.map((p) => ({
               id: p.socketId,
@@ -539,13 +539,13 @@ export async function initGameServer(
           });
 
           // Notify others in room
-          socket.to(`room_${roomId}`).emit("playerJoined", {
+          socket.to(`room_${roomId}`).emit('playerJoined', {
             playerId: socket.id,
             playerCount: updatedRoom.players.length,
           });
 
           // Also emit updated room state to all players in room
-          io.to(`room_${roomId}`).emit("roomUpdate", {
+          io.to(`room_${roomId}`).emit('roomUpdate', {
             playerCount: updatedRoom.players.length,
             players: updatedRoom.players.map((p) => ({
               id: p.socketId,
@@ -556,13 +556,13 @@ export async function initGameServer(
         }
 
         // If room is playing, join the game
-        if (room && room.status === "playing") {
+        if (room && room.status === 'playing') {
           console.log(
             `[DEBUG] Player ${socket.id} joining active game ${roomId}`
           );
           const gameInstance = roomManager.getGameInstance(roomId);
           if (!gameInstance) {
-            socket.emit("error", { message: "Game not found" });
+            socket.emit('error', { message: 'Game not found' });
             return;
           }
 
@@ -580,7 +580,7 @@ export async function initGameServer(
               roomId
             );
             console.log(
-              `[DEBUG] Reconnection ${reconnected ? "SUCCESS" : "FAILED"}`
+              `[DEBUG] Reconnection ${reconnected ? 'SUCCESS' : 'FAILED'}`
             );
           } else {
             console.log(
@@ -608,7 +608,7 @@ export async function initGameServer(
                 id: socket.id,
                 x: 56 * 32, // TILE_SIZE
                 y: 14 * 32, // TILE_SIZE
-                role: "crewmate",
+                role: 'crewmate',
                 isAlive: true,
               });
 
@@ -637,13 +637,13 @@ export async function initGameServer(
             }
           }
 
-          socket.emit("gameJoined", { roomId });
-          socket.emit("map", { ground: ground2D, decal: decal2D });
+          socket.emit('gameJoined', { roomId });
+          socket.emit('map', { ground: ground2D, decal: decal2D });
 
           // Send current game state with tasks to the joining player
           const player = gameInstance.players.find((p) => p.id === socket.id);
           if (player) {
-            socket.emit("gameState", {
+            socket.emit('gameState', {
               state: gameInstance.gameState,
               playerRole: player.role,
               isAlive: player.isAlive,
@@ -687,7 +687,7 @@ export async function initGameServer(
               );
               console.log(
                 `[DEBUG] Reconnection (no room) ${
-                  reconnected ? "SUCCESS" : "FAILED"
+                  reconnected ? 'SUCCESS' : 'FAILED'
                 }`
               );
             } else {
@@ -713,7 +713,7 @@ export async function initGameServer(
                   id: socket.id,
                   x: 56 * 32, // TILE_SIZE
                   y: 14 * 32, // TILE_SIZE
-                  role: "crewmate",
+                  role: 'crewmate',
                   isAlive: true,
                 });
 
@@ -742,13 +742,13 @@ export async function initGameServer(
               }
             }
 
-            socket.emit("gameJoined", { roomId });
-            socket.emit("map", { ground: ground2D, decal: decal2D });
+            socket.emit('gameJoined', { roomId });
+            socket.emit('map', { ground: ground2D, decal: decal2D });
 
             // Send current game state with tasks to the joining player
             const player = gameInstance.players.find((p) => p.id === socket.id);
             if (player) {
-              socket.emit("gameState", {
+              socket.emit('gameState', {
                 state: gameInstance.gameState,
                 playerRole: player.role,
                 isAlive: player.isAlive,
@@ -776,7 +776,7 @@ export async function initGameServer(
     );
 
     // Start game event (only host can start)
-    socket.on("startGame", (data: { roomId: string }) => {
+    socket.on('startGame', (data: { roomId: string }) => {
       const { roomId } = data;
       console.log(
         `[DEBUG] Starting game for room ${roomId} initiated by ${socket.id}`
@@ -790,14 +790,14 @@ export async function initGameServer(
           console.log(
             `[DEBUG] Room players at game start: ${room.players
               .map((p) => `${p.socketId}:"${p.name}"`)
-              .join(", ")}`
+              .join(', ')}`
           );
           const startedGameInstance = roomManager.getGameInstance(roomId);
           if (startedGameInstance) {
             console.log(
               `[DEBUG] Game instance players: ${startedGameInstance.players
                 .map((p) => `${p.id}:${p.role}`)
-                .join(", ")}`
+                .join(', ')}`
             );
           }
           // Move all players from waiting room to game room
@@ -805,8 +805,8 @@ export async function initGameServer(
           io.in(`room_${roomId}`).socketsLeave(`room_${roomId}`);
 
           // Notify all players that game started
-          io.to(`game_${roomId}`).emit("gameStarted", { roomId });
-          io.to(`game_${roomId}`).emit("map", {
+          io.to(`game_${roomId}`).emit('gameStarted', { roomId });
+          io.to(`game_${roomId}`).emit('map', {
             ground: ground2D,
             decal: decal2D,
           });
@@ -845,7 +845,7 @@ export async function initGameServer(
                 console.log(
                   `[DEBUG] Emitting gameState to ${player.id} with ${gameStateData.playerTasks.length} tasks`
                 );
-                socket.emit("gameState", gameStateData);
+                socket.emit('gameState', gameStateData);
               } else {
                 console.log(`[DEBUG] Socket not found for player ${player.id}`);
               }
@@ -853,18 +853,18 @@ export async function initGameServer(
           }
         }
       } else {
-        socket.emit("error", { message: result.error });
+        socket.emit('error', { message: result.error });
       }
     });
 
     // Update player name
-    socket.on("updatePlayerName", (data: { name: string }) => {
+    socket.on('updatePlayerName', (data: { name: string }) => {
       const result = roomManager.updatePlayerName(socket.id, data.name);
       if (result.success) {
         const room = roomManager.getRoomByPlayer(socket.id);
-        if (room && room.status === "waiting") {
+        if (room && room.status === 'waiting') {
           // Notify all players in the room about the updated player list
-          io.to(`room_${room.id}`).emit("roomUpdate", {
+          io.to(`room_${room.id}`).emit('roomUpdate', {
             playerCount: room.players.length,
             players: room.players.map((p) => ({
               id: p.socketId,
@@ -873,18 +873,18 @@ export async function initGameServer(
           });
         }
       } else {
-        socket.emit("error", { message: result.error });
+        socket.emit('error', { message: result.error });
       }
     });
 
     // Game inputs
-    socket.on("inputs", (inputs: InputsState) => {
+    socket.on('inputs', (inputs: InputsState) => {
       const room = roomManager.getRoomByPlayer(socket.id);
-      if (room && room.status === "playing") {
+      if (room && room.status === 'playing') {
         const gameInstance = roomManager.getGameInstance(room.id);
         if (gameInstance) {
           // Prevent movement during voting phase
-          if (gameInstance.gameState === "voting") {
+          if (gameInstance.gameState === 'voting') {
             // Clear all inputs during voting
             gameInstance.inputsMap[socket.id] = {
               up: false,
@@ -900,12 +900,12 @@ export async function initGameServer(
     });
 
     // Report dead body
-    socket.on("reportBody", (data: { bodyId: string }) => {
+    socket.on('reportBody', (data: { bodyId: string }) => {
       const room = roomManager.getRoomByPlayer(socket.id);
-      if (!room || room.status !== "playing") return;
+      if (!room || room.status !== 'playing') return;
 
       const gameInstance = roomManager.getGameInstance(room.id);
-      if (!gameInstance || gameInstance.gameState !== "playing") return;
+      if (!gameInstance || gameInstance.gameState !== 'playing') return;
 
       const reporter = gameInstance.players.find((p) => p.id === socket.id);
       if (!reporter || !reporter.isAlive) return;
@@ -920,7 +920,7 @@ export async function initGameServer(
       if (distance > KILL_RADIUS) return;
 
       // Start meeting with immediate voting
-      gameInstance.gameState = "voting";
+      gameInstance.gameState = 'voting';
       gameInstance.meetingStartTime = Date.now();
       pauseKillCooldowns(gameInstance); // Pause any active kill cooldowns
       pauseSabotageCooldowns(gameInstance); // Pause any active sabotage cooldowns
@@ -947,12 +947,12 @@ export async function initGameServer(
       console.log(
         `[DEBUG] Room players: ${room.players
           .map((rp) => `${rp.socketId}:${rp.name}`)
-          .join(", ")}`
+          .join(', ')}`
       );
       console.log(
         `[DEBUG] Game players: ${gameInstance.players
-          .map((p) => `${p.id}:${p.isAlive ? "alive" : "dead"}`)
-          .join(", ")}`
+          .map((p) => `${p.id}:${p.isAlive ? 'alive' : 'dead'}`)
+          .join(', ')}`
       );
 
       const alivePlayers = gameInstance.players
@@ -972,7 +972,7 @@ export async function initGameServer(
         });
 
       // Notify all players - start voting immediately
-      io.to(`game_${room.id}`).emit("meetingStarted", {
+      io.to(`game_${room.id}`).emit('meetingStarted', {
         reportedBy: socket.id,
         bodyId: body.id,
         deadPlayer: body.playerId,
@@ -983,12 +983,12 @@ export async function initGameServer(
     });
 
     // Vote during meeting
-    socket.on("vote", (data: { targetId: string }) => {
+    socket.on('vote', (data: { targetId: string }) => {
       const room = roomManager.getRoomByPlayer(socket.id);
-      if (!room || room.status !== "playing") return;
+      if (!room || room.status !== 'playing') return;
 
       const gameInstance = roomManager.getGameInstance(room.id);
-      if (!gameInstance || gameInstance.gameState !== "voting") return;
+      if (!gameInstance || gameInstance.gameState !== 'voting') return;
 
       const voter = gameInstance.players.find((p) => p.id === socket.id);
       if (!voter || !voter.isAlive) return;
@@ -1004,7 +1004,7 @@ export async function initGameServer(
         processVotes(gameInstance, io, room.id);
       } else {
         // Notify players of vote update
-        io.to(`game_${room.id}`).emit("voteUpdate", {
+        io.to(`game_${room.id}`).emit('voteUpdate', {
           votes: gameInstance.votes,
           votedCount: votedPlayers.length,
           totalCount: alivePlayers.length,
@@ -1013,15 +1013,15 @@ export async function initGameServer(
     });
 
     // Kill functionality (imposters only)
-    socket.on("kill", () => {
+    socket.on('kill', () => {
       const room = roomManager.getRoomByPlayer(socket.id);
-      if (!room || room.status !== "playing") return;
+      if (!room || room.status !== 'playing') return;
 
       const gameInstance = roomManager.getGameInstance(room.id);
-      if (!gameInstance || gameInstance.gameState !== "playing") return;
+      if (!gameInstance || gameInstance.gameState !== 'playing') return;
 
       const killer = gameInstance.players.find((p) => p.id === socket.id);
-      if (!killer || !killer.isAlive || killer.role !== "imposter") return;
+      if (!killer || !killer.isAlive || killer.role !== 'imposter') return;
 
       const now = Date.now();
       const timeSinceGameStart = now - gameInstance.gameStartTime;
@@ -1031,7 +1031,7 @@ export async function initGameServer(
         killer.pausedCooldownRemaining &&
         killer.pausedCooldownRemaining > 0
       ) {
-        socket.emit("killCooldown", {
+        socket.emit('killCooldown', {
           timeRemaining: killer.pausedCooldownRemaining,
         });
         return;
@@ -1043,7 +1043,7 @@ export async function initGameServer(
 
       // Check cooldowns: no kills in first 30 seconds, then 30 second cooldown between kills
       if (timeSinceGameStart < 30000 || timeSinceLastKill < 30000) {
-        socket.emit("killCooldown", {
+        socket.emit('killCooldown', {
           timeRemaining: Math.max(
             30000 - timeSinceGameStart,
             30000 - timeSinceLastKill
@@ -1059,7 +1059,7 @@ export async function initGameServer(
         if (
           other.id === killer.id ||
           !other.isAlive ||
-          other.role === "imposter"
+          other.role === 'imposter'
         )
           continue;
         const dist = Math.sqrt(
@@ -1093,7 +1093,7 @@ export async function initGameServer(
         checkWinConditions(gameInstance, io, room.id);
 
         // Emit to all players in this game room
-        io.to(`game_${room.id}`).emit("playerKilled", {
+        io.to(`game_${room.id}`).emit('playerKilled', {
           victimId: closestVictim.id,
           deadBody: deadBody,
           killerId: killer.id,
@@ -1103,15 +1103,15 @@ export async function initGameServer(
     });
 
     // Sabotage functionality (imposters only)
-    socket.on("sabotage", async () => {
+    socket.on('sabotage', async () => {
       const room = roomManager.getRoomByPlayer(socket.id);
-      if (!room || room.status !== "playing") return;
+      if (!room || room.status !== 'playing') return;
 
       const gameInstance = roomManager.getGameInstance(room.id);
-      if (!gameInstance || gameInstance.gameState !== "playing") return;
+      if (!gameInstance || gameInstance.gameState !== 'playing') return;
 
       const imposter = gameInstance.players.find((p) => p.id === socket.id);
-      if (!imposter || !imposter.isAlive || imposter.role !== "imposter")
+      if (!imposter || !imposter.isAlive || imposter.role !== 'imposter')
         return;
 
       const now = Date.now();
@@ -1119,9 +1119,9 @@ export async function initGameServer(
 
       // Cannot sabotage if another sabotage is already active
       if (gameInstance.sabotageActive) {
-        socket.emit("sabotageCooldown", {
+        socket.emit('sabotageCooldown', {
           timeRemaining: 999999, // Large number to indicate it's disabled
-          reason: "Sabotage already active",
+          reason: 'Sabotage already active',
         });
         return;
       }
@@ -1131,7 +1131,7 @@ export async function initGameServer(
         gameInstance.pausedSabotageCooldownRemaining &&
         gameInstance.pausedSabotageCooldownRemaining > 0
       ) {
-        socket.emit("sabotageCooldown", {
+        socket.emit('sabotageCooldown', {
           timeRemaining: gameInstance.pausedSabotageCooldownRemaining,
         });
         return;
@@ -1143,7 +1143,7 @@ export async function initGameServer(
 
       // Check cooldowns: no sabotage in first 30 seconds, then 60 second cooldown between sabotages
       if (timeSinceGameStart < 30000 || timeSinceLastSabotage < 60000) {
-        socket.emit("sabotageCooldown", {
+        socket.emit('sabotageCooldown', {
           timeRemaining: Math.max(
             30000 - timeSinceGameStart,
             60000 - timeSinceLastSabotage
@@ -1156,9 +1156,9 @@ export async function initGameServer(
         // Load questions from questions.json
         const questionsPath = path.join(
           __dirname,
-          "../../frontend/src/questions.json"
+          '../../frontend/src/data/questions.json'
         );
-        const questionsData = await fs.readFile(questionsPath, "utf-8");
+        const questionsData = await fs.readFile(questionsPath, 'utf-8');
         const questions = JSON.parse(questionsData);
 
         // Get all questions from all weeks and lectures
@@ -1176,7 +1176,7 @@ export async function initGameServer(
         // Store the current question for this player
         gameInstance.currentQuestions[socket.id] = randomQuestion;
 
-        socket.emit("sabotageQuestion", {
+        socket.emit('sabotageQuestion', {
           question: randomQuestion.question,
           options: randomQuestion.options,
           // Don't send the correct answer to the client
@@ -1184,21 +1184,21 @@ export async function initGameServer(
 
         console.log(`[DEBUG] Sent sabotage question to ${socket.id}`);
       } catch (error) {
-        console.error("[DEBUG] Error loading sabotage questions:", error);
-        socket.emit("error", { message: "Failed to load sabotage question" });
+        console.error('[DEBUG] Error loading sabotage questions:', error);
+        socket.emit('error', { message: 'Failed to load sabotage question' });
       }
     });
 
     // Sabotage completion event (submit answer)
-    socket.on("completeSabotage", async (data: { answer: string }) => {
+    socket.on('completeSabotage', async (data: { answer: string }) => {
       const room = roomManager.getRoomByPlayer(socket.id);
-      if (!room || room.status !== "playing") return;
+      if (!room || room.status !== 'playing') return;
 
       const gameInstance = roomManager.getGameInstance(room.id);
-      if (!gameInstance || gameInstance.gameState !== "playing") return;
+      if (!gameInstance || gameInstance.gameState !== 'playing') return;
 
       const imposter = gameInstance.players.find((p) => p.id === socket.id);
-      if (!imposter || !imposter.isAlive || imposter.role !== "imposter")
+      if (!imposter || !imposter.isAlive || imposter.role !== 'imposter')
         return;
 
       try {
@@ -1206,8 +1206,8 @@ export async function initGameServer(
         const currentQuestion = gameInstance.currentQuestions[socket.id];
 
         if (!currentQuestion) {
-          socket.emit("error", {
-            message: "No active sabotage question found",
+          socket.emit('error', {
+            message: 'No active sabotage question found',
           });
           return;
         }
@@ -1218,7 +1218,7 @@ export async function initGameServer(
           gameInstance.sabotageActive = true;
           gameInstance.lastSabotageTime = Date.now();
 
-          socket.emit("sabotageCompleted", {
+          socket.emit('sabotageCompleted', {
             correct: true,
           });
 
@@ -1226,36 +1226,36 @@ export async function initGameServer(
           delete gameInstance.currentQuestions[socket.id];
 
           // Notify all players about sabotage activation
-          io.to(`game_${room.id}`).emit("sabotageActivated", {
-            sabotageType: "lights",
+          io.to(`game_${room.id}`).emit('sabotageActivated', {
+            sabotageType: 'lights',
             repairLocation: REPAIR_LOCATION,
           });
 
           console.log(`[DEBUG] Sabotage activated by ${socket.id}`);
         } else {
           // Wrong answer
-          socket.emit("sabotageCompleted", {
+          socket.emit('sabotageCompleted', {
             correct: false,
             correctAnswer: `Correct answer: ${currentQuestion.answer}`,
           });
         }
       } catch (error) {
-        console.error("[DEBUG] Error validating sabotage answer:", error);
-        socket.emit("error", { message: "Failed to validate sabotage answer" });
+        console.error('[DEBUG] Error validating sabotage answer:', error);
+        socket.emit('error', { message: 'Failed to validate sabotage answer' });
       }
     });
 
     // Repair attempt event (for fixing sabotage)
-    socket.on("attemptRepair", async () => {
+    socket.on('attemptRepair', async () => {
       const room = roomManager.getRoomByPlayer(socket.id);
-      if (!room || room.status !== "playing") return;
+      if (!room || room.status !== 'playing') return;
 
       const gameInstance = roomManager.getGameInstance(room.id);
-      if (!gameInstance || gameInstance.gameState !== "playing") return;
+      if (!gameInstance || gameInstance.gameState !== 'playing') return;
 
       // Only allow repair if sabotage is active
       if (!gameInstance.sabotageActive) {
-        socket.emit("error", { message: "No sabotage to repair" });
+        socket.emit('error', { message: 'No sabotage to repair' });
         return;
       }
 
@@ -1271,7 +1271,7 @@ export async function initGameServer(
       );
 
       if (distance > TILE_SIZE * 1.5) {
-        socket.emit("error", { message: "Too far from repair location" });
+        socket.emit('error', { message: 'Too far from repair location' });
         return;
       }
 
@@ -1279,9 +1279,9 @@ export async function initGameServer(
         // Load questions from questions.json
         const questionsPath = path.join(
           __dirname,
-          "../../frontend/src/questions.json"
+          '../../frontend/src/data/questions.json'
         );
-        const questionsData = await fs.readFile(questionsPath, "utf-8");
+        const questionsData = await fs.readFile(questionsPath, 'utf-8');
         const questions = JSON.parse(questionsData);
 
         // Get all questions from all weeks and lectures
@@ -1299,7 +1299,7 @@ export async function initGameServer(
         // Store the current question for this player
         gameInstance.currentQuestions[socket.id] = randomQuestion;
 
-        socket.emit("repairQuestion", {
+        socket.emit('repairQuestion', {
           question: randomQuestion.question,
           options: randomQuestion.options,
           // Don't send the correct answer to the client
@@ -1307,22 +1307,22 @@ export async function initGameServer(
 
         console.log(`[DEBUG] Sent repair question to ${socket.id}`);
       } catch (error) {
-        console.error("[DEBUG] Error loading repair questions:", error);
-        socket.emit("error", { message: "Failed to load repair question" });
+        console.error('[DEBUG] Error loading repair questions:', error);
+        socket.emit('error', { message: 'Failed to load repair question' });
       }
     });
 
     // Repair completion event (submit answer)
-    socket.on("completeRepair", async (data: { answer: string }) => {
+    socket.on('completeRepair', async (data: { answer: string }) => {
       const room = roomManager.getRoomByPlayer(socket.id);
-      if (!room || room.status !== "playing") return;
+      if (!room || room.status !== 'playing') return;
 
       const gameInstance = roomManager.getGameInstance(room.id);
-      if (!gameInstance || gameInstance.gameState !== "playing") return;
+      if (!gameInstance || gameInstance.gameState !== 'playing') return;
 
       // Only allow repair if sabotage is active
       if (!gameInstance.sabotageActive) {
-        socket.emit("error", { message: "No sabotage to repair" });
+        socket.emit('error', { message: 'No sabotage to repair' });
         return;
       }
 
@@ -1334,7 +1334,7 @@ export async function initGameServer(
         const currentQuestion = gameInstance.currentQuestions[socket.id];
 
         if (!currentQuestion) {
-          socket.emit("error", { message: "No active repair question found" });
+          socket.emit('error', { message: 'No active repair question found' });
           return;
         }
 
@@ -1343,7 +1343,7 @@ export async function initGameServer(
           // Correct answer! Fix the sabotage
           gameInstance.sabotageActive = false;
 
-          socket.emit("repairCompleted", {
+          socket.emit('repairCompleted', {
             correct: true,
           });
 
@@ -1351,34 +1351,34 @@ export async function initGameServer(
           delete gameInstance.currentQuestions[socket.id];
 
           // Notify all players about sabotage being fixed
-          io.to(`game_${room.id}`).emit("sabotageFixed", {
+          io.to(`game_${room.id}`).emit('sabotageFixed', {
             repairedBy: socket.id,
           });
 
           console.log(`[DEBUG] Sabotage repaired by ${socket.id}`);
         } else {
           // Wrong answer
-          socket.emit("repairCompleted", {
+          socket.emit('repairCompleted', {
             correct: false,
             correctAnswer: `Correct answer: ${currentQuestion.answer}`,
           });
         }
       } catch (error) {
-        console.error("[DEBUG] Error validating repair answer:", error);
-        socket.emit("error", { message: "Failed to validate repair answer" });
+        console.error('[DEBUG] Error validating repair answer:', error);
+        socket.emit('error', { message: 'Failed to validate repair answer' });
       }
     });
 
     // Task attempt event (get a random question)
-    socket.on("attemptTask", async (data: { taskLocation: TaskLocation }) => {
+    socket.on('attemptTask', async (data: { taskLocation: TaskLocation }) => {
       const room = roomManager.getRoomByPlayer(socket.id);
-      if (!room || room.status !== "playing") return;
+      if (!room || room.status !== 'playing') return;
 
       const gameInstance = roomManager.getGameInstance(room.id);
-      if (!gameInstance || gameInstance.gameState !== "playing") return;
+      if (!gameInstance || gameInstance.gameState !== 'playing') return;
 
       const player = gameInstance.players.find((p) => p.id === socket.id);
-      if (!player || player.role !== "crewmate") return;
+      if (!player || player.role !== 'crewmate') return;
 
       // Check if player is at the task location (within reasonable distance)
       const TILE_SIZE = 32;
@@ -1389,7 +1389,7 @@ export async function initGameServer(
       );
 
       if (distance > TILE_SIZE * 1.5) {
-        socket.emit("error", { message: "Too far from task location" });
+        socket.emit('error', { message: 'Too far from task location' });
         return;
       }
 
@@ -1403,7 +1403,7 @@ export async function initGameServer(
       );
 
       if (!assignedTask) {
-        socket.emit("error", { message: "No task assigned at this location" });
+        socket.emit('error', { message: 'No task assigned at this location' });
         return;
       }
 
@@ -1411,9 +1411,9 @@ export async function initGameServer(
         // Load questions from questions.json
         const questionsPath = path.join(
           __dirname,
-          "../../frontend/src/questions.json"
+          '../../frontend/src/data/questions.json'
         );
-        const questionsData = await fs.readFile(questionsPath, "utf-8");
+        const questionsData = await fs.readFile(questionsPath, 'utf-8');
         const questions = JSON.parse(questionsData);
 
         // Get all questions from all weeks and lectures
@@ -1431,7 +1431,7 @@ export async function initGameServer(
         // Store the current question for this player
         gameInstance.currentQuestions[socket.id] = randomQuestion;
 
-        socket.emit("taskQuestion", {
+        socket.emit('taskQuestion', {
           taskLocation: data.taskLocation,
           question: randomQuestion.question,
           options: randomQuestion.options,
@@ -1442,30 +1442,30 @@ export async function initGameServer(
           `[DEBUG] Sent task question to ${socket.id} at (${data.taskLocation.x},${data.taskLocation.y})`
         );
       } catch (error) {
-        console.error("[DEBUG] Error loading questions:", error);
-        socket.emit("error", { message: "Failed to load task question" });
+        console.error('[DEBUG] Error loading questions:', error);
+        socket.emit('error', { message: 'Failed to load task question' });
       }
     });
 
     // Task completion event (submit answer)
     socket.on(
-      "completeTask",
+      'completeTask',
       async (data: { taskLocation: TaskLocation; answer: string }) => {
         const room = roomManager.getRoomByPlayer(socket.id);
-        if (!room || room.status !== "playing") return;
+        if (!room || room.status !== 'playing') return;
 
         const gameInstance = roomManager.getGameInstance(room.id);
-        if (!gameInstance || gameInstance.gameState !== "playing") return;
+        if (!gameInstance || gameInstance.gameState !== 'playing') return;
 
         const player = gameInstance.players.find((p) => p.id === socket.id);
-        if (!player || player.role !== "crewmate") return;
+        if (!player || player.role !== 'crewmate') return;
 
         try {
           // Get the current question for this player
           const currentQuestion = gameInstance.currentQuestions[socket.id];
 
           if (!currentQuestion) {
-            socket.emit("error", { message: "No active question found" });
+            socket.emit('error', { message: 'No active question found' });
             return;
           }
 
@@ -1478,7 +1478,7 @@ export async function initGameServer(
             );
 
             if (result.success) {
-              socket.emit("taskCompleted", {
+              socket.emit('taskCompleted', {
                 taskLocation: data.taskLocation,
                 correct: true,
               });
@@ -1487,7 +1487,7 @@ export async function initGameServer(
               delete gameInstance.currentQuestions[socket.id];
 
               // Notify all players about task completion
-              io.to(`game_${room.id}`).emit("taskCompletedByPlayer", {
+              io.to(`game_${room.id}`).emit('taskCompletedByPlayer', {
                 playerId: socket.id,
                 taskLocation: data.taskLocation,
               });
@@ -1501,28 +1501,28 @@ export async function initGameServer(
                 checkWinConditions(gameInstance, io, room.id);
               }
             } else {
-              socket.emit("error", { message: result.error });
+              socket.emit('error', { message: result.error });
             }
           } else {
             // Wrong answer - send the correct answer for this specific question
-            socket.emit("taskCompleted", {
+            socket.emit('taskCompleted', {
               taskLocation: data.taskLocation,
               correct: false,
               correctAnswer: `Correct answer: ${currentQuestion.answer}`,
             });
           }
         } catch (error) {
-          console.error("[DEBUG] Error validating task answer:", error);
-          socket.emit("error", { message: "Failed to validate answer" });
+          console.error('[DEBUG] Error validating task answer:', error);
+          socket.emit('error', { message: 'Failed to validate answer' });
         }
       }
     );
 
     // Return to lobby functionality
-    socket.on("returnToLobby", () => {
+    socket.on('returnToLobby', () => {
       const room = roomManager.getRoomByPlayer(socket.id);
-      if (!room || room.status !== "playing") {
-        socket.emit("error", { message: "Not in an active game" });
+      if (!room || room.status !== 'playing') {
+        socket.emit('error', { message: 'Not in an active game' });
         return;
       }
 
@@ -1540,7 +1540,7 @@ export async function initGameServer(
         const updatedRoom = roomManager.getRoom(room.id);
         if (updatedRoom) {
           // Notify all players to return to lobby
-          io.to(`room_${room.id}`).emit("returnToLobby", {
+          io.to(`room_${room.id}`).emit('returnToLobby', {
             roomId: room.id,
             players: updatedRoom.players.map((p) => ({
               id: p.socketId,
@@ -1555,7 +1555,7 @@ export async function initGameServer(
           );
         }
       } else {
-        socket.emit("error", { message: result.error });
+        socket.emit('error', { message: result.error });
       }
     });
 
@@ -1566,13 +1566,13 @@ export async function initGameServer(
 
       console.log(
         `[DEBUG] Player ${socketId} leaving, room status: ${
-          room?.status || "no room"
-        }, room id: ${room?.id || "none"}`
+          room?.status || 'no room'
+        }, room id: ${room?.id || 'none'}`
       );
 
       // Handle active games differently - actually remove the player
       // BUT only if the game has been running for more than 5 seconds to avoid race conditions during room creation
-      if (room && room.status === "playing") {
+      if (room && room.status === 'playing') {
         const gameInstance = roomManager.getGameInstance(room.id);
         const gameRunningTime = gameInstance
           ? Date.now() - gameInstance.gameStartTime
@@ -1589,7 +1589,7 @@ export async function initGameServer(
 
           if (result.success) {
             // Notify remaining players that this player left the game
-            io.to(`game_${room.id}`).emit("playerLeftGame", {
+            io.to(`game_${room.id}`).emit('playerLeftGame', {
               playerId: socketId,
             });
 
@@ -1619,17 +1619,17 @@ export async function initGameServer(
       roomManager.leaveRoom(socketId);
 
       // If there was a room and it's still in waiting status, notify remaining players
-      if (room && room.status === "waiting") {
+      if (room && room.status === 'waiting') {
         const updatedRoom = roomManager.getRoom(room.id);
         if (updatedRoom && updatedRoom.players.length > 0) {
           // Notify all remaining players in the room about the updated player list
-          io.to(`room_${room.id}`).emit("playerLeft", {
+          io.to(`room_${room.id}`).emit('playerLeft', {
             playerId: socketId,
             playerCount: updatedRoom.players.length,
           });
 
           // Send updated room state
-          io.to(`room_${room.id}`).emit("roomUpdate", {
+          io.to(`room_${room.id}`).emit('roomUpdate', {
             playerCount: updatedRoom.players.length,
             players: updatedRoom.players.map((p) => ({
               id: p.socketId,
@@ -1641,13 +1641,13 @@ export async function initGameServer(
     };
 
     // Handle explicit leave room
-    socket.on("leaveRoom", () => {
+    socket.on('leaveRoom', () => {
       handlePlayerLeave(socket.id);
     });
 
-    socket.on("disconnect", () => {
+    socket.on('disconnect', () => {
       handlePlayerLeave(socket.id);
-      console.log("[game] user disconnected", socket.id);
+      console.log('[game] user disconnected', socket.id);
       console.log(`[game] Total connections: ${io.engine.clientsCount}`);
     });
   });
@@ -1660,7 +1660,7 @@ export async function initGameServer(
 
     // Tick all active game rooms
     for (const room of roomManager.getAllRooms()) {
-      if (room.status === "playing") {
+      if (room.status === 'playing') {
         tickRoom(room.id, delta, io);
       }
     }
@@ -1669,9 +1669,9 @@ export async function initGameServer(
   }, 1000 / TICK_RATE);
 
   // Optionally expose an endpoint for health check
-  app.get("/game/health", (_req, res) => {
-    res.send("ok");
+  app.get('/game/health', (_req, res) => {
+    res.send('ok');
   });
 
-  console.log("[game] Game server initialised");
+  console.log('[game] Game server initialised');
 }

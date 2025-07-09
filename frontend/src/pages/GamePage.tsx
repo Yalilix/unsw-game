@@ -7,6 +7,18 @@ import {
   unmuteLocalAudio,
 } from '../components/Agora';
 
+// Extend Window interface to include our custom properties
+declare global {
+  interface Window {
+    BACKEND_URL: string;
+    ROOM_ID: string;
+    attemptSabotage?: () => void;
+    attemptKill?: () => void;
+    attemptTask?: () => void;
+    attemptReport?: () => void;
+  }
+}
+
 export function GamePage() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
@@ -47,8 +59,8 @@ export function GamePage() {
       import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
     // Make backend URL and room ID available to game.js
-    (window as any).BACKEND_URL = backendUrl;
-    (window as any).ROOM_ID = roomId;
+    window.BACKEND_URL = backendUrl;
+    window.ROOM_ID = roomId;
 
     // Load in sequence so that socket.io is available before game.js executes
     (async () => {
@@ -119,7 +131,7 @@ export function GamePage() {
           id="sabotageButton"
           className="px-4 py-2 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 transition-colors shadow-lg cursor-pointer"
           style={{ display: 'none' }}
-          onClick={() => (window as any).attemptSabotage?.()}
+          onClick={() => window.attemptSabotage?.()}
         >
           SABOTAGE
         </button>
@@ -129,17 +141,17 @@ export function GamePage() {
           id="killButton"
           className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-lg cursor-pointer"
           style={{ display: 'none' }}
-          onClick={() => (window as any).attemptKill?.()}
+          onClick={() => window.attemptKill?.()}
         >
           KILL
         </button>
 
-        {/* Task Button (only for crewmates) */}
+        {/* Task Button (only for students) */}
         <button
           id="taskButton"
           className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg cursor-pointer"
           style={{ display: 'none' }}
-          onClick={() => (window as any).attemptTask?.()}
+          onClick={() => window.attemptTask?.()}
         >
           DO TASK
         </button>
@@ -149,7 +161,7 @@ export function GamePage() {
           id="reportButton"
           className="px-4 py-2 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-700 transition-colors shadow-lg cursor-pointer"
           style={{ display: 'none' }}
-          onClick={() => (window as any).attemptReport?.()}
+          onClick={() => window.attemptReport?.()}
         >
           REPORT
         </button>

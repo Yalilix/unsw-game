@@ -4,29 +4,29 @@ A multiplayer Among Us-inspired game set on a university campus where students m
 
 ## 🎮 Game Description
 
-**SUS1511** is an online multiplayer social deduction game for 4-10 players. Players are divided into two teams:
+**SUS1511** is an online multiplayer social deduction game for 1-10 players. Players are divided into two teams:
 
-- **Students (Crewmates)**: Answer course questions correctly to complete tasks around campus and save the university
-- **Imposters**: Eliminate students and sabotage their mission to take over the campus
+-   **Students (Crewmates)**: Answer course questions correctly to complete tasks around campus and save the university
+-   **Imposters**: Eliminate students and sabotage their mission to take over the campus
 
 Students win by completing all tasks or voting out all imposters. Imposters win by eliminating enough students or preventing task completion.
 
 ## 🚀 Features
 
-- **Real-time multiplayer gameplay** with 4-10 players
-- **Educational twist** - tasks involve answering COMP1511 course questions
-- **Cross-platform support** - works on desktop and mobile devices
-- **Mobile-optimized controls** - touch joystick for mobile players
-- **Fog of war vision system** - limited vision creates suspense
-- **Emergency meetings and voting** - discuss and vote out suspicious players
-- **Responsive design** - adapts to different screen sizes
+-   **Real-time multiplayer gameplay** with 1-10 players
+-   **Educational twist** - tasks involve answering COMP1511 course questions
+-   **Cross-platform support** - works on desktop and mobile devices
+-   **Mobile-optimized controls** - touch joystick for mobile players
+-   **Fog of war vision system** - limited vision creates suspense
+-   **Emergency meetings and voting** - discuss and vote out suspicious players
+-   **Responsive design** - adapts to different screen sizes
 
 ## 🛠️ Setup & Installation
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
-- npm or yarn
+-   Node.js (v16 or higher)
+-   npm or yarn
 
 ### Backend Setup
 

@@ -1,4 +1,4 @@
-import { Server as IOServer, Socket } from "socket.io";
+import { Server as IOServer, Socket } from 'socket.io';
 
 export interface RoomPlayer {
 	id: string;

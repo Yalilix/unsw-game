@@ -35,7 +35,7 @@ const TILE_SIZE = 32;
 const TILE_COLLISION_SIZE = 32; // Smaller collision box for tiles (4px padding each side)
 const KILL_RADIUS = PLAYER_SIZE * 3; // larger proximity for teleport
 const IMPOSTER_VISION_RADIUS = 10 * TILE_SIZE; // 10 tiles vision radius for imposters
-const CREWMATE_VISION_RADIUS = Math.round((10 * TILE_SIZE * 2) / 3); // ~6.67 tiles vision radius for crewmates (2/3 of imposter vision)
+const STUDENT_VISION_RADIUS = Math.round((10 * TILE_SIZE * 2) / 3); // ~6.67 tiles vision radius for students (2/3 of imposter vision)
 
 let ground2D: MapData["ground2D"]; // will be set after map loads
 let decal2D: MapData["decal2D"];

@@ -8,6 +8,18 @@ import {
 } from "../components/Agora";
 import { useSocket } from "../hooks/SocketContext";
 
+// Extend Window interface to include our custom properties
+declare global {
+  interface Window {
+    BACKEND_URL: string;
+    ROOM_ID: string;
+    attemptSabotage?: () => void;
+    attemptKill?: () => void;
+    attemptTask?: () => void;
+    attemptReport?: () => void;
+  }
+}
+
 export function GamePage() {
 	const { roomId } = useParams<{ roomId: string }>();
 	const navigate = useNavigate();

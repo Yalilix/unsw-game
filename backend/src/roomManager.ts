@@ -22,6 +22,7 @@ export interface GamePlayer {
 	y: number;
 	role: "student" | "imposter";
 	isAlive: boolean;
+	color: string; // Player color for consistent display across all clients
 	lastKillTime?: number;
 	killCooldownPausedAt?: number; // When voting started while cooldown was active
 	pausedCooldownRemaining?: number; // How much cooldown was left when paused
@@ -94,6 +95,56 @@ class RoomManager {
 	private rooms: Map<string, Room> = new Map();
 	private gameInstances: Map<string, GameInstance> = new Map();
 	private playerToRoom: Map<string, string> = new Map();
+
+	// Player color assignment system for consistent colors across all clients
+	private playerColorAssignments: Map<string, Map<string, string>> =
+		new Map(); // roomId -> Map<playerId, color>
+	private nextColorIndex: Map<string, number> = new Map(); // roomId -> next color index
+
+	// Available player colors (same as frontend)
+	private readonly PLAYER_COLORS = [
+		"#FF4B4B", // red
+		"#4B8BFF", // blue
+		"#FFD93D", // yellow
+		"#4BFF4B", // green
+		"#FF4BFF", // magenta
+		"#FF914B", // orange
+		"#4BFFD9", // cyan
+		"#B84BFF", // purple
+		"#A0FF4B", // lime
+		"#FF4B8B", // pink
+	];
+
+	// Get or assign a stable color for a player
+	public getPlayerColor(roomId: string, playerId: string): string {
+		const roomKey = `${roomId}_colors`;
+
+		// Initialize color assignments for this room if not exists
+		if (!this.playerColorAssignments.has(roomKey)) {
+			this.playerColorAssignments.set(roomKey, new Map());
+			this.nextColorIndex.set(roomKey, 0);
+		}
+
+		const colorMap = this.playerColorAssignments.get(roomKey)!;
+		const nextIndex = this.nextColorIndex.get(roomKey)!;
+
+		// Check if player already has a color assigned
+		if (colorMap.has(playerId)) {
+			return colorMap.get(playerId)!;
+		}
+
+		// Assign next available color
+		const colorIndex = nextIndex % this.PLAYER_COLORS.length;
+		const color = this.PLAYER_COLORS[colorIndex];
+
+		colorMap.set(playerId, color);
+		this.nextColorIndex.set(roomKey, nextIndex + 1);
+
+		console.log(
+			`[DEBUG] Assigned color ${color} to player ${playerId} in room ${roomId}`
+		);
+		return color;
+	}
 
 	// Generate a random 6-character room ID
 	generateRoomId(): string {
@@ -258,6 +309,7 @@ class RoomManager {
 				y: 14 * 32, // TILE_SIZE
 				role: role,
 				isAlive: true,
+				color: this.getPlayerColor(roomId, p.socketId),
 			};
 		});
 

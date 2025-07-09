@@ -1,4 +1,4 @@
-import { Server as IOServer, Socket } from 'socket.io';
+import { Server as IOServer, Socket } from "socket.io";
 
 export interface RoomPlayer {
 	id: string;
@@ -261,7 +261,7 @@ class RoomManager {
 			};
 		});
 
-		// Assign tasks to crewmates (5 random tasks from the 7 available)
+		// Assign tasks to students (5 random tasks from the 7 available)
 		const playerTasks: Record<string, PlayerTask[]> = {};
 		playersWithRoles.forEach((player) => {
 			if (player.role === "student") {
@@ -673,7 +673,7 @@ class RoomManager {
 		if (!player || player.role !== "student") {
 			return {
 				success: false,
-				error: "Only crewmates can complete tasks",
+				error: "Only students can complete tasks",
 			};
 		}
 
@@ -712,12 +712,12 @@ class RoomManager {
 		const gameInstance = this.gameInstances.get(roomId);
 		if (!gameInstance) return false;
 
-		// Get all crewmates (alive and dead)
-		const crewmates = gameInstance.players.filter(
+		// Get all students (alive and dead)
+		const students = gameInstance.players.filter(
 			(p) => p.role === "student"
 		);
 
-		for (const student of crewmates) {
+		for (const student of students) {
 			const tasks = gameInstance.playerTasks[student.id] || [];
 			const incompleteTasks = tasks.filter((task) => !task.completed);
 			if (incompleteTasks.length > 0) {

@@ -324,31 +324,31 @@ function checkWinConditions(
 ): void {
 	const alivePlayers = gameInstance.players.filter((p) => p.isAlive);
 	const aliveImposters = alivePlayers.filter((p) => p.role === "imposter");
-	const aliveCrewmates = alivePlayers.filter((p) => p.role === "student");
+	const aliveStudents = alivePlayers.filter((p) => p.role === "student");
 
 	let gameOver = false;
-	let winner: "imposters" | "crewmates" | null = null;
+	let winner: "imposters" | "students" | null = null;
 
-	// Crewmates win if all tasks are completed
+	// Students win if all tasks are completed
 	if (roomManager.areAllTasksCompleted(roomId)) {
 		gameOver = true;
-		winner = "crewmates";
+		winner = "students";
 		console.log(
-			`[DEBUG] Crewmates win by completing all tasks in room ${roomId}`
+			`[DEBUG] Students win by completing all tasks in room ${roomId}`
 		);
 	}
-	// Imposters win if they equal or outnumber crewmates
+	// Imposters win if they equal or outnumber students
 	else if (
-		aliveImposters.length >= aliveCrewmates.length &&
+		aliveImposters.length >= aliveStudents.length &&
 		aliveImposters.length > 0
 	) {
 		gameOver = true;
 		winner = "imposters";
 	}
-	// Crewmates win if all imposters are dead
+	// Students win if all imposters are dead
 	else if (aliveImposters.length === 0) {
 		gameOver = true;
-		winner = "crewmates";
+		winner = "students";
 	}
 
 	if (gameOver) {

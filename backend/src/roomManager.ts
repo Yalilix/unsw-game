@@ -20,7 +20,7 @@ export interface GamePlayer {
 	id: string;
 	x: number;
 	y: number;
-	role: "crewmate" | "imposter";
+	role: "student" | "imposter";
 	isAlive: boolean;
 	lastKillTime?: number;
 	killCooldownPausedAt?: number; // When voting started while cooldown was active
@@ -246,8 +246,8 @@ class RoomManager {
 			() => Math.random() - 0.5
 		);
 		const playersWithRoles = shuffledPlayers.map((p, index) => {
-			const role = (index < imposterCount ? "imposter" : "crewmate") as
-				| "crewmate"
+			const role = (index < imposterCount ? "imposter" : "student") as
+				| "student"
 				| "imposter";
 			console.log(
 				`[DEBUG] Assigning role to ${p.socketId} ("${p.name}"): ${role}`
@@ -264,7 +264,7 @@ class RoomManager {
 		// Assign tasks to crewmates (5 random tasks from the 7 available)
 		const playerTasks: Record<string, PlayerTask[]> = {};
 		playersWithRoles.forEach((player) => {
-			if (player.role === "crewmate") {
+			if (player.role === "student") {
 				// Shuffle all task locations and pick first 5
 				const shuffledTasks = [...TASK_LOCATIONS].sort(
 					() => Math.random() - 0.5
@@ -277,7 +277,7 @@ class RoomManager {
 					}));
 				playerTasks[player.id] = assignedTasks;
 				console.log(
-					`[DEBUG] Assigned tasks to crewmate ${
+					`[DEBUG] Assigned tasks to student ${
 						player.id
 					}: ${assignedTasks
 						.map((t) => `(${t.location.x},${t.location.y})`)
@@ -670,7 +670,7 @@ class RoomManager {
 		}
 
 		const player = gameInstance.players.find((p) => p.id === socketId);
-		if (!player || player.role !== "crewmate") {
+		if (!player || player.role !== "student") {
 			return {
 				success: false,
 				error: "Only crewmates can complete tasks",
@@ -701,31 +701,31 @@ class RoomManager {
 			`[DEBUG] Player ${socketId} completed task at (${taskLocation.x},${taskLocation.y})`
 		);
 
-		// Check if all crewmate tasks are completed
+		// Check if all student tasks are completed
 		const allTasksCompleted = this.areAllTasksCompleted(roomId);
 
 		return { success: true, allTasksCompleted };
 	}
 
-	// Check if all crewmate tasks are completed
+	// Check if all student tasks are completed
 	areAllTasksCompleted(roomId: string): boolean {
 		const gameInstance = this.gameInstances.get(roomId);
 		if (!gameInstance) return false;
 
 		// Get all crewmates (alive and dead)
 		const crewmates = gameInstance.players.filter(
-			(p) => p.role === "crewmate"
+			(p) => p.role === "student"
 		);
 
-		for (const crewmate of crewmates) {
-			const tasks = gameInstance.playerTasks[crewmate.id] || [];
+		for (const student of crewmates) {
+			const tasks = gameInstance.playerTasks[student.id] || [];
 			const incompleteTasks = tasks.filter((task) => !task.completed);
 			if (incompleteTasks.length > 0) {
-				return false; // Found a crewmate with incomplete tasks
+				return false; // Found a student with incomplete tasks
 			}
 		}
 
-		console.log(`[DEBUG] All crewmate tasks completed in room ${roomId}!`);
+		console.log(`[DEBUG] All student tasks completed in room ${roomId}!`);
 		return true;
 	}
 
